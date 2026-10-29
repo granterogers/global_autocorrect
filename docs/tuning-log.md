@@ -10,6 +10,10 @@ Every change below was made by looking at the **tuning** set only (260 messages)
 | T4 | A stretch whose letters match exactly is one spacing edit (`ev eninginstead`); prompt v2: put back clearly dropped small words, plus two examples | 90.5% | 0.29% | 83% | 342 / 511 ms |
 | T5 | Alignment cost uses the keyboard model, so `s` ↔ `a` pairs word for word (trace showed `I hae s flight` lost to a split + deletion) | 90.5% | 0.23% | 84% | 346 / 520 ms |
 
+| T6 | Prompt v3: one more example with dropped "the", plus a clean sentence that must stay unchanged (guards against over-inserting) | **90.8%** | **0.20%** | 83% | 344 / 523 ms |
+
+**Tuning frozen after T6** (prompt v3, rules D19–D27, instant layer D23). The holdout is scored once, next.
+
 T5 plateaus at about 90.5%. The scorer shares the alignment cost, so the error count moved from 733 to 728 (more accurate alignment). Most of what remains is dropped articles the model doesn't restore, and heavy multi-error messages.
 
 ## What later rounds showed
