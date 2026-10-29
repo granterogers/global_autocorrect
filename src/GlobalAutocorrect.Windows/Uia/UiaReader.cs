@@ -16,7 +16,8 @@ public sealed record UiaSnapshot(
     string ProcessName,
     string ControlType,
     string RuntimeId,
-    (double X, double Y, double W, double H)? CaretRect)
+    (double X, double Y, double W, double H)? CaretRect,
+    int ControlTypeId = 0)   // UIA control type id: language-independent, unlike ControlType
 {
     public bool CaretKnown => Status == ReadStatus.Ok;
 
@@ -89,7 +90,7 @@ public sealed class UiaReader
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret));
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType);
         }
         catch (Exception e) when (IsUiaFailure(e))
         {

@@ -7,10 +7,14 @@
 #>
 param(
     [string] $CacheDir = (Join-Path $env:LOCALAPPDATA 'GlobalAutocorrect\cache'),
-    [string] $Model = 'gemma-4-E4B-it-Q5_K_M.gguf',
+    # The model chosen in the app's settings, so verify checks what the app will actually run (5.8.e).
+    [string] $Model = '',
     [string] $AppExe = ''
 )
 $ErrorActionPreference = 'Stop'
+$settingsFile = Join-Path $env:APPDATA 'GlobalAutocorrect\settings.json'
+if (-not $Model) { $Model = if (Test-Path $settingsFile) { (Get-Content $settingsFile -Raw | ConvertFrom-Json).Model } else { $null } }
+if (-not $Model) { $Model = 'gemma-4-E4B-it-Q5_K_M.gguf' }
 $ProgressPreference = 'SilentlyContinue'
 $failures = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()

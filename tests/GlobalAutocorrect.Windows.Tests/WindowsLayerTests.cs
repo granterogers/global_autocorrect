@@ -94,6 +94,16 @@ public sealed class WindowsLayerTests
         Assert.Contains("MoveEndpointByUnit", reader);
     }
 
+    [Fact]
+    public void R8_4_ExcelCellsAreRecognisedInAnyDisplayLanguage()
+    {
+        // A German Windows names the control type "Datenelement"; the id is the same everywhere.
+        var cell = new UiaSnapshot(ReadStatus.Ok, "", "", "Selection", 1, "EXCEL", "Datenelement", "x", null, 50029);
+        Assert.True(GlobalAutocorrect.Windows.Targets.AppExclusions.IsExcelCell(cell));
+        var formulaBar = cell with { ControlType = "Bearbeiten", ControlTypeId = 50004 };   // Edit
+        Assert.False(GlobalAutocorrect.Windows.Targets.AppExclusions.IsExcelCell(formulaBar));
+    }
+
     // ---- No special cases (4.1.a, 2.10, 5.1.d) ---------------------------------------------------------
 
     [Fact]

@@ -37,7 +37,9 @@ public sealed class AppExclusions
     /// <summary>Excel with a cell/data item focused (8.4). Control type names come from UIA, en-GB.</summary>
     public static bool IsExcelCell(UiaSnapshot s) =>
         string.Equals(s.ProcessName, "EXCEL", StringComparison.OrdinalIgnoreCase)
-        && CellControlTypes.Contains(s.ControlType);
+        // Control type ids (DataItem 50029, Table 50036, DataGrid 50028) work in any Windows display language;
+        // the localised names are kept as a fallback.
+        && (s.ControlTypeId is 50029 or 50036 or 50028 || CellControlTypes.Contains(s.ControlType));
 
     /// <summary>Window rect equals its monitor's rect, excluding the desktop and shell windows.</summary>
     public static bool IsFullScreen(nint hwnd)

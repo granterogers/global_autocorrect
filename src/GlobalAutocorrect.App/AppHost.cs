@@ -98,7 +98,9 @@ public sealed class AppHost : IAsyncDisposable
         _loop.SuggestionAccepted += () => SuggestionAcceptedByTab?.Invoke();
         _loop.KeyProcessed += k =>
         {
-            if (k.Kind == KeyKind.Char) _llm.NotifyActivity();   // 5.6.b: reload on the next keystroke, in the background
+            // 5.6.b: reload on the next keystroke, in the background. Never under a mock model (E2E): that started real
+            // servers the tests then orphaned.
+            if (k.Kind == KeyKind.Char && !MockedModel) _llm.NotifyActivity();
             KeyProcessed?.Invoke(k);
         };
         _loop.Post(e => e.SetTarget(Target));
@@ -115,8 +117,7 @@ public sealed class AppHost : IAsyncDisposable
         // E2E reads desyncs from counters.json before checking text (11.3.d), so save it every second there.
         var every = Environment.GetEnvironmentVariable("GA_E2E") == "1" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(5);
         _maintenance = new Timer(_ => _ = MaintainAsync(), null, every, every);
-        bool mocked = Environment.GetEnvironmentVariable("GA_E2E_LLM_URL") is not null && Environment.GetEnvironmentVariable("GA_E2E") == "1";
-        if (!Settings.Paused && !mocked) _ = _llm.Host.StartAsync(CancellationToken.None).ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
+        if (!Settings.Paused && !MockedModel) _ = _llm.Host.StartAsync(CancellationToken.None).ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
         await Task.CompletedTask;
     }
 
@@ -131,6 +132,9 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     private LlamaServerClient? _mockClient;
+
+    private static bool MockedModel =>
+        Environment.GetEnvironmentVariable("GA_E2E") == "1" && Environment.GetEnvironmentVariable("GA_E2E_LLM_URL") is not null;
 
     private CorrectionEngine BuildEngine()
     {
