@@ -23,7 +23,8 @@ public sealed class BrowserTests
         var p = await browser.NewPageAsync();
         await p.GotoAsync(new Uri(Path.Combine(Desk.Repo, "tests", "pages", page + ".html")).AbsoluteUri);
         await p.BringToFrontAsync();
-        await p.ClickAsync("#ed");   // puts the caret in the editor; a click is a session break, before any typing
+        // Click the element that actually takes typing: ProseMirror renders its own editable inside #ed.
+        await p.ClickAsync(page == "prosemirror" ? ".ProseMirror" : "#ed");   // a click is a session break, before any typing
         await Task.Delay(1500);      // Chromium turns on full accessibility once UIA connects (10.6.d)
         return (browser, p, pw);
     }

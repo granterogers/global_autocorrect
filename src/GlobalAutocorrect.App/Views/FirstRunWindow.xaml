@@ -102,7 +102,7 @@
 
         <ui:TitleBar x:Name="TitleBar" Grid.Row="0" Title="Welcome to Global Autocorrect" ShowMaximize="False" CanMaximize="False">
             <ui:TitleBar.Icon>
-                <ui:SymbolIcon Symbol="TextGrammarWand24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                <ui:ImageIcon Source="pack://application:,,,/assets/icons/app.ico" Width="16" Height="16" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
@@ -166,7 +166,7 @@
             <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BoolToVisible}}">
                 <TextBlock Style="{StaticResource PageTitle}" Text="Download the model" />
                 <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,20"
-                           Text="Global Autocorrect needs to download its AI model, about 5 GB. It's saved on this PC and does its thinking here, so your typing stays private. You only need to do this once." />
+                           Text="Global Autocorrect needs to download its AI model, about 6 GB. It's saved on this PC and does its thinking here, so your typing stays private. You only need to do this once." />
 
                 <Border Style="{StaticResource CardBorder}" Padding="20">
                     <Grid>

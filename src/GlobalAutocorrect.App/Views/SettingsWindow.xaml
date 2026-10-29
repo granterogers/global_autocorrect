@@ -17,7 +17,7 @@
 
         <ui:TitleBar x:Name="TitleBar" Grid.Row="0" Title="Global Autocorrect" ShowMaximize="True">
             <ui:TitleBar.Icon>
-                <ui:SymbolIcon Symbol="TextGrammarWand24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                <ui:ImageIcon Source="pack://application:,,,/assets/icons/app.ico" Width="16" Height="16" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 

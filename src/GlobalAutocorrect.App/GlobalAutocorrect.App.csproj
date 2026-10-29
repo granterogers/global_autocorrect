@@ -19,6 +19,7 @@
   <ItemGroup>
     <!-- Dictionary, frequencies, n-grams and notices travel with the app; models stay in the cache (11.4). -->
     <None Include="..\..\assets\**\*" Exclude="..\..\assets\icons\src\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="..\..\assets\icons\app.ico" Link="assets\icons\app.ico" />
     <None Include="..\..\scripts\manifest.json" Link="assets\manifest.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

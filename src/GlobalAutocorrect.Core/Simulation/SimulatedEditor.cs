@@ -88,12 +88,18 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         return true;
     }
 
+    /// <summary>Characters "typed" between the write and its verification (models a user who keeps typing, 4.6.e).</summary>
+    public string TypedDuringVerify { get; set; } = "";
+
     public bool Verify(string expectedBefore, string expectedAfter)
     {
+        if (TypedDuringVerify.Length > 0) { Insert(TypedDuringVerify); TypedDuringVerify = ""; }
         var w = ReadWindow();
         string b = TextNorm.Normalise(w.Before), e = TextNorm.Normalise(expectedBefore);
-        int n = Math.Min(b.Length, e.Length);
-        return w.CaretKnown && b[^n..] == e[^n..] && TextNorm.Normalise(w.After) == TextNorm.Normalise(expectedAfter);
+        string tail = e.Length > 48 ? e[^48..] : e;
+        int at = b.LastIndexOf(tail, StringComparison.Ordinal);
+        bool beforeOk = at >= 0 && b.Length - (at + tail.Length) <= 64 && !b.AsSpan(at + tail.Length).Contains('\n');
+        return w.CaretKnown && beforeOk && TextNorm.Normalise(w.After) == TextNorm.Normalise(expectedAfter);
     }
 
     private KeyInput Key(KeyKind kind, char c)

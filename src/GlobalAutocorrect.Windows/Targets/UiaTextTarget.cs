@@ -44,18 +44,25 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         return SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
     }
 
+    /// <summary>Characters the user may have typed after the edit while we wait for the app to show it.</summary>
+    public const int MaxTypedDuringVerify = 64;
+
     public bool Verify(string expectedBefore, string expectedAfter)
     {
-        // The app processes the injected keys asynchronously: poll briefly until it shows the result (4.6.d).
+        // The app processes the injected keys asynchronously: poll briefly until it shows the result (4.6.d). The user
+        // keeps typing meanwhile (4.6.e), so the expected text may be followed by a few new characters on the same line.
         string e = TextNorm.Normalise(expectedBefore), ea = TextNorm.Normalise(expectedAfter);
+        string tail = e.Length > 48 ? e[^48..] : e;
         for (int i = 0; i < 12; i++)
         {
             var w = ReadWindow();
             if (w.CaretKnown)
             {
                 string b = TextNorm.Normalise(w.Before), a = TextNorm.Normalise(w.After);
-                int n = Math.Min(b.Length, e.Length), m = Math.Min(a.Length, ea.Length);
-                if (b[^n..] == e[^n..] && a[..m] == ea[..m]) return true;
+                int at = b.LastIndexOf(tail, StringComparison.Ordinal);
+                bool beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify && !b.AsSpan(at + tail.Length).Contains('\n');
+                int m = Math.Min(a.Length, ea.Length);
+                if (beforeOk && a[..m] == ea[..m]) return true;
             }
             Thread.Sleep(35);
         }

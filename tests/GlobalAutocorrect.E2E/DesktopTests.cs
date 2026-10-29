@@ -22,14 +22,19 @@ public sealed class DesktopTests
     /// Opens a fresh Notepad tab and, at the end, empties and closes it, so Notepad's session restore never keeps
     /// test text (Notepad autosaves tabs; 12.1 inputs avoid words Notepad corrects itself).
     /// </summary>
-    private static (Window Window, TextBox Doc, Action Close) OpenNotepad(UIA3Automation uia)
+    private static (Window? Window, TextBox Doc, Action Close) OpenNotepad(UIA3Automation uia)
     {
         var before = Process.GetProcessesByName("Notepad").Select(p => p.Id).ToHashSet();
         Process.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true });
-        Thread.Sleep(2500);
-        var app = FlaUI.Core.Application.Attach("Notepad.exe");
-        var win = app.GetMainWindow(uia, TimeSpan.FromSeconds(10))!;
-        win.Focus();
+        // Store Notepad hands off to another process, so wait for its window to be in front rather than attaching.
+        Assert.True(Desk.WaitUntil(() =>
+        {
+            GetWindowThreadProcessId(GetForegroundWindow(), out uint pid);
+            try { return Process.GetProcessById((int)pid).ProcessName.Equals("Notepad", StringComparison.OrdinalIgnoreCase); }
+            catch (ArgumentException) { return false; }
+        }, 10_000), "Notepad did not come to the front");
+        Thread.Sleep(800);
+        Window? win = null;
         Desk.Keys(VK_CONTROL, (ushort)'N');   // a new, empty tab even if Notepad restored others
         Thread.Sleep(800);
         // The editor of the new tab is whatever has focus now (class names vary between Notepad builds).

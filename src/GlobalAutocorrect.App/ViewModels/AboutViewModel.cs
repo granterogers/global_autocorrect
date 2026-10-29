@@ -44,7 +44,8 @@ public sealed record MetricsSummary(string ErrorsFixed, string FalseEdits, strin
         }
     }
 
-    private static string Percent(double rate) => (rate * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+    // Two decimals below 1% (0.19%, not 0.2%): small false-edit rates are the ones people care about.
+    private static string Percent(double rate) => (rate * 100).ToString(rate < 0.01 ? "0.00" : "0.0", CultureInfo.InvariantCulture) + "%";
 
     private static string FormatDate(string iso) =>
         DateTime.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)

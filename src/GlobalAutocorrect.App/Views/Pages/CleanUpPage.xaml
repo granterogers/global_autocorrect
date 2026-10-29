@@ -82,7 +82,7 @@
                         <TextBlock Style="{StaticResource RowCaption}" Text="Changing the model takes effect after you restart Global Autocorrect." />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ComboBox Width="230" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
+                <ComboBox MinWidth="300" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
                           DisplayMemberPath="Display" AutomationProperties.Name="AI model" />
             </ui:CardControl>
         </StackPanel>

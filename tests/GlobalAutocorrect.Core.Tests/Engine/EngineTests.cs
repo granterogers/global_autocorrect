@@ -267,6 +267,18 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_6_d_TypingDuringVerificationIsNotADesync()
+    {
+        // Found by E2E: the user keeps typing while the app shows our edit; that must not count as a desync.
+        var h = new Harness();
+        h.Ed.BeforeApply = ed => ed.TypedDuringVerify = "do";
+        h.Type("we saw teh ");
+        Assert.Equal(0, h.Counters.Desyncs);
+        Assert.Equal(1, h.Counters.InstantCorrections);
+        Assert.StartsWith("we saw the ", h.Text);
+    }
+
+    [Fact]
     public void R4_6_e_WriteWaitsButTypingDoesNot()
     {
         var h = new Harness(model: FixTheir, latencyMs: 50);
