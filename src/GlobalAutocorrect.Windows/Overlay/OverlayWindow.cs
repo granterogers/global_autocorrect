@@ -45,8 +45,10 @@ public class OverlayWindow : Window
     /// <summary>Moves and sizes the window in physical screen pixels, without activating it.</summary>
     protected void PlaceAt(double x, double y, double width, double height)
     {
-        if (Handle == 0) { Show(); Hide(); }   // create the HWND
-        SetWindowPos(Handle, HWND_TOPMOST, (int)Math.Round(x), (int)Math.Round(y), Math.Max(1, (int)Math.Ceiling(width)), Math.Max(1, (int)Math.Ceiling(height)), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        // Show through WPF (never activates: ShowActivated=false plus WS_EX_NOACTIVATE), so WPF knows it is visible and
+        // Hide() really hides it; then position in physical pixels. SWP_SHOWWINDOW behind WPF's back left it un-hideable.
+        if (!IsVisible) Show();
+        SetWindowPos(Handle, HWND_TOPMOST, (int)Math.Round(x), (int)Math.Round(y), Math.Max(1, (int)Math.Ceiling(width)), Math.Max(1, (int)Math.Ceiling(height)), SWP_NOACTIVATE);
     }
 
     /// <summary>DIPs per physical pixel on this window's monitor.</summary>

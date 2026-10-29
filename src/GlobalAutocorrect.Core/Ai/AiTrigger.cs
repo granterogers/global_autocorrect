@@ -79,7 +79,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         {
             int s = p.ContextStartInTyped + e.Start, en = p.ContextStartInTyped + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
-            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq));
+            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords));
         }
         return writes;
     }

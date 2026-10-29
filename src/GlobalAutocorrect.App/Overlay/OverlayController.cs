@@ -19,7 +19,6 @@ public sealed class OverlayController
     private readonly Dispatcher _ui;
     private readonly SuggestionOverlay _suggestion;
     private readonly UnderlineOverlay _underline;
-    private readonly StringBuilder _word = new();
     private volatile string _shown = "";
     private long _generation;
 
@@ -38,19 +37,13 @@ public sealed class OverlayController
 
     private void OnKey(KeyInput k)
     {
-        LearnWords(k);
         if (_host.Paused || _host.Predictor is not { Enabled: true } || k.Kind != KeyKind.Char)
         {
             Hide();
             return;
         }
-        // 7.5: a key that continues the suggestion shrinks it; anything else hides it.
-        string shown = _shown;
-        if (shown.Length > 0 && char.ToLowerInvariant(shown[0]) == char.ToLowerInvariant(k.Char))
-        {
-            Show(shown[1..], null, k.Seq);
-            return;
-        }
+        // 7.5: every key hides the suggestion; a fresh one is predicted from the new caret position, so it is never
+        // drawn at a stale place.
         Hide();
         long gen = Interlocked.Increment(ref _generation);
         _ = Task.Run(() => Predict(k.Seq, gen));
@@ -69,23 +62,18 @@ public sealed class OverlayController
         Show(s.Completion, caret, seq);
     }
 
-    private void Show(string completion, (double X, double Y, double W, double H)? caret, long seq)
+    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq)
     {
         var hook = _host.Hook;
         if (completion.Length == 0 || hook is null) { Hide(); return; }
         _ui.BeginInvoke(() =>
         {
             if (hook.LatestKeySeq != seq) return;   // something happened in between: don't show a stale suggestion
-            if (caret is { } c) _suggestion.ShowAt(completion, c);
-            else if (_suggestion.IsVisible) _suggestion.ShowAt(completion, LastCaretAfterKey());
-            else return;
+            _suggestion.ShowAt(completion, caret);
             _shown = completion;
             hook.SuggestionArm.ArmAt(seq);   // Tab now means "accept", until anything else happens
         });
     }
-
-    private (double, double, double, double) LastCaretAfterKey() =>
-        _host.Target?.LastSnapshot?.CaretRect ?? (0, 0, 1, 16);
 
     private void Hide()
     {
@@ -110,18 +98,5 @@ public sealed class OverlayController
             var rect = uia.Invoke(r => r.RangeRect(n.CaretDistance, n.Length));
             if (rect is { } r) _ui.BeginInvoke(() => _underline.Flash(r));
         });
-    }
-
-    /// <summary>7.3: count finished words the user typed, if they're real words. Counts only, never sentences.</summary>
-    private void LearnWords(KeyInput k)
-    {
-        if (k.Kind == KeyKind.Char && (char.IsLetter(k.Char) || k.Char == '\''))
-        {
-            if (_word.Length < 30) _word.Append(k.Char);
-            return;
-        }
-        if (_word.Length > 1 && k.Kind == KeyKind.Char && _host.IsKnownWord(_word.ToString()))
-            _host.History.Observe(_word.ToString());
-        _word.Clear();
     }
 }

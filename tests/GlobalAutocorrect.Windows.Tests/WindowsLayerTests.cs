@@ -238,6 +238,7 @@ public sealed class WindowsLayerTests
     public void R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6()
     {
         int ex = 0;
+        bool visibleAfterShow = false, hiddenAfterHide = false;
         nint fgBefore = GetForegroundWindow(), fgAfter = 0;
         var t = new Thread(() =>
         {
@@ -245,6 +246,9 @@ public sealed class WindowsLayerTests
             o.ShowAt("test", (-32000, -32000, 1, 16));   // off-screen: nothing flashes on the user's desktop
             ex = GetWindowLongW(new System.Windows.Interop.WindowInteropHelper(o).Handle, -20);
             fgAfter = GetForegroundWindow();
+            visibleAfterShow = o.IsVisible;
+            o.HideSuggestion();
+            hiddenAfterHide = !o.IsVisible && !IsWindowVisible(new System.Windows.Interop.WindowInteropHelper(o).Handle);
             o.Close();
         });
         t.SetApartmentState(ApartmentState.STA);
@@ -254,5 +258,9 @@ public sealed class WindowsLayerTests
         Assert.True((ex & 0x8000000) != 0, "WS_EX_NOACTIVATE");
         Assert.True((ex & 0x80) != 0, "WS_EX_TOOLWINDOW (not in Alt+Tab)");
         Assert.Equal(fgBefore, fgAfter);   // showing it never takes focus
+        Assert.True(visibleAfterShow, "shown");
+        Assert.True(hiddenAfterHide, "the suggestion really disappears (7.5)");
     }
+
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint h);
 }

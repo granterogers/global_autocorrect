@@ -8,8 +8,10 @@ namespace GlobalAutocorrect.Core.Write;
 public enum Layer { Instant, Ai, Undo }
 
 /// <summary>A queued replacement in typed-buffer coordinates (D5). Offsets shift as earlier writes land.</summary>
-public sealed class PendingWrite(Layer layer, long generation, int start, int end, string original, string replacement, long createdAtMs, long keySeqAtDecision)
+public sealed class PendingWrite(Layer layer, long generation, int start, int end, string original, string replacement, long createdAtMs, long keySeqAtDecision, IReadOnlyList<string>? words = null)
 {
+    /// <summary>The whole words this write corrects (Original may be just the changed letters).</summary>
+    public IReadOnlyList<string> Words { get; } = words ?? [original];
     public Layer Layer { get; } = layer;
     public long Generation { get; } = generation;
     public int Start { get; set; } = start;

@@ -368,6 +368,71 @@ public sealed class EngineTests
         Assert.Equal(UndoResult.TextChanged, h.Engine.Undo(global: true));
     }
 
+    // ---- Learning: auto-learn (8.5) and prediction history (7.3) ------------------------------------------
+
+    [Fact]
+    public void R8_5_AnUnrecognisedWordThatSurvivesCountsTowardsAutoLearn()
+    {
+        var h = new Harness();
+        h.Type("we met Zorblat today ");   // a capitalised name: the instant layer leaves it alone
+        Assert.Empty(h.Noted);             // not straight away
+        h.Wait(5500);
+        Assert.Contains("Zorblat", h.Noted);
+    }
+
+    [Fact]
+    public void R8_5_TyposTheAiFixesAreNeverLearnt()
+    {
+        var h = new Harness(model: s => s.Replace("ofr", "for"), latencyMs: 100);
+        h.Type("cheers ofr that. ");
+        h.Wait(6000);
+        Assert.Equal("cheers for that. ", h.Text);
+        Assert.DoesNotContain("ofr", h.Noted);
+    }
+
+    [Fact]
+    public void R7_3_HistoryLearnsOnlyRealWordsAsSingleWords()
+    {
+        var h = new Harness();
+        h.Type("the quick zzqx fox ");
+        Assert.Equal(["the", "quick", "fox"], h.Observed);
+    }
+
+    [Fact]
+    public void R8_3_NothingIsLearntFromAFieldTheAppMayNotRead()
+    {
+        var h = new Harness();
+        h.Ed.CaretKnown = false;   // password field, excluded app, elevated window: all read as "not OK"
+        h.Type("my secret Zorblat words ");
+        h.Wait(6000);
+        Assert.Empty(h.Observed);
+        Assert.Empty(h.Noted);
+    }
+
+    [Fact]
+    public void R8_2_NothingIsLearntWhilePaused()
+    {
+        var h = new Harness();
+        h.Engine.Paused = true;
+        h.Type("the quick Zorblat ");
+        h.Wait(6000);
+        Assert.Empty(h.Observed);
+        Assert.Empty(h.Noted);
+    }
+
+    [Fact]
+    public void R8_3_AcceptingASuggestionNeverTypesIntoAFieldItMayNotRead_R7_4()
+    {
+        var h = new Harness();
+        h.Type("hello ");
+        h.Ed.CaretKnown = false;   // focus moved to a password box
+        Assert.False(h.Engine.InsertAtCaret("world"));
+        Assert.Equal("hello ", h.Text);
+        h.Ed.CaretKnown = true;
+        Assert.True(h.Engine.InsertAtCaret("world"));
+        Assert.Equal("hello world", h.Text);
+    }
+
     // ---- Telemetry and privacy (6.5, 8.6) -----------------------------------------------------------
 
     [Fact]

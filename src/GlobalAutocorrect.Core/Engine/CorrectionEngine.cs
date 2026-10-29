@@ -18,7 +18,9 @@ public sealed record EngineDeps(
     ILlmClient? Llm,
     Func<string, bool> IsPersonalWord,
     Func<string, bool> AddPersonalWord,
-    Counters Counters);
+    Counters Counters,
+    Action<string>? ObserveWord = null,           // 7.3: prediction history, word counts only
+    Func<string, bool>? NoteUnrecognised = null); // 8.5: auto-learn after 3 uses; true when the word was added
 
 /// <summary>
 /// Feature A end to end (0.2): instant layer on each finished word, AI layer on sentence ends and pauses, all writes
@@ -57,6 +59,7 @@ public sealed class CorrectionEngine
         _gate.Written += (notice, w, typedAfter) =>
         {
             if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation);
+            _pendingLearn.RemoveAll(p => w.Words.Contains(p.Word, StringComparer.OrdinalIgnoreCase));   // it was a typo
             Corrected?.Invoke(notice);
         };
         _gate.Desynced += id => { _undo.Clear(); Desynced?.Invoke(id); };
@@ -65,6 +68,7 @@ public sealed class CorrectionEngine
     /// <summary>Focus moved to another field (or none). Breaks the typing session.</summary>
     public void SetTarget(ITextTarget? target)
     {
+        _targetOk = null;
         Target = target;
         Session.Break(SessionBreakReason.FocusChange);
         _gate.Clear();
@@ -73,25 +77,63 @@ public sealed class CorrectionEngine
     public void OnInput(KeyInput k)
     {
         var effect = Session.Apply(k);
+        if (k.Kind is KeyKind.FocusChange or KeyKind.Click) _targetOk = null;   // possibly a different field now
         if (Paused || Target is null) return;
 
+        string? fix = null;
         if (effect.Word is { } fw && _o.InstantEnabled)
         {
-            string? fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord);   // 4.3
+            fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord);   // 4.3
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq));
                 _gate.TryWrite(Target);   // straight away if nothing else was typed (4.3.a)
             }
         }
+        if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null);
         if (effect.SentenceEnded && _ai is not null && _o.AiEnabled)
             _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
+    }
+
+    private bool? _targetOk;
+
+    /// <summary>
+    /// Words are learnt (prediction history 7.3, auto-learn 8.5) only from a field the app may read: never a password
+    /// field, an excluded app or an elevated window (8.3, 8.4, 10.8), and never while paused. The field is checked once
+    /// per focus, not per word.
+    /// </summary>
+    private void Learn(string word, bool corrected)
+    {
+        if (_d.ObserveWord is null && _d.NoteUnrecognised is null) return;
+        _targetOk ??= Target!.ReadWindow().CaretKnown;
+        if (_targetOk != true) return;
+        if (_d.Speller.IsValid(word) || _d.IsPersonalWord(word)) _d.ObserveWord?.Invoke(word.ToLowerInvariant());
+        else if (!corrected && _d.NoteUnrecognised is not null) _pendingLearn.Add((word, _d.Clock.NowMs));
+    }
+
+    /// <summary>
+    /// An unrecognised word only counts towards auto-learn (8.5) once it has survived a few seconds without being
+    /// corrected; a typo the AI keeps fixing must never end up in the dictionary.
+    /// </summary>
+    private readonly List<(string Word, long At)> _pendingLearn = [];
+    private const int LearnAfterMs = 5000;
+
+    private void SettleLearning()
+    {
+        long now = _d.Clock.NowMs;
+        for (int i = _pendingLearn.Count - 1; i >= 0; i--)
+        {
+            if (now - _pendingLearn[i].At < LearnAfterMs) continue;
+            _d.NoteUnrecognised!(_pendingLearn[i].Word);
+            _pendingLearn.RemoveAt(i);
+        }
     }
 
     /// <summary>Called every ~25 ms (or as virtual time advances): pause trigger, AI results, queued writes.</summary>
     public void Tick()
     {
         if (Paused || Target is null) return;
+        if (_pendingLearn.Count > 0) SettleLearning();
         if (_ai is not null && _o.AiEnabled)
         {
             var ready = _ai.Poll(Session, out bool rerun);
@@ -107,7 +149,9 @@ public sealed class CorrectionEngine
     /// </summary>
     public bool InsertAtCaret(string text)
     {
-        if (Target is null || text.Length == 0) return false;
+        if (Target is null || text.Length == 0 || Paused) return false;
+        // Same gate as every write: never into a password field, excluded app or elevated window (8.3, 8.4, 10.8).
+        if (!Target.ReadWindow().CaretKnown) return false;
         if (!Target.ApplyEdit(0, 0, text)) return false;
         Session.ApplyOwnEdit(Session.Length, Session.Length, text);
         return true;

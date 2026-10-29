@@ -49,7 +49,7 @@ public sealed class AppHost : IAsyncDisposable
     public ServerState ModelState => _llm?.Host.State ?? ServerState.Stopped;
     public ServerInfo? ModelInfo => _llm?.Host.Info;
     public double TypicalLatencyMs { get; private set; }
-    public long CorrectionsToday => _daily.Baseline + _counters.Corrections;
+    public long CorrectionsToday => _daily.CorrectionsToday(_counters);
     public Counters Counters => _counters;
 
     // Feature B (7.x) and the overlays (4.7, 7.6).
@@ -59,8 +59,6 @@ public sealed class AppHost : IAsyncDisposable
     public KeyboardHook? Hook => _hook;
     public event Action? SuggestionAcceptedByTab;
 
-    /// <summary>Only real words are learnt for prediction, so typos never come back as suggestions (7.3).</summary>
-    public bool IsKnownWord(string w) => _speller?.IsValid(w) == true || Dictionary.Contains(w);
 
     /// <summary>Types the accepted suggestion as our own input, on the engine thread (7.4).</summary>
     public void AcceptSuggestion(string completion) => _loop?.Post(e => e.InsertAtCaret(completion));
@@ -139,7 +137,10 @@ public sealed class AppHost : IAsyncDisposable
         _engineOptions = Settings.ToEngineOptions(new EngineOptions());
         var engine = new CorrectionEngine(_engineOptions, new EngineDeps(
             SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
-            Dictionary.Contains, Dictionary.Add, _counters)) { Paused = Settings.Paused };
+            Dictionary.Contains, Dictionary.Add, _counters,
+            ObserveWord: History.Observe,                      // 7.3, gated in the engine (8.3)
+            NoteUnrecognised: Dictionary.NoteUnrecognised))    // 8.5
+        { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
         return engine;
     }
@@ -229,13 +230,14 @@ public sealed class AppHost : IAsyncDisposable
                 _loop.Post(e => { if (e.LastAiLatencyMs > 0) TypicalLatencyMs = TypicalLatencyMs == 0 ? e.LastAiLatencyMs : TypicalLatencyMs * 0.8 + e.LastAiLatencyMs * 0.2; });
             if (ModelState != before) StateChanged?.Invoke();
         }
-        catch (Exception e) when (e is IOException or InvalidOperationException or OperationCanceledException) { }
+        catch (Exception e) when (e is not OutOfMemoryException) { }   // a timer must never crash the app
     }
 
     public async ValueTask DisposeAsync()
     {
         _maintenance?.Dispose();
         _daily.Save(_counters);
+        try { History.Save(); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // keep the last few seconds of counts
         _hotkeys?.Dispose();
         _focus?.Dispose();
         _loop?.Dispose();
@@ -245,39 +247,72 @@ public sealed class AppHost : IAsyncDisposable
     }
 }
 
-/// <summary>"Corrections today" (9.3.a) across restarts. Counts only (6.5, 8.6).</summary>
-internal sealed class DailyCounts(string path)
+/// <summary>
+/// "Corrections today" (9.3.a) and a running record of daily counts (6.5), across restarts and across midnight.
+/// Counts only, never text (8.6). File shape: { "Date", "Counts" (today), "Days": { date: counts } }.
+/// </summary>
+public sealed class DailyCounts(string path, Func<DateTime>? now = null)
 {
-    private sealed record Saved(string Date, Dictionary<string, long> Counts);
+    private sealed record Saved(string Date, Dictionary<string, long> Counts, Dictionary<string, Dictionary<string, long>>? Days);
 
-    public long Baseline { get; private set; }
-    private Dictionary<string, long> _baseline = [];
-    private string _date = Today;
-    private static string Today => DateTime.Now.ToString("yyyy-MM-dd");
+    private readonly Func<DateTime> _now = now ?? (() => DateTime.Now);
+    private Dictionary<string, Dictionary<string, long>> _days = [];
+    private Dictionary<string, long> _baseline = [];   // today's counts from earlier sessions
+    private Dictionary<string, long> _offset = [];     // this session's counters at the start of today
+    private string? _date;
+
+    private string Today => _now().ToString("yyyy-MM-dd");
+
+    public IReadOnlyDictionary<string, Dictionary<string, long>> Days => _days;
 
     public void Load()
     {
+        _date = Today;
         try
         {
             if (!File.Exists(path)) return;
             var s = JsonSerializer.Deserialize<Saved>(File.ReadAllText(path));
-            if (s?.Date == Today)
-            {
-                _baseline = s.Counts;
-                Baseline = s.Counts.GetValueOrDefault("instantCorrections") + s.Counts.GetValueOrDefault("aiCorrections");
-            }
+            if (s is null) return;
+            _days = s.Days ?? [];
+            if (s.Date is not null && !_days.ContainsKey(s.Date)) _days[s.Date] = s.Counts;   // older file shape
+            _baseline = _days.TryGetValue(_date, out var today) ? new(today) : [];
         }
-        catch (Exception e) when (e is JsonException or IOException) { }
+        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Today's counts: earlier sessions today plus this session since midnight (or since start).</summary>
+    public Dictionary<string, long> TodayCounts(Counters c)
+    {
+        Roll(c);
+        return c.Snapshot().ToDictionary(k => k.Key, k => _baseline.GetValueOrDefault(k.Key) + k.Value - _offset.GetValueOrDefault(k.Key));
+    }
+
+    public long CorrectionsToday(Counters c)
+    {
+        var t = TodayCounts(c);
+        return t.GetValueOrDefault("instantCorrections") + t.GetValueOrDefault("aiCorrections");
     }
 
     public void Save(Counters c)
     {
-        if (_date != Today) { _date = Today; _baseline = []; Baseline = 0; }   // new day: start again
-        var now = c.Snapshot().ToDictionary(k => k.Key, k => k.Value + _baseline.GetValueOrDefault(k.Key));
+        var today = TodayCounts(c);
+        _days[_date!] = today;
         try
         {
-            File.WriteAllText(path, JsonSerializer.Serialize(new Saved(_date, now)));
+            File.WriteAllText(path, JsonSerializer.Serialize(new Saved(_date!, today, _days)));
         }
-        catch (IOException) { }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>At midnight, close yesterday and start today from the counters' current values.</summary>
+    private void Roll(Counters c)
+    {
+        _date ??= Today;
+        if (_date == Today) return;
+        var snap = c.Snapshot();
+        _days[_date] = snap.ToDictionary(k => k.Key, k => _baseline.GetValueOrDefault(k.Key) + k.Value - _offset.GetValueOrDefault(k.Key));
+        _offset = snap;
+        _baseline = [];
+        _date = Today;
     }
 }

@@ -47,13 +47,15 @@ public sealed class Harness
     public FakeLlm? Llm { get; }
     public HashSet<string> Personal { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Counters Counters { get; } = new();
+    public List<string> Observed { get; } = [];   // prediction history (7.3)
+    public List<string> Noted { get; } = [];      // auto-learn counts (8.5)
 
     public Harness(Func<string, string>? model = null, double latencyMs = 300, EngineOptions? options = null)
     {
         Ed = new SimulatedEditor(Clock);
         if (model is not null) Llm = new FakeLlm(model, latencyMs);
         var deps = new EngineDeps(Clock, Ed, HunspellTests.Shared, FakeSuggester.Default(), Llm,
-            Personal.Contains, Personal.Add, Counters);
+            Personal.Contains, Personal.Add, Counters, Observed.Add, w => { Noted.Add(w); return false; });
         Engine = new CorrectionEngine(options ?? new EngineOptions(), deps);
         Engine.SetTarget(Ed);
     }

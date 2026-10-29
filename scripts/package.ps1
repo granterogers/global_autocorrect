@@ -24,6 +24,10 @@ foreach ($f in 'metrics.json', 'eval-report.md') {
     $p = Join-Path $Out $f
     if (Test-Path $p) { Copy-Item $p $stage }
 }
+# The About page reads metrics.json next to the exe (9.3.g, 6.6).
+$metrics = Join-Path $Out 'metrics.json'
+if (-not (Test-Path $metrics)) { throw 'artifacts/metrics.json is missing: run check.ps1 eval first so the build ships its measured accuracy (6.6).' }
+Copy-Item $metrics (Join-Path $stage 'app')
 
 $zip = Join-Path $Out "GlobalAutocorrect-$version.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
