@@ -1,3 +1,7 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using GlobalAutocorrect.Core.Instant;
+
 namespace GlobalAutocorrect.DataGen;
 
 internal static class Commands
@@ -12,6 +16,42 @@ internal static class Commands
         if (r < 0.54) return NoiseLevel.Light;
         if (r < 0.82) return NoiseLevel.Medium;
         return NoiseLevel.Heavy;
+    }
+
+    private const int FreqTopN = 80_000;
+
+    private static readonly Regex FreqToken = new("^[A-Za-z]+(['-][A-Za-z]+)*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Builds the SymSpell frequency list (1.5): corpus tokens that are letters (with internal apostrophes/hyphens)
+    /// and valid en_GB-ise, counts summed by lower-case form, top 80,000, "word count" per line.
+    /// </summary>
+    public static void Freq(string wordsPath, string assetsDir, string output)
+    {
+        var speller = HunspellSpellChecker.FromAssets(assetsDir);
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var line in File.ReadLines(wordsPath, Encoding.UTF8))
+        {
+            var parts = line.Split('\t');
+            if (parts.Length < 3 || !long.TryParse(parts[2], out long count)) continue;
+            string token = parts[1];
+            if (!FreqToken.IsMatch(token) || !speller.IsValid(token)) continue;
+            string lower = token.ToLowerInvariant();
+            counts[lower] = counts.GetValueOrDefault(lower) + count;
+        }
+
+        var top = counts
+            .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.Ordinal)
+            .Take(FreqTopN)
+            .ToList();
+
+        var sb = new StringBuilder();
+        foreach (var kv in top) sb.Append(kv.Key).Append(' ').Append(kv.Value).Append('\n');
+        var dir = Path.GetDirectoryName(Path.GetFullPath(output));
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        File.WriteAllText(output, sb.ToString(), new UTF8Encoding(false));
+        Console.WriteLine($"freq: kept {counts.Count} valid words, wrote {top.Count} to {output}");
     }
 
     public static void Noise(string input, string output, int seed)

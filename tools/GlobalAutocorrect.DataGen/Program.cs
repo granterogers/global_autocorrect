@@ -6,11 +6,12 @@ internal static class Program
         Usage:
           GlobalAutocorrect.DataGen noise --in <messages.jsonl> --out <noisy.jsonl> --seed <int>
           GlobalAutocorrect.DataGen split --noisy <noisy.jsonl> --garbled <garbled.jsonl> --seed <int> --holdout <int> --out <dir>
+          GlobalAutocorrect.DataGen freq --words <words.txt> --assets <assetsDir> --out <freq_en_GB.txt>
         """;
 
     private static int Main(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("noise" or "split"))
+        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq"))
         {
             Console.Error.WriteLine(Usage);
             return 2;
@@ -29,6 +30,11 @@ internal static class Program
             {
                 if (!Has(opts, "in", "out", "seed") || !int.TryParse(opts["seed"], out int seed)) return Fail();
                 Commands.Noise(opts["in"], opts["out"], seed);
+            }
+            else if (args[0] == "freq")
+            {
+                if (!Has(opts, "words", "assets", "out")) return Fail();
+                Commands.Freq(opts["words"], opts["assets"], opts["out"]);
             }
             else
             {
