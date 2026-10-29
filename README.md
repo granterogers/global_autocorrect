@@ -95,6 +95,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 - **Some apps also autocorrect.** If Word or Outlook changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
 - **Code editors are excluded by default.** In VS Code and similar editors, only about a page of text is visible to other apps.
 - **Changing the AI model takes effect after a restart.**
+- **Other GPU-heavy apps can slow clean-ups down.** The model needs about 3.5 GB of the 8 GB of graphics memory. If games, video tools or other AI apps take the rest, Windows quietly moves graphics memory into ordinary memory and clean-ups can take seconds instead of a third of a second. `scripts/verify.ps1` measures this.
 - **Ctrl+Alt+Z undoes from anywhere in the field that was corrected**, not from another window. If you've moved to another window, it tells you to switch back.
 - **A shortcut can be taken by another app.** If Ctrl+Alt+P or Ctrl+Alt+Z is already in use, the tray tells you and you can choose another in Settings.
 - **Corrections are typed as ordinary key presses** (D22 in `DECISIONS.md`). The brief asks for Unicode keystrokes, but Notepad scrambled those, so this is flagged for you to confirm.

@@ -12,7 +12,7 @@
   "correctWords": 2581,
   "falseEdits": 5,
   "latencyP50Ms": 344,
-  "latencyP95Ms": 507,
+  "latencyP95Ms": 511,
   "modelRequests": 271,
   "gpu": "CUDA0 (NVIDIA RTX PRO 2000 Blackwell Generation Laptop GPU)",
   "offloaded": "43/43",
