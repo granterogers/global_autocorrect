@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="WPF-UI" Version="4.3.0" />
+    <PackageVersion Include="WPF-UI.Tray" Version="4.3.0" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="WeCantSpell.Hunspell" Version="7.0.1" />
+    <PackageVersion Include="SymSpell" Version="6.7.3" />
+    <PackageVersion Include="Interop.UIAutomationClient" Version="10.19041.0" />
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.64.1" />
+  </ItemGroup>
+</Project>

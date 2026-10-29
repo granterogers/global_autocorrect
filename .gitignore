@@ -1,0 +1,9 @@
+bin/
+obj/
+artifacts/
+node_modules/
+*.gguf
+*.zip
+.vs/
+*.user
+TestResults/

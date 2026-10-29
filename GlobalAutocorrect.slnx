@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GlobalAutocorrect.Core/GlobalAutocorrect.Core.csproj" />
+    <Project Path="src/GlobalAutocorrect.Llm/GlobalAutocorrect.Llm.csproj" />
+    <Project Path="src/GlobalAutocorrect.Windows/GlobalAutocorrect.Windows.csproj" />
+    <Project Path="src/GlobalAutocorrect.App/GlobalAutocorrect.App.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/GlobalAutocorrect.DataGen/GlobalAutocorrect.DataGen.csproj" />
+    <Project Path="tools/GlobalAutocorrect.Eval/GlobalAutocorrect.Eval.csproj" />
+    <Project Path="tools/SpikeB/SpikeB.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GlobalAutocorrect.Core.Tests/GlobalAutocorrect.Core.Tests.csproj" />
+    <Project Path="tests/GlobalAutocorrect.Llm.Tests/GlobalAutocorrect.Llm.Tests.csproj" />
+    <Project Path="tests/GlobalAutocorrect.E2E/GlobalAutocorrect.E2E.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FlaUI.Core" />
+    <PackageReference Include="FlaUI.UIA3" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GlobalAutocorrect.Core\GlobalAutocorrect.Core.csproj" />
+    <ProjectReference Include="..\..\src\GlobalAutocorrect.Windows\GlobalAutocorrect.Windows.csproj" />
+  </ItemGroup>
+</Project>
