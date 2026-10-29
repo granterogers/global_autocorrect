@@ -16,6 +16,7 @@ internal static class Program
         return args.FirstOrDefault() switch
         {
             "bench" => await Bench(opts),
+            "run" => await RunCommand.Run(opts, RepoRoot()),
             _ => Usage(),
         };
     }

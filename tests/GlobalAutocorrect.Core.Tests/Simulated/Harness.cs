@@ -1,6 +1,7 @@
 using GlobalAutocorrect.Core.Ai;
 using GlobalAutocorrect.Core.Engine;
 using GlobalAutocorrect.Core.Instant;
+using GlobalAutocorrect.Core.Simulation;
 using GlobalAutocorrect.Core.Telemetry;
 using GlobalAutocorrect.Core.Tests.Instant;
 

@@ -3,7 +3,7 @@ using GlobalAutocorrect.Core.Engine;
 using GlobalAutocorrect.Core.Session;
 using GlobalAutocorrect.Core.Targets;
 
-namespace GlobalAutocorrect.Core.Tests.Simulated;
+namespace GlobalAutocorrect.Core.Simulation;
 
 /// <summary>
 /// A text field for tests (10.2): models typing, caret moves, paste, foreign injection, host-app autocorrect and races.
