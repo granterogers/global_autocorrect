@@ -1,0 +1,58 @@
+{
+  "llama": {
+    "build": "b11960",
+    "cuda": {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cuda-13.4-x64.zip",
+      "sha256": "31c75ea62b80f0816c855ea783ef68757bc2d48028edaa57d904e4982bddea4a"
+    },
+    "cudart": {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/cudart-llama-bin-win-cuda-13.4-x64.zip",
+      "sha256": "738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668"
+    },
+    "cpu": {
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cpu-x64.zip",
+      "sha256": "73f962f82850d244db47eaacb9d913637027b82399124324298576d58c5f4287"
+    }
+  },
+  "models": {
+    "gemma4-e4b-q5": {
+      "url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q5_K_M.gguf",
+      "file": "gemma-4-E4B-it-Q5_K_M.gguf",
+      "sha256": "a5d6e634db151368d2caa4270fd32ab604d96c2d1291950586989f46d8e17d36"
+    },
+    "gemma4-e4b-q4": {
+      "url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf",
+      "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+      "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87"
+    },
+    "qwen35-4b-q5": {
+      "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q5_K_M.gguf",
+      "file": "Qwen3.5-4B-Q5_K_M.gguf",
+      "sha256": "8814232b85594dcd46c50e5b8b29324a7efe9e746edbe8a3d1df3d3fce7aad39"
+    },
+    "qwen35-4b-q4": {
+      "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf",
+      "file": "Qwen3.5-4B-Q4_K_M.gguf",
+      "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4"
+    },
+    "gemma4-e2b-q5": {
+      "url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/0314792d7f1f7e229411f620751375812bb9faf2/gemma-4-E2B-it-Q5_K_M.gguf",
+      "file": "gemma-4-E2B-it-Q5_K_M.gguf",
+      "sha256": "90293b8cdaf9c973012bf4df8a1e92bde7d74ad66a4fe56cf905ccd563d660c5"
+    },
+    "gemma4-e2b-q4": {
+      "url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/0314792d7f1f7e229411f620751375812bb9faf2/gemma-4-E2B-it-Q4_K_M.gguf",
+      "file": "gemma-4-E2B-it-Q4_K_M.gguf",
+      "sha256": "740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8"
+    }
+  },
+  "dictionary": {
+    "url": "https://github.com/en-wl/wordlist/releases/download/rel-2026.02.25/hunspell-en_GB-ise-2026.02.25.zip",
+    "sha256": "d6fbb91ae7824c52fb02f74d7bc2cd9092f130faec60f42326a59437fa7247a3"
+  },
+  "corpus": {
+    "url": "https://downloads.wortschatz-leipzig.de/corpora/eng-uk_web-public_2018_1M.tar.gz",
+    "sha256": null,
+    "licence": "CC BY 4.0, Leipzig Corpora Collection (Goldhahn, Eckart and Quasthoff 2012)"
+  }
+}

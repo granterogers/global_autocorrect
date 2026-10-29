@@ -1,0 +1,50 @@
+{"id":"g001","clean":"Can you send me the slides before the meeting tomorrow? I want to check the numbers first.","noisy":"cna yuo sned me teh sldies befor ethe meeting tomorow? i wnat to chekc the nubmers frist."}
+{"id":"g002","clean":"I'm running about ten minutes late because the train was cancelled at Reading.","noisy":"im runnign abotu tne minutes lat ebecause the trian was cancleled at reaidng."}
+{"id":"g003","clean":"Thanks for organising everything yesterday, it was a lovely evening and the food was brilliant.","noisy":"thansk for orgnaising everyhting yesteday, it was a lvoely eveing and teh food was brillaint."}
+{"id":"g004","clean":"Could we move our call to Thursday afternoon? Something urgent has come up on Wednesday.","noisy":"coudl we mvoe our clal to thrusday aftenroon somethign urgnet has coem up on wednsday."}
+{"id":"g005","clean":"Don't forget to pick up milk and bread on your way home, we've completely run out.","noisy":"dont froget to pikc up mlik and bred onyour way hoem, weve compleetly run otu."}
+{"id":"g006","clean":"The heating's broken again, so I've rung the landlord and he's sending someone on Monday.","noisy":"the heatigns borken agian, so ive rugn the landlrod and hes sendign someoen on monady."}
+{"id":"g007","clean":"I've attached the final version of the report. Let me know if anything needs changing.","noisy":"ive attahced the fianl verison of the rpeort. let me konw if anythign needs chagning."}
+{"id":"g008","clean":"Are you still okay for dinner on Saturday? I've booked a table for seven at the Italian place.","noisy":"are yu still oaky for diner on saturady? ive bokoed a tabel for sevne at the itlaian palce."}
+{"id":"g009","clean":"We need to prioritise the client feedback before we start on the new features.","noisy":"we need to priorotise the cleint feedbakc befroe we strat on the new featuers."}
+{"id":"g010","clean":"My mum's birthday is next week and I still haven't got her a present.","noisy":"my mums brithday is nxet week and i stil havent gto her a presnet."}
+{"id":"g011","clean":"Sorry I missed your call, I was in a meeting all morning. I'll ring you back after lunch.","noisy":"sory i misesd your clal, i was ina meetign all mornign. ill rign you bakc after lucnh."}
+{"id":"g012","clean":"The kids have got a football match at ten, so we'll be a bit late to the party.","noisy":"the kdis have got a footbal mtach at tne, so well be a bti late to teh party."}
+{"id":"g013","clean":"Please could you double check the invoice? I think the total is wrong.","noisy":"plese coudl you doubel chekc the inovice? i thikn the totla is worng."}
+{"id":"g014","clean":"It was really nice to meet you today, and I'm looking forward to working together.","noisy":"it was realy ncie to meet yuo today, adn im lookign forwrad to workign togehter."}
+{"id":"g015","clean":"The train was absolutely packed this morning and I had to stand all the way to London.","noisy":"the trian was absolutly pakced this mornig and i hadto stnad all teh way to lodnon."}
+{"id":"g016","clean":"I realise it's short notice, but would you be able to cover my shift on Friday?","noisy":"i relaise its short notcie, but woudl you be abel to cover my shfit on firday?"}
+{"id":"g017","clean":"Their new puppy is adorable but it keeps chewing the furniture.","noisy":"thier new pupyp is adroable but it keesp chewign the furnitrue."}
+{"id":"g018","clean":"We've decided to go to Cornwall for a week in August instead of going abroad.","noisy":"weve decdied to go to cornwal for a wek in agust insted of gogin abraod."}
+{"id":"g019","clean":"Can you remind me what time the dentist appointment is? I've completely forgotten.","noisy":"can yo remidn me waht tiem the dentsit appoint mnet is? ive compeltely forgtoten."}
+{"id":"g020","clean":"The printer on the second floor is jammed again, so I've reported it to IT.","noisy":"the pritner on the secodn flor is jamemd agian, so ive reproted it to it."}
+{"id":"g021","clean":"I'll be working from home tomorrow because the boiler engineer is coming between eight and twelve.","noisy":"ill be workign form home tomorow becuase the boilr enginer is comign betwen eigth and twelve."}
+{"id":"g022","clean":"Thank you so much for the flowers, they really brightened up my week.","noisy":"thnak you so mcuh for the flwoers, tehy realy brigthened up my wek."}
+{"id":"g023","clean":"Could you let everyone know that the quarterly review has been moved to next Tuesday?","noisy":"coudl you let everyoen knwo that the quartely reveiw has ben moved to nxet tuesady?"}
+{"id":"g024","clean":"I think we should leave early to avoid the traffic on the motorway.","noisy":"i thnik we shoudl leaev erly to aviod the trafic onthe motorwya."}
+{"id":"g025","clean":"The parcel was meant to arrive yesterday but it still hasn't turned up.","noisy":"the parcle was ment to arive yesteday but it stil hasnt tunred up."}
+{"id":"g026","clean":"Have you had a chance to look at the budget proposal I sent over last week?","noisy":"hav eyou had a chnace to lok at the budgte proposla i snet over lsat week?"}
+{"id":"g027","clean":"We're out of washing up liquid and the bin needs taking out before the morning.","noisy":"were out of washign up liqiud and the bni needs takign out befor the mornign."}
+{"id":"g028","clean":"I'm afraid I can't make the training session, could you send me the notes afterwards?","noisy":"im afriad i cant mkae the trainign sesion, coudl you snd me the ntoes afterwrads?"}
+{"id":"g029","clean":"The weather's been awful all week, so we've barely left the house.","noisy":"the wetahers been awfull all wek, so weve bareyl lfet the huose."}
+{"id":"g030","clean":"Let's catch up properly when you're back from holiday, I've got loads to tell you.","noisy":"lets ctach up proprely wehn youre bakc from holdiay, ive gto lodas to tellyuo."}
+{"id":"g031","clean":"The new software update has fixed the login problem, but the reports are still slow.","noisy":"the new softwaer updaet has fixde the logni problme, but the reprots are stll slow."}
+{"id":"g032","clean":"I've left the keys under the mat, so just let yourself in when you get there.","noisy":"ive lfet the kyes udner the mat, so jsut let yoursefl in wehn you get tehre."}
+{"id":"g033","clean":"Would it be possible to extend the deadline by a couple of days? We're waiting on the supplier.","noisy":"woudl it be posible to extned the deadlien by a coupel of days? were waitign on the suplier."}
+{"id":"g034","clean":"The car failed its MOT because of the brakes, so it's in the garage until Wednesday.","noisy":"the car faield its mot becasue of the brkaes, so its in the garaeg untill wedensday."}
+{"id":"g035","clean":"I really appreciate your help with the move, I couldn't have done it without you.","noisy":"i realy apreciate yoru help wiht the mvoe, i coudlnt have doen it withotu you."}
+{"id":"g036","clean":"Can we go through the figures together before I present them to the board?","noisy":"can we go thorugh the figuers togehter befoer i presnet them to the baord?"}
+{"id":"g037","clean":"The school has sent a letter saying the trip to the museum is now on the twelfth.","noisy":"the shcool has sent a leter sayign the trpi to the musuem is now on the twelth."}
+{"id":"g038","clean":"I'm not sure whether the meeting room is free, so I'll book the one upstairs just in case.","noisy":"im not srue wether the meetign room is fre, so ill bok the oen upstiars just incase."}
+{"id":"g039","clean":"My laptop keeps freezing whenever I open more than a few spreadsheets.","noisy":"my laptpo keeps freezign whenevr i opne more tahn a few spreadhseets."}
+{"id":"g040","clean":"We're thinking of repainting the living room a lighter colour before Christmas.","noisy":"were thinkign of repaintign the livign room a lightr colur befroe chirstmas."}
+{"id":"g041","clean":"Could you check whether the hotel includes breakfast? It wasn't clear on the website.","noisy":"coudl you chekc wether the hotle inclueds breakfsat? it wasnt claer on the webiste."}
+{"id":"g042","clean":"The meeting overran by an hour, so I've only just seen your message.","noisy":"the meetign overan by an huor, so ive olny jus tsen your mesage."}
+{"id":"g043","clean":"I've been asked to lead the new project, which is exciting but a bit nerve-racking.","noisy":"ive ben asked to lead the new projcet, whcih is exciting but a bti nerve-rackign."}
+{"id":"g044","clean":"Shall we meet at the cafe near the station at half past ten?","noisy":"shal we meet at the cafe near the sttion at hlaf past ten?"}
+{"id":"g045","clean":"Everyone in the team has worked incredibly hard this quarter, so thank you all.","noisy":"everyoen in the taem has workde incredibley hard this qaurter, so thakn you all."}
+{"id":"g046","clean":"I can't find the charger for my phone anywhere, have you borrowed it again?","noisy":"i cnat find the chrager for my phoen anywehre, have yuo borowed it agian?"}
+{"id":"g047","clean":"The plumber said the leak was coming from the pipe under the kitchen sink.","noisy":"the plumbr siad the leka was comign from the piep under the kitchne sink."}
+{"id":"g048","clean":"Just a reminder that the office will be closed on Monday for the bank holiday.","noisy":"jsut a reimnder that the ofice will be clsoed on monday for the bnak holdiay."}
+{"id":"g049","clean":"I've put the lasagne in the oven, so dinner will be ready in about forty minutes.","noisy":"ive put the lasgane in the ovne, so diner will be redy in abuot fourty minutes."}
+{"id":"g050","clean":"We should probably book the flights soon, because the prices keep going up.","noisy":"we shoudl probabyl bok the fligths soon, becuase the prcies keep giong up."}
