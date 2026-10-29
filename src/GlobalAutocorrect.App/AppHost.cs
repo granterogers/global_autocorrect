@@ -71,7 +71,8 @@ public sealed class AppHost : IAsyncDisposable
         var host = new LlamaServerHost(new ServerOptions(
             Path.Combine(CacheDir, "llama", build, "cuda", "llama-server.exe"),
             Path.Combine(CacheDir, "models", Settings.Model),
-            Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe")));
+            Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"),
+            CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel)));
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.Default) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();

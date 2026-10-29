@@ -73,6 +73,15 @@ public sealed class WordDiffTests
     }
 
     [Fact]
+    public void R4_4_e_KeyboardSlipsPairWordForWord()
+    {
+        var edits = Diff("I hae s flight to Dublin", "I have a flight to Dublin");
+        Assert.Equal(2, edits.Count);
+        Assert.All(edits, e => Assert.Equal(EditKind.Substitution, e.Kind));
+        Assert.Contains(edits, e => e.OriginalWords.SequenceEqual(["s"]) && e.NewWords.SequenceEqual(["a"]));
+    }
+
+    [Fact]
     public void R4_4_c_InsertsAndDeletesFunctionWords()
     {
         var ins = Assert.Single(Diff("I going home", "I am going home"));

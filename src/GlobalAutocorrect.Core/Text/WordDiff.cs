@@ -31,7 +31,13 @@ public static class WordDiff
         if (px != py) return 1.5;
         if (x == y) return 0;
         string kx = Similarity.Key(x), ky = Similarity.Key(y);
-        return kx == ky ? 0.02 : Similarity.NormDist(kx, ky);
+        if (kx == ky) return 0.02;
+        double d = Similarity.NormDist(kx, ky);
+        // A single likely keyboard slip pairs cheaply even in a one-letter word ("s" ↔ "a"), so the aligner keeps
+        // "I hae s flight" ↔ "I have a flight" as two word fixes rather than a split plus a deletion.
+        if (Similarity.DamerauLevenshtein(kx, ky) == 1 && Instant.TypoChannel.Likelihood(kx, ky) >= Instant.TypoChannel.ExtraNeighbour)
+            return Math.Min(d, 0.2);
+        return d;
     }
 
     private static bool IsPunct(string s) => s.Length > 0 && !s.Any(char.IsLetterOrDigit);

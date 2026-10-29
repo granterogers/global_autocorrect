@@ -4,26 +4,38 @@ using GlobalAutocorrect.Core.Eval;
 using GlobalAutocorrect.Core.Instant;
 using GlobalAutocorrect.Core.Simulation;
 using GlobalAutocorrect.Core.Telemetry;
+using GlobalAutocorrect.Core.Text;
 
 namespace GlobalAutocorrect.Eval;
 
 /// <summary>Remembers the last request so the runner can hold virtual time while the real model works.</summary>
-internal sealed class RecordingLlm(ILlmClient inner, List<double> latencies) : ILlmClient
+internal sealed class RecordingLlm(ILlmClient inner, List<double> latencies, Action<string>? trace = null) : ILlmClient
 {
     public Task<LlmResult>? Last { get; private set; }
 
     public Task<LlmResult> CleanAsync(string text, CancellationToken cancellationToken)
     {
-        Last = Record(inner.CleanAsync(text, cancellationToken));
+        Last = Record(text, inner.CleanAsync(text, cancellationToken));
         return Last;
     }
 
-    private async Task<LlmResult> Record(Task<LlmResult> t)
+    private async Task<LlmResult> Record(string text, Task<LlmResult> t)
     {
         var r = await t.ConfigureAwait(false);
         lock (latencies) latencies.Add(r.LatencyMs);
+        if (trace is not null)
+        {
+            // Eval data only: show what the rules make of the model's reply (tuning, T6.2).
+            string cleaned = AiTrigger.AlignToContext(text, r.Text);
+            var verdict = Rules!.Filter(text, cleaned, WordDiff.Compute(text, cleaned));
+            trace($"  ctx:   {text}\n  model: {r.Text}\n  whole: {verdict.WholeRejection}");
+            foreach (var v in verdict.Verdicts)
+                trace($"    {(v.Accepted ? "accept" : "REJECT")} {v.Edit.Kind,-14} {string.Join(' ', v.Edit.OriginalWords)} -> {string.Join(' ', v.Edit.NewWords)} {(v.Accepted ? "" : v.Reason.ToString())}");
+        }
         return r;
     }
+
+    public EditRules? Rules { get; init; }
 }
 
 internal sealed record EvalItem(string Id, string Clean, string Noisy, string Level, IReadOnlyList<string> Ops);
@@ -40,11 +52,17 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
     /// <summary>Real model round-trip times for every request made (6.3.d).</summary>
     public List<double> Latencies { get; } = [];
 
+    /// <summary>Ids whose model traffic and rule verdicts are printed (eval data only).</summary>
+    public HashSet<string> TraceIds { get; init; } = [];
+
     public async Task<ItemResult> RunAsync(EvalItem item, CancellationToken ct)
     {
         var clock = new ManualClock(1_000_000);
         var ed = new SimulatedEditor(clock, item.Id);
-        var rec = new RecordingLlm(llm, Latencies);
+        var rec = new RecordingLlm(llm, Latencies, TraceIds.Contains(item.Id) ? Console.WriteLine : null)
+        {
+            Rules = new EditRules(options.Rules, speller, _ => false),
+        };
         var personal = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, new Counters()));
         engine.SetTarget(ed);

@@ -87,6 +87,19 @@ public sealed class LlamaServerHostTests
     }
 
     [Fact]
+    public async Task R5_3_c_CpuFallbackUsesTheSmallerModel()
+    {
+        var f = new Fake { Healthy = psi => psi.FileName.StartsWith("cpu", StringComparison.Ordinal) };
+        await using var host = new LlamaServerHost(
+            new ServerOptions("cuda\\llama-server.exe", "e4b.gguf", "cpu\\llama-server.exe", StartTimeoutSeconds: 1, CpuModelPath: "e2b.gguf"),
+            psi => { f.Starts.Add(psi); return new FakeProcess([]); },
+            (_, _) => Task.FromResult(f.Healthy(f.Starts[^1])));
+        Assert.True(await host.StartAsync(TestContext.Current.CancellationToken));
+        var args = f.Starts[^1].ArgumentList;
+        Assert.Equal("e2b.gguf", args[args.IndexOf("-m") + 1]);
+    }
+
+    [Fact]
     public async Task R5_6_a_WatchdogRestartsAfterThreeFailedProbes()
     {
         var f = new Fake();

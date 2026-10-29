@@ -13,7 +13,8 @@ public sealed record ServerOptions(
     string? CpuServerExe = null,
     int GpuLayers = 99,
     int ContextSize = 4096,
-    int StartTimeoutSeconds = 120);
+    int StartTimeoutSeconds = 120,
+    string? CpuModelPath = null);   // 5.3.c: the smaller model for the CPU fallback, if downloaded
 
 public enum ServerState { Stopped, Starting, Ready, Failed }
 
@@ -67,8 +68,9 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
             if (IsAlive) return true;
             StopCore();
             State = ServerState.Starting;
-            if (await TryStartAsync(_o.ServerExe, _o.GpuLayers, cpuFallback: false, ct).ConfigureAwait(false)) return true;
-            if (_o.CpuServerExe is not null && await TryStartAsync(_o.CpuServerExe, 0, cpuFallback: true, ct).ConfigureAwait(false)) return true;
+            if (await TryStartAsync(_o.ServerExe, _o.ModelPath, _o.GpuLayers, cpuFallback: false, ct).ConfigureAwait(false)) return true;
+            string cpuModel = _o.CpuModelPath is { } m && (!_realProcesses || File.Exists(m)) ? m : _o.ModelPath;
+            if (_o.CpuServerExe is not null && await TryStartAsync(_o.CpuServerExe, cpuModel, 0, cpuFallback: true, ct).ConfigureAwait(false)) return true;
             State = ServerState.Failed;
             return false;
         }
@@ -89,7 +91,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
         return await _healthy(BaseAddress, ct).ConfigureAwait(false);
     }
 
-    private async Task<bool> TryStartAsync(string exe, int gpuLayers, bool cpuFallback, CancellationToken ct)
+    private async Task<bool> TryStartAsync(string exe, string modelPath, int gpuLayers, bool cpuFallback, CancellationToken ct)
     {
         if (_realProcesses && !File.Exists(exe)) return false;
         int port = FreePort();
@@ -98,7 +100,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
         {
             ArgumentList =
             {
-                "-m", _o.ModelPath, "--host", "127.0.0.1", "--port", port.ToString(),
+                "-m", modelPath, "--host", "127.0.0.1", "--port", port.ToString(),
                 "-ngl", gpuLayers.ToString(), "-c", _o.ContextSize.ToString(), "-np", "1",
                 "--reasoning-budget", "0", "-lv", "4", "--no-slots", "--api-key", ApiKey,
             },

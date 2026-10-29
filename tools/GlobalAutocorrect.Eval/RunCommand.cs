@@ -31,6 +31,8 @@ internal static class RunCommand
                 e.TryGetProperty("level", out var lv) ? lv.GetString()! : "?",
                 e.TryGetProperty("ops", out var ops) ? ops.EnumerateArray().Select(x => x.GetString()!).ToArray() : []))
             .ToList();
+        var trace = o.TryGetValue("trace", out var t) ? t.Split(',').ToHashSet() : [];
+        if (trace.Count > 0) items = items.Where(i => trace.Contains(i.Id)).ToList();   // tracing: just those messages
         if (limit > 0) items = items.Take(limit).ToList();
 
         var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, "scripts", "manifest.json"))).RootElement;
@@ -44,7 +46,7 @@ internal static class RunCommand
 
         var options = EvalOptions(o);
         var runner = new PipelineRunner(HunspellSpellChecker.FromAssets(Path.Combine(repo, "assets")),
-            SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options);
+            SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options) { TraceIds = trace };
 
         var results = new List<ItemResult>();
         foreach (var item in items)
@@ -80,6 +82,7 @@ internal static class RunCommand
         };
         var json = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         string suffix = set == "holdout" ? "" : "-" + set;
+        if (trace.Count > 0) return 0;   // a trace run doesn't overwrite the metrics
         await File.WriteAllTextAsync(Path.Combine(outDir, $"metrics{suffix}.json"), JsonSerializer.Serialize(metrics, json));
         await File.WriteAllTextAsync(Path.Combine(outDir, $"eval-report{suffix}.md"), Report(metrics.set, modelFile, agg, lat, byLevel.ToDictionary(k => k.Key, k => (object)k.Value), results, worst.Length));
         Console.WriteLine($"\n{set}: errors fixed {agg.ErrorsFixedRate:P1} (target ≥95%), false edits {agg.FalseEditRate:P2} (target <1%), exact {agg.ExactMatchRate:P0}, p50 {Percentile(lat, 0.5)} ms, p95 {Percentile(lat, 0.95)} ms");
