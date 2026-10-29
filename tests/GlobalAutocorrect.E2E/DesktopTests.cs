@@ -151,6 +151,29 @@ public sealed class DesktopTests
         finally { close(); }
     }
 
+    private static HashSet<int> OurServers() =>
+        Process.GetProcessesByName("llama-server")
+            .Where(p => { try { return p.MainModule?.FileName.Contains(@"\GlobalAutocorrect\cache\", StringComparison.OrdinalIgnoreCase) == true; } catch (System.ComponentModel.Win32Exception) { return false; } })
+            .Select(p => p.Id).ToHashSet();
+
+    [Fact]
+    public void R5_6_NoModelServerIsLeftRunningAfterTheAppCloses()
+    {
+        // Found when E2E runs left 15 llama-server processes filling the GPU.
+        Desk.RequireIdle();
+        var before = OurServers();
+        using var llm = new MockLlm(Model);
+        using (var app = new AppUnderTest(llm))
+        using (var uia = new UIA3Automation())
+        {
+            var (_, doc, close) = OpenNotepad(uia);
+            try { Desk.Type("a few words to type here "); Thread.Sleep(1500); }
+            finally { close(); }
+        }
+        Thread.Sleep(2000);
+        Assert.Empty(OurServers().Except(before));
+    }
+
     [Fact]
     public void R11_3_a_WpfTextBox()
     {

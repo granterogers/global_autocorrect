@@ -20,7 +20,7 @@ New-Item -ItemType Directory -Force (Join-Path $stage 'scripts') | Out-Null
 Copy-Item (Join-Path $repo 'scripts/setup.ps1'), (Join-Path $repo 'scripts/verify.ps1'), (Join-Path $repo 'scripts/manifest.json') (Join-Path $stage 'scripts')
 Copy-Item (Join-Path $repo 'README.md') $stage
 Copy-Item (Join-Path $repo 'assets/NOTICE.md') $stage
-foreach ($f in 'metrics.json', 'eval-report.md') {
+foreach ($f in 'metrics.json', 'eval-report.md', 'e2e-results.txt') {
     $p = Join-Path $Out $f
     if (Test-Path $p) { Copy-Item $p $stage }
 }

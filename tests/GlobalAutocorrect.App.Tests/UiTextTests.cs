@@ -109,6 +109,10 @@ public sealed class UiTextTests
     {
         // Prose only: skip code blocks, inline code and table separators.
         string md = File.ReadAllText(Path.Combine(Repo(), "README.md"));
+        // The requirement coverage table is a generated technical index (script and test names), not prose.
+        int cov = md.IndexOf("## Requirement coverage", StringComparison.Ordinal);
+        int next = cov < 0 ? -1 : md.IndexOf("\n## ", cov + 5, StringComparison.Ordinal);
+        if (cov >= 0) md = md[..cov] + (next >= 0 ? md[next..] : "");
         md = Regex.Replace(md, "```.*?```", " ", RegexOptions.Singleline);
         md = Regex.Replace(md, "`[^`]*`", " ");
         var bad = Misspelt([("README.md", md)]);
