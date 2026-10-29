@@ -61,8 +61,52 @@ public sealed class EngineTests
     public void R4_3_d_UncertainWordsAreLeftForTheAi()
     {
         var h = new Harness();
-        h.Type("we wnet home ");   // "went" and "wet" tie
-        Assert.Equal("we wnet home ", h.Text);
+        h.Type("place a bst now ");   // "bat" and "bet" are equally likely slips
+        Assert.Equal("place a bst now ", h.Text);
+    }
+
+    [Fact]
+    public void R4_3_c_AdjacentSwapIsAnObviousFix()
+    {
+        var h = new Harness();
+        h.Type("we wnet home ");
+        Assert.Equal("we went home ", h.Text);
+    }
+
+    [Fact]
+    public void R4_3_d_CloseCandidatesAreLeftForTheAi()
+    {
+        var h = new Harness();
+        h.Type("cheers ofr that ");
+        Assert.Equal("cheers ofr that ", h.Text);
+    }
+
+    [Fact]
+    public void R4_3_d_RunTogetherWordsAreLeftForTheAi()
+    {
+        var h = new Harness();
+        h.Type("ask me ifyou need ");
+        Assert.Equal("ask me ifyou need ", h.Text);
+    }
+
+    [Fact]
+    public void R4_4_c_KeepsTheSpaceTheUserJustTyped()
+    {
+        // The model trims its reply; the space after the full stop must survive so the next word isn't glued on.
+        var h = new Harness(model: s => s.Trim().Replace("i went their", "I went there"));
+        h.Type("i went their yesterday. ");
+        h.Wait(600);
+        h.Type("Then");
+        Assert.Equal("I went there yesterday. Then", h.Text);
+    }
+
+    [Fact]
+    public void R4_4_d_NoFullStopAddedToAnUnfinishedSentence()
+    {
+        var h = new Harness(model: s => s.Replace("i went their yesterday", "I went there yesterday."), latencyMs: 50);
+        h.Type("i went their yesterday");
+        h.Wait(1700);
+        Assert.Equal("I went there yesterday", h.Text);
     }
 
     [Fact]

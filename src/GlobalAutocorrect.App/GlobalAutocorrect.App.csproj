@@ -3,6 +3,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <AssemblyName>GlobalAutocorrect</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.9.0-rc1</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GlobalAutocorrect.Core\GlobalAutocorrect.Core.csproj" />
@@ -11,5 +14,10 @@
     <PackageReference Include="WPF-UI" />
     <PackageReference Include="WPF-UI.Tray" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Dictionary, frequencies, n-grams and notices travel with the app; models stay in the cache (11.4). -->
+    <None Include="..\..\assets\**\*" Exclude="..\..\assets\icons\src\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\scripts\manifest.json" Link="assets\manifest.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

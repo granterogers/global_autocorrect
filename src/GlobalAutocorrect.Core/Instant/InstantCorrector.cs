@@ -11,6 +11,13 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
     /// <summary>4.3.c: distance 2 is only taken when the top candidate is this many times more frequent than the next.</summary>
     public double Distance2FrequencyRatio { get; init; } = 10;
 
+    /// <summary>
+    /// D23: at distance 1, candidates are ranked by frequency × how likely that slip is on a UK keyboard, and the winner
+    /// must beat the next by this factor. "bookk" → "book" (doubled key) is clear; "ofr" → "of" or "for" is not, so it
+    /// goes to the AI, which can use the context (4.3.d).
+    /// </summary>
+    public double Distance1ScoreRatio { get; init; } = 4;
+
     /// <returns>The replacement word, or null to leave the word alone.</returns>
     public string? TryCorrect(string word, bool isSentenceStart)
     {
@@ -23,21 +30,44 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         if (Tokeniser.Tokenise(word) is not [{ IsWord: true, IsProtected: false } t] || t.Length != word.Length) return null;
 
         string lower = word.ToLowerInvariant();
-        var candidates = suggester.Lookup(lower, 3);
-        if (candidates.Count == 0) return null;
-        var top = candidates[0];
-        if (top.Word == lower) return null;
+        // A run-together pair ("ifyou", "thebreakdown") is a missing space, which the AI fixes (4.4.c). Don't
+        // "correct" it by deleting letters.
+        if (SplitsIntoTwoWords(lower)) return null;
+
+        var candidates = suggester.Lookup(lower, 10);
+        if (candidates.Count == 0 || candidates[0].Word == lower) return null;
+
+        string? pick = candidates[0].Distance switch
+        {
+            1 => PickDistance1(lower, candidates.Where(c => c.Distance == 1).ToArray()),
+            2 => candidates.Count < 2 || candidates[1].Distance > 2 || candidates[0].Frequency >= Distance2FrequencyRatio * candidates[1].Frequency
+                ? candidates[0].Word : null,   // 4.3.c exactly
+            _ => null,
+        };
         // The candidate must itself be valid en_GB-ise, so the instant layer can never Americanise (3.4).
-        if (!speller.IsValid(top.Word)) return null;
-
-        bool certain = top.Distance == 1
-            ? candidates.Count < 2 || candidates[1].Distance > 1 || top.Frequency > candidates[1].Frequency
-            : top.Distance == 2 && (candidates.Count < 2 || top.Frequency >= Distance2FrequencyRatio * candidates[1].Frequency);
-        // A distance-1 tie between equally likely words is not "obvious": leave it for the AI (4.3.d).
-        if (!certain) return null;
-
-        return MatchCase(word, top.Word);
+        if (pick is null || !speller.IsValid(pick)) return null;   // 4.3.d
+        return MatchCase(word, pick);
     }
+
+    private string? PickDistance1(string typed, SpellSuggestion[] d1)
+    {
+        var scored = d1.Select(c => (c.Word, Score: c.Frequency * TypoChannel.Likelihood(typed, c.Word)))
+                       .OrderByDescending(x => x.Score).ToArray();
+        if (scored.Length == 1 || scored[0].Score >= Distance1ScoreRatio * scored[1].Score) return scored[0].Word;
+        return null;
+    }
+
+    private bool SplitsIntoTwoWords(string w)
+    {
+        for (int i = 1; i < w.Length; i++)
+        {
+            string left = w[..i], right = w[i..];
+            if (IsWordPart(left) && IsWordPart(right)) return true;
+        }
+        return false;
+    }
+
+    private bool IsWordPart(string s) => (s.Length >= 2 || s is "a" or "i") && speller.IsValid(s);
 
     /// <summary>Keeps the user's capitalisation pattern: "Teh" → "The", "TEH" → "THE".</summary>
     public static string MatchCase(string original, string replacement)

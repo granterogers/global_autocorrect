@@ -54,12 +54,31 @@ public sealed class SendInputWriter(nuint tag)
         list.Add(Key(vk, scan, ext | KEYEVENTF_KEYUP));
     }
 
+    /// <summary>
+    /// Types text as real key presses on the current layout (D22). Some apps (Win11 Notepad) handle VK_PACKET (Unicode)
+    /// events late and out of order within a batch, so Unicode packets are only used for characters with no key.
+    /// </summary>
     private void AddUnicode(List<INPUT> list, string text)
     {
+        nint hkl = GetKeyboardLayout(GetWindowThreadProcessId(GetForegroundWindow(), out _));
+        bool caps = (GetKeyState(VK_CAPITAL) & 1) != 0;
         foreach (char c in text)
         {
-            list.Add(Key(0, c, KEYEVENTF_UNICODE));
-            list.Add(Key(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP));
+            short scan = VkKeyScanExW(c, hkl);
+            byte vk = (byte)(scan & 0xFF), mods = (byte)((scan >> 8) & 0xFF);
+            if (scan == -1 || (mods & 0x06) != 0)   // no key, or needs Ctrl/Alt (AltGr): fall back to a Unicode packet
+            {
+                list.Add(Key(0, c, KEYEVENTF_UNICODE));
+                list.Add(Key(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP));
+                continue;
+            }
+            bool shift = (mods & 0x01) != 0;
+            if (caps && char.IsLetter(c)) shift = !shift;   // Caps Lock flips letters only
+            ushort sc = (ushort)MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);
+            if (shift) list.Add(Key(VK_SHIFT, (ushort)MapVirtualKeyW(VK_SHIFT, MAPVK_VK_TO_VSC), 0));
+            list.Add(Key(vk, sc, 0));
+            list.Add(Key(vk, sc, KEYEVENTF_KEYUP));
+            if (shift) list.Add(Key(VK_SHIFT, (ushort)MapVirtualKeyW(VK_SHIFT, MAPVK_VK_TO_VSC), KEYEVENTF_KEYUP));
         }
     }
 

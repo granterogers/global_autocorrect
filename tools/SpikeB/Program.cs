@@ -229,22 +229,30 @@ internal static class Program
         AttachThreadInput(me, fgThread, false);
     }
 
-    /// <summary>Classic Outlook opens the compose window with focus in "To"; move it to the message body.</summary>
+    /// <summary>
+    /// Classic Outlook opens the compose window (class rctrl_renwnd32) with focus in "To", and may also open its main
+    /// window. Find the compose window among Outlook's top-level windows and move focus to its body (class _WwG).
+    /// </summary>
     private static void FocusOutlookBody(UiaReader reader, Launch l)
     {
         var uia = reader.Automation;
-        for (int i = 0; i < 20; i++)
+        var pids = l.Processes().Select(p => p.Id).ToHashSet();
+        for (int i = 0; i < 40; i++)
         {
-            var root = uia.GetFocusedElement();
-            var walker = uia.ControlViewWalker;
-            var window = root;
-            while (window is not null && window.CurrentControlType != 50032) window = walker.GetParentElement(window);   // UIA_WindowControlTypeId
-            if (window is not null)
+            var windows = uia.GetRootElement().FindAll(TreeScope.TreeScope_Children, uia.CreateTrueCondition());
+            for (int w = 0; w < windows.Length; w++)
             {
-                var body = window.FindFirst(TreeScope.TreeScope_Descendants, uia.CreatePropertyCondition(30012, "_WwG"));   // ClassName
-                if (body is not null) { body.SetFocus(); return; }
+                var win = windows.GetElement(w);
+                if (!pids.Contains(win.CurrentProcessId) || win.CurrentClassName != "rctrl_renwnd32") continue;
+                var body = win.FindFirst(TreeScope.TreeScope_Descendants, uia.CreatePropertyCondition(30012, "_WwG"));   // ClassName
+                if (body is null) continue;
+                BringToFront(win.CurrentNativeWindowHandle);
+                Thread.Sleep(300);
+                body.SetFocus();
+                return;
             }
             Thread.Sleep(500);
+            pids = l.Processes().Select(p => p.Id).ToHashSet();
         }
     }
 

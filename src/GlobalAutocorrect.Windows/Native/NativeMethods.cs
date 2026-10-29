@@ -191,6 +191,9 @@ public static class NativeMethods
     [DllImport("user32.dll")]
     public static extern nint GetKeyboardLayout(uint idThread);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern short VkKeyScanExW(char ch, nint dwhkl);
+
     [DllImport("user32.dll")]
     public static extern short GetKeyState(int nVirtKey);
 

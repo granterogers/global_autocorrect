@@ -10,7 +10,7 @@ namespace GlobalAutocorrect.Windows.Input;
 /// </summary>
 public sealed class EngineLoop : IDisposable
 {
-    private readonly CorrectionEngine _engine;
+    private CorrectionEngine _engine;
     private readonly KeyboardHook _hook;
     private readonly KeyTranslator _translator = new();
     private readonly ConcurrentQueue<Action<CorrectionEngine>> _posted = new();
@@ -32,6 +32,15 @@ public sealed class EngineLoop : IDisposable
     }
 
     public void Start() => _thread.Start();
+
+    /// <summary>Swaps in an engine built from new settings; runs on the engine thread, so no call is ever split.</summary>
+    public void Replace(CorrectionEngine engine) => Post(_ =>
+    {
+        engine.Corrected += n => _hook.UndoArm.ArmAt(n.KeySeqAtWrite);
+        engine.SetTarget(_engine.Target);
+        engine.Paused = _engine.Paused;
+        _engine = engine;
+    });
 
     public void Post(Action<CorrectionEngine> work)
     {

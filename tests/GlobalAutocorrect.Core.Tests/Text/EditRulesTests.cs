@@ -6,16 +6,19 @@ namespace GlobalAutocorrect.Core.Tests.Text;
 
 public sealed class EditRulesTests
 {
+    /// <summary>Case rules like Hunspell: a lower-case entry is valid in any case; a capitalised entry (a name) only as written.</summary>
     private sealed class FakeSpeller(params string[] words) : ISpellChecker
     {
-        private readonly HashSet<string> _w = new(words, StringComparer.OrdinalIgnoreCase);
-        public bool IsValid(string word) => _w.Contains(word);
+        private readonly HashSet<string> _w = new(words, StringComparer.Ordinal);
+        public bool IsValid(string word) =>
+            _w.Contains(word) || _w.Contains(word.ToLowerInvariant()) || (word.Length > 0 && _w.Contains(char.ToLowerInvariant(word[0]) + word[1..]));
     }
 
     private static readonly FakeSpeller Speller = new(
         "the", "cat", "sat", "on", "mat", "I", "am", "going", "home", "colour", "is", "nice", "happy", "glad",
-        "feel", "today", "see", "you", "at", "call", "me", "meet", "on", "and", "a", "it", "was", "from", "form",
-        "London", "organise", "event", "we", "will", "can", "next", "week", "report", "send");
+        "feel", "today", "see", "you", "at", "call", "me", "meet", "and", "a", "it", "was", "from", "form",
+        "London", "organise", "event", "we", "will", "can", "next", "week", "report", "send", "apply", "for",
+        "senior", "analyst", "job", "in", "book", "taxi", "to", "station", "policy", "intranet");
 
     private static RuleResult Run(string a, string b, EditRuleSettings? s = null, params string[] personal)
     {
@@ -128,6 +131,29 @@ public sealed class EditRulesTests
     {
         const string a = "see you nextFriday at the event";
         Assert.Equal("see you next Friday at the event", Apply(a, Run(a, "see you next Friday at the event")));
+    }
+
+    [Fact]
+    public void R4_4_d_RejectsCapitalisingOrdinaryWordsMidSentence()
+    {
+        const string a = "apply for the senior analyst job in london";
+        Assert.Equal("apply for the senior analyst job in London", Apply(a, Run(a, "apply for the Senior Analyst job in London")));
+    }
+
+    [Fact]
+    public void R4_5_a_CapitalisesSentenceStartsAndI()
+    {
+        const string a = "see you. i am going home";
+        Assert.Equal("See you. I am going home", Apply(a, Run(a, "See you. I am going home")));
+    }
+
+    [Fact]
+    public void R4_5_a_SplitWordsMustBeNearlyExact()
+    {
+        const string a = "book a taxi to the stationfor 7 today";
+        Assert.Equal(a, Apply(a, Run(a, "book a taxi to the station at 7 today")));   // "for" → "at" hidden in a split
+        const string b = "the policy isno the intranet";
+        Assert.Equal("the policy is on the intranet", Apply(b, Run(b, "the policy is on the intranet")));
     }
 
     [Fact]

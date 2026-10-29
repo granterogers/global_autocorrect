@@ -71,7 +71,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         LastLatencyMs = result.LatencyMs;
         if (p.Generation != session.Generation) return [];
 
-        var verdicts = rules.Filter(p.Context, result.Text, WordDiff.Compute(p.Context, result.Text));
+        string cleaned = AlignToContext(p.Context, result.Text);
+        var verdicts = rules.Filter(p.Context, cleaned, WordDiff.Compute(p.Context, cleaned));
         counters.Rejected(verdicts.Verdicts.Count(v => !v.Accepted));
         var writes = new List<PendingWrite>();
         foreach (var e in verdicts.Accepted)
@@ -81,6 +82,23 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq));
         }
         return writes;
+    }
+
+    /// <summary>
+    /// The model returns trimmed text and tends to end every reply with a full stop. Keep the user's own leading and
+    /// trailing whitespace (the space they just typed must survive), and don't add closing punctuation to a sentence the
+    /// user hasn't finished: they are still typing after it.
+    /// </summary>
+    public static string AlignToContext(string context, string modelText)
+    {
+        string trimmed = context.TrimEnd();
+        string lead = context[..(context.Length - context.TrimStart().Length)];
+        string trail = context[trimmed.Length..];
+        string text = modelText.Trim();
+        bool userEnded = trimmed.Length > 0 && trimmed[^1] is '.' or '!' or '?';
+        if (!userEnded && text.Length > 0 && text[^1] is '.' or '!' && !trimmed.EndsWith(text[^1]))
+            text = text[..^1];
+        return lead + text + trail;
     }
 
     /// <summary>Latency of the last completed request (6.3.d, 9.3.a).</summary>

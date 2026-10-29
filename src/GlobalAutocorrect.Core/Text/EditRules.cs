@@ -14,6 +14,7 @@ public enum RejectReason
     NotAValidWord,
     ReplacesValidWithInvalid,
     NotAFunctionWord,
+    StyleCapitalisation,
 }
 
 public sealed record EditVerdict(TextEdit Edit, bool Accepted, RejectReason Reason);
@@ -70,8 +71,10 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             }
             switch (e.Kind)
             {
-                case EditKind.Spacing or EditKind.Punctuation or EditKind.Apostrophe or EditKind.Capitalisation:
+                case EditKind.Spacing or EditKind.Punctuation or EditKind.Apostrophe:
                     return RejectReason.None;   // 4.5.a
+                case EditKind.Capitalisation:
+                    return CapitalisationOk(original, e) ? RejectReason.None : RejectReason.StyleCapitalisation;
                 case EditKind.Insertion or EditKind.Deletion:
                     var w = e.Kind == EditKind.Insertion ? e.NewWords : e.OriginalWords;
                     return w.All(_functionWords.Contains) ? RejectReason.None : RejectReason.NotAFunctionWord;   // 4.5.b
@@ -86,11 +89,37 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         return new EditVerdict(e, reason == RejectReason.None, reason);
     }
 
+    /// <summary>
+    /// A capital is a fix at a sentence start, or where the lower-case form isn't a word on its own ("london", "monday",
+    /// "i"). Capitalising an ordinary word mid-sentence ("senior analyst" → "Senior Analyst") is style, not a mistake (4.4.d).
+    /// </summary>
+    private bool CapitalisationOk(string original, TextEdit e)
+    {
+        string before = original[..e.SpanStart].TrimEnd();
+        bool sentenceStart = before.Length == 0 || before[^1] is '.' or '!' or '?' or '\n';
+        foreach (var (a, b) in e.OriginalWords.Zip(e.NewWords))
+        {
+            if (a == b) continue;
+            bool onlyFirstLetter = a[1..] == b[1..];
+            // Sentence start: "the" → "The".
+            if (sentenceStart && onlyFirstLetter && char.IsLower(a[0]) && char.IsUpper(b[0])) continue;
+            // A stray capital mid-sentence: "On" → "on".
+            if (!sentenceStart && onlyFirstLetter && char.IsUpper(a[0]) && char.IsLower(b[0]) && speller.IsValid(b)) continue;
+            // What was typed isn't a word as written: proper nouns and "i" ("london" → "London", "i" → "I").
+            if (!speller.IsValid(a)) continue;
+            return false;
+        }
+        return true;
+    }
+
     private RejectReason JudgeSubstitution(TextEdit e)
     {
         string a = string.Concat(e.OriginalWords.Select(Similarity.Key));
         string b = string.Concat(e.NewWords.Select(Similarity.Key));
         if (Similarity.NormDist(a, b) > settings.MaxNormalisedDistance) return RejectReason.TooDissimilar;
+        // When words are split or merged, the letters must be almost the same; otherwise a long run-together word
+        // dilutes the distance and hides a word swap ("stationfor" → "station at").
+        if (e.OriginalWords.Count != e.NewWords.Count && Similarity.DamerauLevenshtein(a, b) > 1) return RejectReason.TooDissimilar;
 
         // D16: never trade a correctly spelt word for one that isn't valid en_GB-ise (blocks Americanisation, 3.4).
         bool origValid = e.OriginalWords.All(IsKnown);
