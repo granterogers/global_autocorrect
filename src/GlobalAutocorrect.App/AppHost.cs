@@ -4,6 +4,7 @@ using GlobalAutocorrect.Core.Ai;
 using GlobalAutocorrect.Core.Dictionary;
 using GlobalAutocorrect.Core.Engine;
 using GlobalAutocorrect.Core.Instant;
+using GlobalAutocorrect.Core.Prediction;
 using GlobalAutocorrect.Core.Session;
 using GlobalAutocorrect.Core.Settings;
 using GlobalAutocorrect.Core.Telemetry;
@@ -51,6 +52,19 @@ public sealed class AppHost : IAsyncDisposable
     public long CorrectionsToday => _daily.Baseline + _counters.Corrections;
     public Counters Counters => _counters;
 
+    // Feature B (7.x) and the overlays (4.7, 7.6).
+    public UserHistory History { get; } = new(Path.Combine(DataDir, "history.txt"));
+    public Predictor? Predictor { get; private set; }
+    public UiaWorker? Uia => _uia;
+    public KeyboardHook? Hook => _hook;
+    public event Action? SuggestionAcceptedByTab;
+
+    /// <summary>Only real words are learnt for prediction, so typos never come back as suggestions (7.3).</summary>
+    public bool IsKnownWord(string w) => _speller?.IsValid(w) == true || Dictionary.Contains(w);
+
+    /// <summary>Types the accepted suggestion as our own input, on the engine thread (7.4).</summary>
+    public void AcceptSuggestion(string completion) => _loop?.Post(e => e.InsertAtCaret(completion));
+
     /// <summary>Paused/resumed, model loaded or unloaded: the tray and Home page refresh.</summary>
     public event Action? StateChanged;
     /// <summary>A shortcut was pressed but couldn't act (e.g. undo in another field, D9). Plain-language message.</summary>
@@ -66,6 +80,7 @@ public sealed class AppHost : IAsyncDisposable
 
         _speller = HunspellSpellChecker.FromAssets(AssetsDir);
         _suggester = SymSpellSuggester.FromAssets(AssetsDir);
+        Predictor = new Predictor(NgramModel.FromAssets(AssetsDir), History) { Enabled = Settings.PredictionEnabled };
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
@@ -81,6 +96,7 @@ public sealed class AppHost : IAsyncDisposable
         _hook.Start();
 
         _loop = new EngineLoop(BuildEngine(), _hook);
+        _loop.SuggestionAccepted += () => SuggestionAcceptedByTab?.Invoke();
         _loop.KeyProcessed += k =>
         {
             if (k.Kind == KeyKind.Char) _llm.NotifyActivity();   // 5.6.b: reload on the next keystroke, in the background
@@ -137,6 +153,7 @@ public sealed class AppHost : IAsyncDisposable
         Settings = s;
         _store.Save(s);
         Dictionary.AutoLearnEnabled = s.AutoLearnWords;
+        if (Predictor is not null) Predictor.Enabled = s.PredictionEnabled;   // 7.7
         if (_llm is not null) _llm.IdleUnloadMinutes = s.IdleUnloadMinutes;
         if (_uia is not null) Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)));
         if (_loop is not null)
@@ -180,6 +197,7 @@ public sealed class AppHost : IAsyncDisposable
             if (_llm is not null) await _llm.MaintainAsync(CancellationToken.None);
             _hook?.CheckAlive();   // 12.6
             _daily.Save(_counters);
+            History.Save();
             if (_llm is not null && _llm.Host.State == ServerState.Ready && _loop is not null)
                 _loop.Post(e => { if (e.LastAiLatencyMs > 0) TypicalLatencyMs = TypicalLatencyMs == 0 ? e.LastAiLatencyMs : TypicalLatencyMs * 0.8 + e.LastAiLatencyMs * 0.2; });
             if (ModelState != before) StateChanged?.Invoke();

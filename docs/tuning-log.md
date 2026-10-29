@@ -8,7 +8,9 @@ Every change below was made by looking at the **tuning** set only (260 messages)
 | T2 | D23 noisy-channel instant layer + split check; D24 keep user's whitespace, no closing punctuation on unfinished sentences; D25 capitalisation rule; D26 split/merge must be near-exact | 88.6% | 0.26% | 80% | 334 / 497 ms |
 | T3 | D27: 3-way split/merge in the aligner; one likely keyboard slip accepted regardless of length; instant layer leaves half of a split word | 89.2% | 0.23% | 81% | 337 / 494 ms |
 | T4 | A stretch whose letters match exactly is one spacing edit (`ev eninginstead`); prompt v2: put back clearly dropped small words, plus two examples | 90.5% | 0.29% | 83% | 342 / 511 ms |
-| T5 | Alignment cost uses the keyboard model, so `s` ↔ `a` pairs word for word (trace showed `I hae s flight` lost to a split + deletion) | _running_ | | | |
+| T5 | Alignment cost uses the keyboard model, so `s` ↔ `a` pairs word for word (trace showed `I hae s flight` lost to a split + deletion) | 90.5% | 0.23% | 84% | 346 / 520 ms |
+
+T5 plateaus at about 90.5%. The scorer shares the alignment cost, so the error count moved from 733 to 728 (more accurate alignment). Most of what remains is dropped articles the model doesn't restore, and heavy multi-error messages.
 
 ## What later rounds showed
 

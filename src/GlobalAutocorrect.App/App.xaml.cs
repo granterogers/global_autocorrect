@@ -34,7 +34,10 @@ public partial class App : Application
 
         await Host.StartAsync();
         OnHostStarted();
+        _overlays = new Overlay.OverlayController(Host, Dispatcher);   // 4.7 underline, 7.x suggestions
     }
+
+    private Overlay.OverlayController? _overlays;
 
     /// <summary>Tray icon and first-run window hook in here (M9).</summary>
     partial void OnHostStartedPartial();
