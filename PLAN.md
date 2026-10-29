@@ -138,13 +138,25 @@ Looked up 2026-10-29. **Do not upgrade during the build.**
 | Gemma 4 E2B Q5_K_M | unsloth/gemma-4-E2B-it-GGUF @ `0314792d7f1f7e229411f620751375812bb9faf2` | `gemma-4-E2B-it-Q5_K_M.gguf` 3,201 MB sha256 `90293b8cdaf9c973012bf4df8a1e92bde7d74ad66a4fe56cf905ccd563d660c5` |
 | Gemma 4 E2B Q4_K_M | same repo | `gemma-4-E2B-it-Q4_K_M.gguf` sha256 `740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8` |
 | Hunspell en_GB-ise | SCOWL rel-2026.02.25 | `hunspell-en_GB-ise-2026.02.25.zip` sha256 `d6fbb91ae7824c52fb02f74d7bc2cd9092f130faec60f42326a59437fa7247a3` (github.com/en-wl/wordlist) |
-| Corpus | Leipzig `eng-uk_web-public_2018_1M` | downloads.wortschatz-leipzig.de/corpora; **CC BY 4.0**; sha256 recorded on first download in T8.1 |
+| Corpus | Leipzig `eng-uk_web-public_2018_1M` | downloads.wortschatz-leipzig.de/corpora; **CC BY 4.0**; sha256 `5973e28f0c172bac612beefc416d55da18b71a90dc5e2599ef997e6ebb478524` |
 
 Model download URL form: `https://huggingface.co/<repo>/resolve/<commit>/<file>`.
 
 ### 4.1 Spike results
 
-_Filled in after the spikes run (2.4.c)._
+**Spike A (2.4.a), 2026-10-29: PASS.** 50 evenly spaced tuning messages (every noise level and the garbled set). Raw model output scored against the clean text (D18). llama.cpp b11960 CUDA 13.4, `-ngl 99 -c 4096 -np 1 --reasoning-budget 0`, temperature 0, same prompt (`PromptTemplate.Default`) for all. Results in `artifacts/spikeA-*.json`.
+
+| Candidate | p50 | p95 | Errors fixed | False edits | Exact | VRAM in use (before → loaded) | GPU evidence | Bar |
+|---|---|---|---|---|---|---|---|---|
+| **Gemma 4 E4B Q5_K_M (5.3.a)** | **360 ms** | 552 ms | **91.8%** | **0.63%** | 84% | 4.0 → 7.6 GB of 8.15 | CUDA0, 43/43 layers | **PASS** |
+| Qwen3.5-4B Q5_K_M, thinking off (5.3.b) | 317 ms | 473 ms | 89.1% | 0.94% | 76% | 4.2 → 7.5 GB | CUDA0, 33/33 layers | fail (fixed < 90%) |
+| Gemma 4 E2B Q5_K_M (5.3.c) | 200 ms | 301 ms | 91.2% | 2.36% | 64% | 4.1 → 6.2 GB | CUDA0, 36/36 layers | fail (false ≥ 2%) |
+
+- **Default model (5.3.d): Gemma 4 E4B Q5_K_M.** It is the only candidate to clear both quality bars, with p50 a quarter of the budget. Q4_K_M wasn't needed. **CPU fallback (5.1.c, 5.3.c): Gemma 4 E2B Q5_K_M.**
+- The about 4 GB "in use" before loading is the Windows desktop, WebView2 apps and an unrelated llama-server from another project. 7,043 MiB was free at load.
+- Most remaining misses are noise that deleted "the", leaving valid English ("Ring council about…"), and "Wi-fi" capitalised to "Wi-Fi". Tuning happens in M6 on the tuning set only.
+
+**Spike B (2.4.b):** _pending. The run waits for 2 minutes without keyboard/mouse use (2.8, D20)._
 
 ---
 

@@ -161,6 +161,39 @@ public static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
 
+    public const ushort VK_RETURN = 0x0D;
+    public const ushort VK_PAUSE = 0x13;
+    public const ushort VK_CAPITAL = 0x14;
+    public const ushort VK_ESCAPE = 0x1B;
+    public const ushort VK_PRIOR = 0x21;
+    public const ushort VK_NEXT = 0x22;
+    public const ushort VK_END = 0x23;
+    public const ushort VK_HOME = 0x24;
+    public const ushort VK_UP = 0x26;
+    public const ushort VK_DOWN = 0x28;
+    public const ushort VK_INSERT = 0x2D;
+    public const ushort VK_DELETE = 0x2E;
+    public const ushort VK_F1 = 0x70;
+    public const ushort VK_F24 = 0x87;
+    public const ushort VK_NUMLOCK = 0x90;
+    public const ushort VK_SCROLL = 0x91;
+    public const ushort VK_LSHIFT = 0xA0;
+    public const ushort VK_RSHIFT = 0xA1;
+    public const ushort VK_LCONTROL = 0xA2;
+    public const ushort VK_RCONTROL = 0xA3;
+    public const ushort VK_LMENU = 0xA4;
+    public const ushort VK_RMENU = 0xA5;
+
+    [DllImport("user32.dll")]
+    public static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState,
+        [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] char[] pwszBuff, int cchBuff, uint wFlags, nint dwhkl);
+
+    [DllImport("user32.dll")]
+    public static extern nint GetKeyboardLayout(uint idThread);
+
+    [DllImport("user32.dll")]
+    public static extern short GetKeyState(int nVirtKey);
+
     /// <summary>True when the physical key is currently held (high bit of GetAsyncKeyState).</summary>
     public static bool IsDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 }

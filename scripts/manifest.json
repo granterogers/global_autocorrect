@@ -52,7 +52,7 @@
   },
   "corpus": {
     "url": "https://downloads.wortschatz-leipzig.de/corpora/eng-uk_web-public_2018_1M.tar.gz",
-    "sha256": null,
+    "sha256": "5973e28f0c172bac612beefc416d55da18b71a90dc5e2599ef997e6ebb478524",
     "licence": "CC BY 4.0, Leipzig Corpora Collection (Goldhahn, Eckart and Quasthoff 2012)"
   }
 }

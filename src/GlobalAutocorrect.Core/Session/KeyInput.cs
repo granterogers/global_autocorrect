@@ -17,6 +17,8 @@ public enum KeyKind
     Foreign,
     Click,
     FocusChange,
+    /// <summary>Modifiers, Escape, function keys: counted for the key sequence but no effect on the text.</summary>
+    Other,
 }
 
 public readonly record struct KeyInput(KeyKind Kind, char Char, long Seq, long AtMs)
