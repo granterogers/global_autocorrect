@@ -29,6 +29,10 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
             new("assistant", "Can you leave the report on my desk, it's for the meeting at 3"),
             new("user", "Fancy a quick coffee before the train?"),
             new("assistant", "Fancy a quick coffee before the train?"),
+            new("user", "i think i left keys on kitchen table, can you check"),
+            new("assistant", "I think I left the keys on the kitchen table, can you check"),
+            new("user", "Dinner at mine on Friday, bring wine if you like."),
+            new("assistant", "Dinner at mine on Friday, bring wine if you like."),
         ]);
 
     public IReadOnlyList<ChatTurn> BuildMessages(string text) =>

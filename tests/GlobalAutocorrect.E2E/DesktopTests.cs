@@ -59,7 +59,10 @@ public sealed class DesktopTests
         try
         {
             Desk.Type("we saw teh bookk ");
-            Desk.WaitUntil(() => Text(doc) == "we saw the book ");
+            Desk.WaitUntil(() => Text(doc) == "we saw the book ", 1500);
+            // 4.7 recorded check: the fading accent underline, captured while it is still visible.
+            Directory.CreateDirectory(Path.Combine(Desk.Repo, "artifacts", "screens"));
+            FlaUI.Core.Capturing.Capture.Element(doc).ToFile(Path.Combine(Desk.Repo, "artifacts", "screens", "e2e-underline.png"));
             Assert.Equal(0, app.Desyncs);   // 11.3.d
             Assert.Equal("we saw the book ", Text(doc));
         }

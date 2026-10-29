@@ -20,6 +20,8 @@ public static class Desk
     /// <summary>From the test binaries, or (when they run from a copy outside the repo) from the working directory.</summary>
     private static string FindRepo()
     {
+        // GA_REPO: set when the tests run from a copy (the test runner changes the working directory to its own).
+        if (Environment.GetEnvironmentVariable("GA_REPO") is { } repo && File.Exists(Path.Combine(repo, "GlobalAutocorrect.slnx"))) return repo;
         foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
         {
             var d = new DirectoryInfo(start);
