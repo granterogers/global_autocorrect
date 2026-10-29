@@ -7,3 +7,4 @@ node_modules/
 .vs/
 *.user
 TestResults/
+tests/pages/dist/
