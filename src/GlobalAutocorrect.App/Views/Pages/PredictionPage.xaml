@@ -1,0 +1,41 @@
+<Page x:Class="GlobalAutocorrect.App.Views.Pages.PredictionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Prediction">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,16,32,32">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Prediction" />
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Get a helping hand finishing your words and sentences." />
+
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon KeyboardTab24}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="Suggest the next word (press Tab to accept)" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="A faint suggestion appears beside your cursor as you type." />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch IsChecked="{Binding PredictionEnabled, Mode=TwoWay}" AutomationProperties.Name="Suggest the next word" />
+            </ui:CardControl>
+
+            <Border Style="{StaticResource CardBorder}" Padding="20,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
+                        <ui:SymbolIcon Symbol="Sparkle24" FontSize="22" />
+                    </ContentControl>
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                        <TextBlock Style="{StaticResource RowTitle}" Text="How it works" />
+                        <TextBlock Style="{StaticResource TextBody}" Margin="0,6,0,0"
+                                   Text="Press Tab to take a suggestion, or just keep typing to ignore it. Suggestions come from common UK English and the words you use most." />
+                        <TextBlock Style="{StaticResource RowCaption}" Margin="0,10,0,0" FontSize="13"
+                                   Text="Everything is worked out on this PC. Nothing you type is sent anywhere." />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

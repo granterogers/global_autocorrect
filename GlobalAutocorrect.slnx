@@ -10,6 +10,7 @@
     <Project Path="tools/GlobalAutocorrect.Eval/GlobalAutocorrect.Eval.csproj" />
     <Project Path="tools/SpikeB/SpikeB.csproj" />
     <Project Path="tools/GlobalAutocorrect.Icons/GlobalAutocorrect.Icons.csproj" />
+    <Project Path="tools/GlobalAutocorrect.Screens/GlobalAutocorrect.Screens.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GlobalAutocorrect.Core.Tests/GlobalAutocorrect.Core.Tests.csproj" />

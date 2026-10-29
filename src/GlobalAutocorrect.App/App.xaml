@@ -11,6 +11,8 @@
                 <ui:ControlsDictionary />
                 <!-- Our design tokens (9.2.a-c). -->
                 <ResourceDictionary Source="Theme/Tokens.xaml" />
+                <!-- Shared styles for the settings and first-run windows (9.1, 9.2). -->
+                <ResourceDictionary Source="Theme/Components.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

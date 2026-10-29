@@ -1,0 +1,54 @@
+<Page x:Class="GlobalAutocorrect.App.Views.Pages.ShortcutsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Shortcuts">
+    <Page.Resources>
+        <!-- One card per shortcut, with a recording box: click it, then press the combination. -->
+        <DataTemplate x:Key="ShortcutCard">
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ui:SymbolIcon Symbol="Keyboard24" FontSize="20" Margin="0,2,16,0" VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource RowTitle}" Text="{Binding Title}" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="{Binding Description}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,12,0,0" Orientation="Horizontal">
+                        <ui:TextBox Width="200" IsReadOnly="True" TextAlignment="Center" FontWeight="SemiBold"
+                                    Cursor="Hand" ContextMenu="{x:Null}" IsUndoEnabled="False"
+                                    Text="{Binding DisplayText, Mode=OneWay}"
+                                    AutomationProperties.Name="{Binding Title}"
+                                    PreviewKeyDown="OnRecorderKeyDown"
+                                    GotKeyboardFocus="OnRecorderGotFocus"
+                                    LostKeyboardFocus="OnRecorderLostFocus" />
+                        <ui:Button Margin="8,0,0,0" Appearance="Secondary" Icon="{ui:SymbolIcon ArrowReset24}"
+                                   Content="Reset to default" Command="{Binding ResetCommand}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource ErrorText}" Text="{Binding Error}"
+                               Visibility="{Binding HasError, Converter={StaticResource BoolToVisible}}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,16,32,32">
+            <TextBlock Style="{StaticResource PageTitle}" Text="Shortcuts" />
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="Click a box, then press the keys you want to use." />
+
+            <ContentControl Content="{Binding Pause}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
+            <ContentControl Content="{Binding Undo}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
+
+            <TextBlock Style="{StaticResource RowCaption}" Margin="2,8,0,0" FontSize="13"
+                       Text="Shortcuts need Ctrl, Alt or the Windows key, plus a letter, number or function key. Press Esc to cancel." />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

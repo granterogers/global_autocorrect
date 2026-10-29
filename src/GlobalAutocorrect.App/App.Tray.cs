@@ -26,10 +26,13 @@ public partial class App
 
         _tray = new TrayController(Host, Path.Combine(AppHost.AssetsDir, "icons"));
         _tray.Start();
+        _tray.OpenSettingsRequested += OpenSettings;   // T9.3: double click and the "Settings…" menu item
         Exit += (_, _) =>
         {
             _tray?.Dispose();
             _theme?.Dispose();
         };
+
+        ShowFirstRunIfNeeded();   // T9.4
     }
 }
