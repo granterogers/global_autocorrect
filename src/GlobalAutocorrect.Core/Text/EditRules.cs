@@ -62,7 +62,10 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             foreach (var t in origTokens)
             {
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;
-                if (t.IsProtected) return RejectReason.TouchesProtectedToken;
+                // Run-together words like "nextFriday" look code-like; re-spacing them changes no characters, so it's allowed.
+                // Numbers, URLs and emails are never touched, not even their spacing (4.5.d).
+                bool hardProtected = (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email)) != 0;
+                if (hardProtected || (t.IsProtected && e.Kind != EditKind.Spacing)) return RejectReason.TouchesProtectedToken;
                 if (isPersonalWord(t.Text)) return RejectReason.PersonalDictionary;
             }
             switch (e.Kind)

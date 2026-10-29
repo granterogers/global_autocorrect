@@ -122,4 +122,17 @@ public sealed class EditRulesTests
     {
         Assert.Empty(Run("call getTxet now", "call getText now").Accepted);
     }
+
+    [Fact]
+    public void R4_4_c_RespacesRunTogetherWordsThatLookCodeLike()
+    {
+        const string a = "see you nextFriday at the event";
+        Assert.Equal("see you next Friday at the event", Apply(a, Run(a, "see you next Friday at the event")));
+    }
+
+    [Fact]
+    public void R4_5_d_NeverRespacesNumbers()
+    {
+        Assert.Equal(RejectReason.ProtectedTokenChanged, Run("meet at 9am today", "meet at 9 am today").WholeRejection);
+    }
 }

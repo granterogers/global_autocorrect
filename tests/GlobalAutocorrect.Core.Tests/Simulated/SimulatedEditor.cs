@@ -1,0 +1,131 @@
+using System.Globalization;
+using GlobalAutocorrect.Core.Engine;
+using GlobalAutocorrect.Core.Session;
+using GlobalAutocorrect.Core.Targets;
+
+namespace GlobalAutocorrect.Core.Tests.Simulated;
+
+/// <summary>
+/// A text field for tests (10.2): models typing, caret moves, paste, foreign injection, host-app autocorrect and races.
+/// It is also the key monitor: <see cref="LatestKeySeq"/> counts keys "the hook has seen", which can run ahead of what
+/// the engine has been given (<see cref="TypeUndelivered"/>).
+/// </summary>
+public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTarget, IKeyMonitor
+{
+    public string Text { get; set; } = "";
+    public int Caret { get; set; }
+    public string Id { get; set; } = id;
+    public bool CaretKnown { get; set; } = true;
+
+    /// <summary>Host autocorrect: called with the word just finished; return a replacement to apply it.</summary>
+    public Func<string, string?>? HostAutocorrect { get; set; }
+
+    /// <summary>Runs just before an injected batch lands, to model something changing the field at the worst moment.</summary>
+    public Action<SimulatedEditor>? BeforeApply { get; set; }
+
+    public int Edits { get; private set; }
+    public long LatestKeySeq { get; private set; }
+    public long LastKeyAtMs { get; private set; } = -100_000;
+    public bool ModifierHeld { get; set; }
+
+    public KeyInput TypeChar(char c)
+    {
+        Insert(c.ToString());
+        if ((char.IsWhiteSpace(c) || c is ',' or '.') && HostAutocorrect is not null) ApplyHostAutocorrect();
+        return Key(KeyKind.Char, c);
+    }
+
+    /// <summary>A key the hook saw but the engine hasn't been given yet (D6 race).</summary>
+    public KeyInput TypeUndelivered(char c) => TypeChar(c);
+
+    public KeyInput Backspace()
+    {
+        if (Caret > 0)
+        {
+            int len = LastElementLength(Text[..Caret]);
+            Text = Text.Remove(Caret - len, len);
+            Caret -= len;
+        }
+        return Key(KeyKind.Backspace, '\0');
+    }
+
+    public KeyInput MoveCaret(int delta)
+    {
+        Caret = Math.Clamp(Caret + delta, 0, Text.Length);
+        return Key(KeyKind.Navigation, '\0');
+    }
+
+    public KeyInput Paste(string s)
+    {
+        Insert(s);
+        return Key(KeyKind.Paste, '\0');
+    }
+
+    /// <summary>Text inserted by another tool (dictation, expander); the hook reports it as foreign (4.2).</summary>
+    public KeyInput ForeignInsert(string s)
+    {
+        Insert(s);
+        return Key(KeyKind.Foreign, '\0');
+    }
+
+    public TextWindow ReadWindow()
+    {
+        if (!CaretKnown) return TextWindow.Unavailable(TargetStatus.CaretUnknown, Id);
+        return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..Caret], Text[Caret..Math.Min(Text.Length, Caret + 80)]);
+    }
+
+    public bool ApplyEdit(int caretDistance, int deleteCount, string replacement)
+    {
+        BeforeApply?.Invoke(this);
+        // Exactly what the SendInput batch does: Left × d, Backspace × n, type, Right × d (10.7.a).
+        int pos = Caret;
+        for (int i = 0; i < caretDistance && pos > 0; i++) pos -= LastElementLength(Text[..pos]);
+        int del = pos;
+        for (int i = 0; i < deleteCount && del > 0; i++) del -= LastElementLength(Text[..del]);
+        Text = Text[..del] + replacement + Text[pos..];
+        Caret = del + replacement.Length + (Caret - pos);
+        Edits++;
+        return true;
+    }
+
+    public bool Verify(string expectedBefore, string expectedAfter)
+    {
+        var w = ReadWindow();
+        string b = TextNorm.Normalise(w.Before), e = TextNorm.Normalise(expectedBefore);
+        int n = Math.Min(b.Length, e.Length);
+        return w.CaretKnown && b[^n..] == e[^n..] && TextNorm.Normalise(w.After) == TextNorm.Normalise(expectedAfter);
+    }
+
+    private KeyInput Key(KeyKind kind, char c)
+    {
+        LatestKeySeq++;
+        LastKeyAtMs = clock.NowMs;
+        return new KeyInput(kind, c, LatestKeySeq, clock.NowMs);
+    }
+
+    private void Insert(string s)
+    {
+        Text = Text.Insert(Caret, s);
+        Caret += s.Length;
+    }
+
+    private void ApplyHostAutocorrect()
+    {
+        int end = Caret - 1, start = end;
+        while (start > 0 && char.IsLetter(Text[start - 1])) start--;
+        if (end <= start) return;
+        string? fix = HostAutocorrect!(Text[start..end]);
+        if (fix is null) return;
+        Text = Text[..start] + fix + Text[end..];
+        Caret += fix.Length - (end - start);
+    }
+
+    private static int LastElementLength(string s)
+    {
+        if (s.Length == 0) return 0;
+        var e = StringInfo.GetTextElementEnumerator(s);
+        int last = 0;
+        while (e.MoveNext()) last = e.ElementIndex;
+        return s.Length - last;
+    }
+}
