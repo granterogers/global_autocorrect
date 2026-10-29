@@ -13,6 +13,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/GlobalAutocorrect.Core.Tests/GlobalAutocorrect.Core.Tests.csproj" />
     <Project Path="tests/GlobalAutocorrect.Llm.Tests/GlobalAutocorrect.Llm.Tests.csproj" />
+    <Project Path="tests/GlobalAutocorrect.Windows.Tests/GlobalAutocorrect.Windows.Tests.csproj" />
     <Project Path="tests/GlobalAutocorrect.E2E/GlobalAutocorrect.E2E.csproj" />
   </Folder>
 </Solution>

@@ -34,6 +34,9 @@ function Invoke-Fast {
     Invoke-Step 'test (Llm)' {
         dotnet test --project tests/GlobalAutocorrect.Llm.Tests --no-build -- --filter-not-trait "Category=Model"
     }
+    Invoke-Step 'test (Windows)' {
+        dotnet test --project tests/GlobalAutocorrect.Windows.Tests --no-build -- --filter-not-trait "Category=E2E"
+    }
 }
 
 function Invoke-Model {
