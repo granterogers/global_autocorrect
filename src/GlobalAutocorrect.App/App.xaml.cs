@@ -13,6 +13,10 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Crash record for diagnosis: exception type and stack only, never messages (they could echo text, 8.6).
+        AppDomain.CurrentDomain.UnhandledException += (_, a) => WriteCrash(a.ExceptionObject as Exception);
+        DispatcherUnhandledException += (_, a) => WriteCrash(a.Exception);
+        TaskScheduler.UnobservedTaskException += (_, a) => WriteCrash(a.Exception);
 
         // 5.6.c: only one copy runs.
         _single = SingleInstance.TryAcquire();
@@ -41,6 +45,18 @@ public partial class App : Application
     /// <summary>Tray icon and first-run window hook in here (M9).</summary>
     partial void OnHostStartedPartial();
     private void OnHostStarted() => OnHostStartedPartial();
+
+    private static void WriteCrash(Exception? ex)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            for (var x = ex; x is not null; x = x.InnerException)
+                sb.AppendLine(x.GetType().FullName).AppendLine(x.StackTrace);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(AppHost.DataDir, "crash.txt"), $"{DateTime.Now:O}\n{sb}\n");
+        }
+        catch (System.IO.IOException) { }
+    }
 
     protected override async void OnExit(ExitEventArgs e)
     {

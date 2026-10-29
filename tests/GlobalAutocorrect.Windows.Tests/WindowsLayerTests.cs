@@ -82,10 +82,15 @@ public sealed class WindowsLayerTests
     [Fact]
     public void R4_1_a_NoAppIsSpecialCasedOutsideTheExclusionList()
     {
+        // The correction path (Core and the Windows layer) must never branch on which app it is in; only the
+        // exclusion list names apps. Comments are ignored.
         string[] apps = ["notepad", "winword", "outlook", "msedge", "chrome", "firefox", "slack", "teams"];
-        foreach (var f in Sources(Path.Combine("src")).Where(f => !f.EndsWith("AppExclusions.cs", StringComparison.Ordinal)))
+        var files = Sources(Path.Combine("src", "GlobalAutocorrect.Core")).Concat(Sources(Path.Combine("src", "GlobalAutocorrect.Windows")))
+            .Where(f => !f.EndsWith("AppExclusions.cs", StringComparison.Ordinal));
+        foreach (var f in files)
         {
-            foreach (Match m in Regex.Matches(File.ReadAllText(f), "\"([A-Za-z]+)(\\.exe)?\""))
+            string code = string.Join('\n', File.ReadLines(f).Where(l => !l.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+            foreach (Match m in Regex.Matches(code, "\"([A-Za-z]+)(\\.exe)?\""))
                 Assert.DoesNotContain(m.Groups[1].Value.ToLowerInvariant(), apps);
         }
     }
@@ -104,6 +109,38 @@ public sealed class WindowsLayerTests
     {
         foreach (var f in Directory.EnumerateFiles(Repo(), "*.csproj", SearchOption.AllDirectories).Append(Path.Combine(Repo(), "Directory.Packages.props")))
             Assert.DoesNotContain("LLamaSharp", File.ReadAllText(f), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ---- Key translation (4.2) -------------------------------------------------------------------------
+
+    [Fact]
+    public void R4_2_TranslatesKeysToTextWithoutCorruptingMemory()
+    {
+        // Regression: ToUnicodeEx once marshalled its buffer as ANSI and overran the native heap on every key.
+        var tr = new KeyTranslator();
+        var typed = new System.Text.StringBuilder();
+        for (int i = 0; i < 5000; i++)
+        {
+            uint vk = (uint)('A' + i % 26);
+            foreach (var k in tr.Translate(new RawInput(RawKind.Key, vk, MapVirtualKeyW(vk, MAPVK_VK_TO_VSC), 0, true, false, i, i)))
+                if (k.Kind == GlobalAutocorrect.Core.Session.KeyKind.Char) typed.Append(k.Char);
+            _ = tr.Translate(new RawInput(RawKind.Key, vk, 0, 0, false, false, i, i)).ToList();
+        }
+        Assert.StartsWith("abcdefghijklmnopqrstuvwxyz", typed.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(5000, typed.Length);
+        GC.Collect();   // a corrupted heap tends to fail here
+        GC.WaitForPendingFinalizers();
+    }
+
+    [Fact]
+    public void R4_2_PasteAndInjectedInputBreakTheSession_R14_4()
+    {
+        var tr = new KeyTranslator();
+        Assert.Equal(GlobalAutocorrect.Core.Session.KeyKind.Foreign,
+            tr.Translate(new RawInput(RawKind.Key, 'A', 0x1E, 0x10, true, true, 1, 1)).Single().Kind);
+        _ = tr.Translate(new RawInput(RawKind.Key, VK_LCONTROL, 0x1D, 0, true, false, 2, 2)).ToList();
+        Assert.Equal(GlobalAutocorrect.Core.Session.KeyKind.Paste,
+            tr.Translate(new RawInput(RawKind.Key, 'V', 0x2F, 0, true, false, 3, 3)).Single().Kind);
     }
 
     // ---- UIA isolation (10.3.b) ------------------------------------------------------------------------

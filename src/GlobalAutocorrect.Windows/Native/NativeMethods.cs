@@ -184,7 +184,9 @@ public static class NativeMethods
     public const ushort VK_LMENU = 0xA4;
     public const ushort VK_RMENU = 0xA5;
 
-    [DllImport("user32.dll")]
+    // CharSet.Unicode is essential: without it char[] marshals as 1-byte ANSI and Windows writes UTF-16 past the end
+    // of the buffer, corrupting the native heap (found by E2E: STATUS_HEAP_CORRUPTION on the first keystroke).
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState,
         [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] char[] pwszBuff, int cchBuff, uint wFlags, nint dwhkl);
 

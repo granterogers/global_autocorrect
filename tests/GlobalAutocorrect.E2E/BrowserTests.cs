@@ -50,8 +50,8 @@ public sealed class BrowserTests
                 await Task.Delay(150, TestContext.Current.CancellationToken);
                 got = (await Text(p)).TrimEnd();
             }
-            Assert.Equal(0, app.Desyncs);   // 11.3.d
-            Assert.Equal("I went there with the dog.", got);
+            Assert.True(got == "I went there with the dog.", $"got \"{got}\"; {app.Diagnostics()}");
+            Assert.Equal(0, app.Desyncs);   // 11.3.d (checked first in spirit: a desync would also fail the line above)
         }
         finally
         {

@@ -148,6 +148,18 @@ public sealed class AppUnderTest : IDisposable
         psi.Environment["GA_DATA_DIR"] = DataDir;
         _proc = Process.Start(psi)!;
         Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(DataDir, "counters.json")), 20_000), "the app did not start");
+        // counters.json is also written on shutdown, so also check the app is still running.
+        Thread.Sleep(2000);
+        Assert.False(_proc.HasExited, $"the app exited at start (exit code 0x{(_proc.HasExited ? _proc.ExitCode : 0):X8})");
+    }
+
+    /// <summary>What to print when a test fails: is the app alive, its counts, and any crash record.</summary>
+    public string Diagnostics()
+    {
+        string counters = File.Exists(Path.Combine(DataDir, "counters.json")) ? File.ReadAllText(Path.Combine(DataDir, "counters.json")) : "(no counters)";
+        string crash = File.Exists(Path.Combine(DataDir, "crash.txt")) ? File.ReadAllText(Path.Combine(DataDir, "crash.txt")) : "(no crash)";
+        string exit = _proc.HasExited ? $" (exit 0x{_proc.ExitCode:X8})" : "";
+        return $"app alive: {!_proc.HasExited}{exit}; counters: {counters}; crash: {crash}";
     }
 
     /// <summary>11.3.d: checked before any text assertion.</summary>

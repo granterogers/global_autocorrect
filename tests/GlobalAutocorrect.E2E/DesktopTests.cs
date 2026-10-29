@@ -32,8 +32,9 @@ public sealed class DesktopTests
         win.Focus();
         Desk.Keys(VK_CONTROL, (ushort)'N');   // a new, empty tab even if Notepad restored others
         Thread.Sleep(800);
-        var doc = win.FindFirstDescendant(cf => cf.ByClassName("RichEditD2DPT"))!.AsTextBox();
-        doc.Focus();
+        // The editor of the new tab is whatever has focus now (class names vary between Notepad builds).
+        var doc = (Desk.WaitUntil(() => uia.FocusedElement()?.Patterns.Text.IsSupported == true, 5000) ? uia.FocusedElement() : null)?.AsTextBox()
+                  ?? throw new InvalidOperationException("Notepad editor not focused");
         void Close()
         {
             doc.Focus();
