@@ -177,7 +177,7 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_6_a_And_b_LastTwoWordsWaitForA1500msPause()
+    public void R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a()
     {
         var h = new Harness(model: FixTheir, latencyMs: 100);
         h.Type("i went their yesterday");

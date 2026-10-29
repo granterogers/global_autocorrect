@@ -6,7 +6,6 @@ namespace GlobalAutocorrect.App;
 
 public partial class App : Application
 {
-    private const string InstanceName = @"Local\GlobalAutocorrect.SingleInstance";
     private Mutex? _single;
 
     public AppHost Host { get; } = new();
@@ -16,8 +15,8 @@ public partial class App : Application
         base.OnStartup(e);
 
         // 5.6.c: only one copy runs.
-        _single = new Mutex(initiallyOwned: true, InstanceName, out bool created);
-        if (!created)
+        _single = SingleInstance.TryAcquire();
+        if (_single is null)
         {
             Shutdown();
             return;

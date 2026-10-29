@@ -501,7 +501,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 1.4 | SA | Check: §4.1 spike table |
 | 1.5 | M3 | `R1_5_*` |
 | 1.6 | M8 | `R7_2_*` |
-| 1.7 | M7 | E2E `R10_6_*`, `R10_7_*` |
+| 1.7 | M7 | `R10_7_*`, E2E `R11_3_*`; Check: Spike B (§4.1) |
 | 1.8 | M0 | Check: test project refs |
 | 1.9 | all | `R3_3_*`, `R3_4_*` |
 | 1.10 | all | Check: no CI files in repo |
@@ -513,7 +513,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 2.3 | plan | Check: this file |
 | 2.3.a | plan | Check: PROGRESS prerequisites entry |
 | 2.3.b | plan | Check: this file |
-| 2.3.c | plan | `scripts/trace-check.ps1` in fast tier |
+| 2.3.c | plan | Check: `scripts/trace-check.ps1` runs in the fast tier |
 | 2.3.d | plan | Check: §4 |
 | 2.3.e | plan | Check: DECISIONS.md |
 | 2.3.f | plan | Check: commit of PLAN.md |
@@ -532,7 +532,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 2.6.d | all | Check: D1 (tag conflict raised) |
 | 2.6.e | M10 | Check: RC stop message |
 | 2.7 | all | Check: PROGRESS next-task field |
-| 2.8 | M7 | E2E user-keystroke guard `R2_8_*` |
+| 2.8 | M7 | Check: E2E `Desk.RequireIdle` and Spike B `InputGuard` (D20); runs recorded in PROGRESS |
 | 2.9 | all | Check: process |
 | 2.10 | M2, M3 | Check: no word lists in correction code; `R2_10_NoWordSpecificRules` (scans Core sources for hard-coded typo pairs) |
 | 2.11 | M10 | Check: README coverage table |
@@ -575,7 +575,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 4.6.c | M4 | `R4_6_c_*` |
 | 4.6.d | M4, M7 | `R4_6_d_*` |
 | 4.6.e | M4, M7 | `R4_6_e_*` |
-| 4.7 | M8 | `R4_7_*` |
+| 4.7 | M8 | Check: underline screenshot taken during E2E (`artifacts/screens/e2e-underline.png`); setting in `R9_3_*` |
 | 4.8 | M4 | `R4_8_*` |
 | 4.8.a | M4, M7 | `R4_8_a_*` |
 | 4.8.b | M4, M7 | `R4_8_b_*` |
@@ -655,18 +655,18 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 10.1 | M0 | `R10_1_CoreHasNoWindowsReferences` |
 | 10.2 | M4 | `R10_2_*` |
 | 10.3 | M7 | Check: project layout |
-| 10.3.a | M7 | `R10_3_a_*` |
+| 10.3.a | M7 | `R10_3_a_*`; E2E `R11_3_*` (every E2E key goes through the hook) |
 | 10.3.b | M7 | `R10_3_b_*` |
 | 10.3.c | M7 | E2E `R10_3_c_*` |
 | 10.3.d | M8 | E2E `R10_3_d_*` |
 | 10.3.e | M7 | `R10_3_e_*` |
 | 10.4 | M9 | Check: App project |
 | 10.5 | M5 | `R10_5_*` |
-| 10.6 | M7 | `R10_6_*` |
-| 10.6.a | M7 | `R10_6_a_*` |
+| 10.6 | M7 | `R10_6_*`; Check: Spike B (§4.1) |
+| 10.6.a | M7 | Check: Spike B (§4.1): TextPattern2 in Notepad/Word, selection fallback in Chromium |
 | 10.6.b | M7 | `R10_6_b_*` |
 | 10.6.c | M7 | `R10_6_c_*` |
-| 10.6.d | M7 | `R10_6_d_*` |
+| 10.6.d | M7 | Check: Spike B (§4.1): Chromium editors read after warm-up; E2E `R11_3_b_*` |
 | 10.7 | M7 | `R10_7_*` |
 | 10.7.a | M7 | `R10_7_a_*` |
 | 10.7.b | M7 | `R10_7_b_*` |
@@ -678,19 +678,19 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 11.1.c | M6 | Check: check.ps1 eval run |
 | 11.1.d | M7 | Check: check.ps1 e2e run |
 | 11.1.e | M10 | Check: check.ps1 full run |
-| 11.2 | all | `scripts/trace-check.ps1`; README table |
+| 11.2 | all | Check: `scripts/coverage.ps1` generates the README table |
 | 11.3 | M7 | E2E suite |
 | 11.3.a | M7 | E2E `R11_3_a_*` |
 | 11.3.b | M7 | E2E `R11_3_b_*` |
 | 11.3.c | M7 | Check: E2E typer uses SendInput |
 | 11.3.d | M7 | Check: E2E assertion order |
 | 11.4 | SA | Check: cache path; `.gitignore` |
-| 12.1 | M7 | E2E Notepad input choice |
+| 12.1 | M7 | Check: E2E Notepad inputs (`teh`, `bookk`, `their`) are words Notepad leaves alone; Spike B Notepad run |
 | 12.2 | M4 | `R12_2_*` |
 | 12.3 | M4 | `R12_3_*` |
 | 12.4 | M9 | `R9_2_d_*`; screenshots |
 | 12.5 | SB | Check: lexical.html |
-| 12.6 | M7 | `R12_6_*` |
+| 12.6 | M7 | Check: hook heartbeat `KeyboardHook.CheckAlive` every 5 s re-installs a dropped hook; callback does no I/O (`R10_3_a_*`) |
 | 12.7 | M5 | Check: verify.ps1 |
 | 12.8 | SA, M5 | `R5_4_ThinkingDisabled` |
 | 12.9 | M7 | Check: README known limits |
