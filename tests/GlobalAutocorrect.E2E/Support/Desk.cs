@@ -17,11 +17,16 @@ public static class Desk
 {
     public static string Repo { get; } = FindRepo();
 
+    /// <summary>From the test binaries, or (when they run from a copy outside the repo) from the working directory.</summary>
     private static string FindRepo()
     {
-        var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d is not null && !File.Exists(Path.Combine(d.FullName, "GlobalAutocorrect.slnx"))) d = d.Parent;
-        return d!.FullName;
+        foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        {
+            var d = new DirectoryInfo(start);
+            while (d is not null && !File.Exists(Path.Combine(d.FullName, "GlobalAutocorrect.slnx"))) d = d.Parent;
+            if (d is not null) return d.FullName;
+        }
+        throw new InvalidOperationException("Run the E2E tests from inside the repository.");
     }
 
     /// <summary>2.8: only take over the keyboard once the user has been away for a while; otherwise skip.</summary>
@@ -126,11 +131,15 @@ public sealed class AppUnderTest : IDisposable
     private readonly Process _proc;
     public string DataDir { get; } = Path.Combine(Path.GetTempPath(), "ga-e2e-" + Guid.NewGuid().ToString("N")[..8]);
 
-    public AppUnderTest(MockLlm llm)
+    public AppUnderTest(MockLlm llm, bool prediction = false)
     {
         Directory.CreateDirectory(DataDir);
-        File.WriteAllText(Path.Combine(DataDir, "settings.json"), """{ "FirstRunDone": true, "StartWithWindows": false, "PredictionEnabled": false }""");
-        string exe = Path.Combine(Desk.Repo, "src", "GlobalAutocorrect.App", "bin", "Debug", "net10.0-windows", "GlobalAutocorrect.exe");
+        File.WriteAllText(Path.Combine(DataDir, "settings.json"),
+            $$"""{ "FirstRunDone": true, "StartWithWindows": false, "PredictionEnabled": {{(prediction ? "true" : "false")}} }""");
+        // GA_E2E_APP: a copy of the build outside the repo, so a rebuild during the run can't hit a locked exe.
+        string exe = Environment.GetEnvironmentVariable("GA_E2E_APP") is { } dir
+            ? Path.Combine(dir, "GlobalAutocorrect.exe")
+            : Path.Combine(Desk.Repo, "src", "GlobalAutocorrect.App", "bin", "Debug", "net10.0-windows", "GlobalAutocorrect.exe");
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
         psi.Environment["GA_E2E"] = "1";
         psi.Environment["GA_E2E_LLM_URL"] = llm.Url;

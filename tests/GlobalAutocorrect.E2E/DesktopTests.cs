@@ -106,6 +106,43 @@ public sealed class DesktopTests
     }
 
     [Fact]
+    public void R7_4_TabAcceptsTheSuggestion_R7_1_R7_6()
+    {
+        Desk.RequireIdle();
+        using var llm = new MockLlm(Model);
+        using var app = new AppUnderTest(llm, prediction: true);
+        using var uia = new UIA3Automation();
+        var (_, doc, close) = OpenNotepad(uia);
+        try
+        {
+            Desk.Type("Please let me ");
+            Thread.Sleep(900);   // the suggestion appears after a background read
+            Desk.Keys(VK_TAB);
+            Assert.True(Desk.WaitUntil(() => Text(doc) == "Please let me know"), Text(doc));
+            Assert.Equal(0, app.Desyncs);
+        }
+        finally { close(); }
+    }
+
+    [Fact]
+    public void R7_4_TabPassesThroughWhenNothingIsShown()
+    {
+        Desk.RequireIdle();
+        using var llm = new MockLlm(Model);
+        using var app = new AppUnderTest(llm, prediction: true);
+        using var uia = new UIA3Automation();
+        var (_, doc, close) = OpenNotepad(uia);
+        try
+        {
+            Desk.Type("zq");   // nothing to suggest
+            Thread.Sleep(900);
+            Desk.Keys(VK_TAB);
+            Assert.True(Desk.WaitUntil(() => Text(doc) == "zq\t"), Text(doc));
+        }
+        finally { close(); }
+    }
+
+    [Fact]
     public void R11_3_a_WpfTextBox()
     {
         Desk.RequireIdle();
