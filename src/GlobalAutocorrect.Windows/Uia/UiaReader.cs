@@ -1,0 +1,128 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Interop.UIAutomationClient;
+
+namespace GlobalAutocorrect.Windows.Uia;
+
+public enum ReadStatus { Ok, NoFocus, Password, NoTextPattern, CaretUnknown, Failed }
+
+/// <summary>What UIA reports around the caret. Before/After are only a window, never the whole document (10.6.b).</summary>
+public sealed record UiaSnapshot(
+    ReadStatus Status,
+    string Before,
+    string After,
+    string Source,          // "TextPattern2" or "Selection" (10.6.a)
+    int ProcessId,
+    string ProcessName,
+    string ControlType,
+    string RuntimeId,
+    (double X, double Y, double W, double H)? CaretRect)
+{
+    public bool CaretKnown => Status == ReadStatus.Ok;
+
+    public static UiaSnapshot Fail(ReadStatus s, int pid = 0, string proc = "", string type = "") =>
+        new(s, "", "", "", pid, proc, type, "", null);
+}
+
+/// <summary>
+/// Reads text around the caret through UI Automation (10.6). Must be called from one thread only;
+/// <c>UiaWorker</c> (T7.2) provides isolation and timeouts (10.3.b).
+/// </summary>
+public sealed class UiaReader
+{
+    private const int TextPatternId = 10014;    // UIA_TextPatternId
+    private const int TextPattern2Id = 10024;   // UIA_TextPattern2Id
+
+    private readonly IUIAutomation2 _uia;
+
+    public UiaReader(uint timeoutMs = 250)
+    {
+        _uia = (IUIAutomation2)new CUIAutomation8();
+        _uia.ConnectionTimeout = timeoutMs;
+        _uia.TransactionTimeout = timeoutMs;
+    }
+
+    public UiaSnapshot Read(int beforeChars = 400, int afterChars = 80)
+    {
+        IUIAutomationElement? el;
+        try { el = _uia.GetFocusedElement(); }
+        catch (COMException) { return UiaSnapshot.Fail(ReadStatus.NoFocus); }
+        if (el is null) return UiaSnapshot.Fail(ReadStatus.NoFocus);
+
+        int pid = 0;
+        string proc = "", type = "";
+        try
+        {
+            pid = el.CurrentProcessId;
+            proc = ProcessName(pid);
+            type = el.CurrentLocalizedControlType ?? "";
+            if (el.CurrentIsPassword != 0) return UiaSnapshot.Fail(ReadStatus.Password, pid, proc, type);   // 8.3
+
+            IUIAutomationTextRange? caret = null;
+            string source = "";
+            if (el.GetCurrentPattern(TextPattern2Id) is IUIAutomationTextPattern2 tp2)
+            {
+                caret = tp2.GetCaretRange(out _);
+                source = "TextPattern2";
+            }
+            if (caret is null && el.GetCurrentPattern(TextPatternId) is IUIAutomationTextPattern tp)
+            {
+                var sel = tp.GetSelection();
+                if (sel is not null && sel.Length == 1)
+                {
+                    var r = sel.GetElement(0);
+                    if (r.CompareEndpoints(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, r, TextPatternRangeEndpoint.TextPatternRangeEndpoint_End) == 0)
+                    {
+                        caret = r;
+                        source = "Selection";
+                    }
+                }
+                if (caret is null) return UiaSnapshot.Fail(ReadStatus.CaretUnknown, pid, proc, type);   // 10.6.c
+            }
+            if (caret is null) return UiaSnapshot.Fail(ReadStatus.NoTextPattern, pid, proc, type);
+
+            var before = caret.Clone();
+            before.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -beforeChars);
+            var after = caret.Clone();
+            after.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, TextUnit.TextUnit_Character, afterChars);
+
+            string b = before.GetText(-1) ?? "";
+            string a = after.GetText(-1) ?? "";
+            string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret));
+        }
+        catch (COMException)
+        {
+            return UiaSnapshot.Fail(ReadStatus.Failed, pid, proc, type);
+        }
+    }
+
+    /// <summary>Touches the focused element's text pattern so Chromium/Electron turn on full accessibility (10.6.d).</summary>
+    public void Warm()
+    {
+        try { _ = _uia.GetFocusedElement()?.GetCurrentPattern(TextPatternId); }
+        catch (COMException) { }
+    }
+
+    public IUIAutomation2 Automation => _uia;
+
+    private static (double, double, double, double)? CaretRect(IUIAutomationTextRange caret)
+    {
+        try
+        {
+            var rects = (double[]?)caret.GetBoundingRectangles();
+            if (rects is { Length: >= 4 }) return (rects[0], rects[1], rects[2], rects[3]);
+            var one = caret.Clone();   // a collapsed range often has no rectangle: measure the character before it
+            one.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -1);
+            rects = (double[]?)one.GetBoundingRectangles();
+            return rects is { Length: >= 4 } ? (rects[0] + rects[2], rects[1], 0, rects[3]) : null;
+        }
+        catch (COMException) { return null; }
+    }
+
+    private static string ProcessName(int pid)
+    {
+        try { using var p = Process.GetProcessById(pid); return p.ProcessName; }
+        catch (ArgumentException) { return ""; }
+    }
+}

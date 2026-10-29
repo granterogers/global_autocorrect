@@ -8,4 +8,7 @@
     <ProjectReference Include="..\..\src\GlobalAutocorrect.Core\GlobalAutocorrect.Core.csproj" />
     <ProjectReference Include="..\..\src\GlobalAutocorrect.Windows\GlobalAutocorrect.Windows.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Management" />
+  </ItemGroup>
 </Project>
