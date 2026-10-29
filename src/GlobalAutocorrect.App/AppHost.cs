@@ -74,6 +74,7 @@ public sealed class AppHost : IAsyncDisposable
 
     public async Task StartAsync()
     {
+        _ui = SynchronizationContext.Current;
         Directory.CreateDirectory(DataDir);
         Settings = _store.Load();
         Dictionary.AutoLearnEnabled = Settings.AutoLearnWords;
@@ -135,7 +136,8 @@ public sealed class AppHost : IAsyncDisposable
 
     private CorrectionEngine BuildEngine()
     {
-        var engine = new CorrectionEngine(Settings.ToEngineOptions(new EngineOptions()), new EngineDeps(
+        _engineOptions = Settings.ToEngineOptions(new EngineOptions());
+        var engine = new CorrectionEngine(_engineOptions, new EngineDeps(
             SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
             Dictionary.Contains, Dictionary.Add, _counters)) { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
@@ -147,24 +149,43 @@ public sealed class AppHost : IAsyncDisposable
         UpdateSettings(Settings with { Paused = paused });
     }
 
-    /// <summary>Saves new settings and applies them: engine options, exclusions, shortcuts, model idle time.</summary>
+    /// <summary>
+    /// Saves new settings and applies only what changed. Pausing just flips the running engine (8.2); the engine is
+    /// rebuilt only when correction options change, so undo and the desync list survive ordinary changes (4.6.d, 4.8).
+    /// </summary>
     public void UpdateSettings(AppSettings s)
     {
+        var old = Settings;
         Settings = s;
-        _store.Save(s);
+        try { _store.Save(s); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Notice?.Invoke("Your settings couldn't be saved, so they'll only last until Global Autocorrect closes.");
+        }
         Dictionary.AutoLearnEnabled = s.AutoLearnWords;
         if (Predictor is not null) Predictor.Enabled = s.PredictionEnabled;   // 7.7
         if (_llm is not null) _llm.IdleUnloadMinutes = s.IdleUnloadMinutes;
-        if (_uia is not null) Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)));
         if (_loop is not null)
         {
-            _loop.Replace(BuildEngine());
-            var target = Target;
-            _loop.Post(e => e.SetTarget(target));
+            bool exclusionsChanged = !(old.ExcludedApps ?? AppExclusions.Defaults).SequenceEqual(s.ExcludedApps ?? AppExclusions.Defaults);
+            if (exclusionsChanged && _uia is not null)
+                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)));
+            var options = s.ToEngineOptions(new EngineOptions());
+            if (options != _engineOptions) _loop.Replace(BuildEngine());   // BuildEngine records the new options
+            if (exclusionsChanged)
+            {
+                var target = Target;
+                _loop.Post(e => e.SetTarget(target));
+            }
+            bool paused = s.Paused;
+            _loop.Post(e => e.Paused = paused);
         }
-        RegisterShortcuts();
+        if (s.PauseShortcut != old.PauseShortcut || s.UndoShortcut != old.UndoShortcut) RegisterShortcuts();
         StateChanged?.Invoke();
     }
+
+    private EngineOptions? _engineOptions;
+    private SynchronizationContext? _ui;
 
     private void RegisterShortcuts()
     {
@@ -177,7 +198,13 @@ public sealed class AppHost : IAsyncDisposable
 
     private void OnHotkey(string name)
     {
-        if (name == "pause") SetPaused(!Settings.Paused);   // 8.2
+        // Hotkeys arrive on the hotkey thread; settings (and re-registering shortcuts) belong on the UI thread, or the
+        // hotkey thread would wait on itself (found by the audit).
+        if (name == "pause")
+        {
+            if (_ui is not null) _ui.Post(_ => SetPaused(!Settings.Paused), null);   // 8.2
+            else SetPaused(!Settings.Paused);
+        }
         else if (name == "undo")
         {
             _loop?.Post(e =>

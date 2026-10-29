@@ -37,8 +37,7 @@ public sealed class EngineLoop : IDisposable
     public void Replace(CorrectionEngine engine) => Post(_ =>
     {
         engine.Corrected += n => _hook.UndoArm.ArmAt(n.KeySeqAtWrite);
-        engine.SetTarget(_engine.Target);
-        engine.Paused = _engine.Paused;
+        engine.SetTarget(_engine.Target);   // the new engine's paused state comes from the settings it was built with
         _engine = engine;
     });
 

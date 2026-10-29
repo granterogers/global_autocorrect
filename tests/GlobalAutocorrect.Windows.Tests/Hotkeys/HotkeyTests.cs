@@ -3,6 +3,32 @@ using Xunit;
 
 namespace GlobalAutocorrect.Windows.Tests.Hotkeys;
 
+public sealed class HotkeyReentrancyTests
+{
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [Fact]
+    public void R10_3_e_RegisteringFromAPressedHandlerDoesNotDeadlock()
+    {
+        // The pause shortcut's handler re-registered shortcuts on the hotkey thread itself and hung it (found by the audit).
+        using var m = new HotkeyManager();
+        Assert.True(m.Register("outer", Hotkey.Parse("Ctrl+Alt+Shift+F22")));
+        using var handled = new ManualResetEventSlim();
+        m.Pressed += _ =>
+        {
+            m.Register("nested", Hotkey.Parse("Ctrl+Alt+Shift+F21"));   // runs on the hotkey thread
+            handled.Set();
+        };
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var hwnd = (IntPtr)typeof(HotkeyManager).GetField("_hwnd", flags)!.GetValue(m)!;
+        int id = ((Dictionary<string, int>)typeof(HotkeyManager).GetField("_idsByName", flags)!.GetValue(m)!)["outer"];
+        Assert.True(PostMessage(hwnd, 0x0312, id, IntPtr.Zero));   // a WM_HOTKEY as if the shortcut was pressed
+        Assert.True(handled.Wait(5000, TestContext.Current.CancellationToken), "the handler's Register call hung the hotkey thread");
+        Assert.True(m.Register("after", Hotkey.Parse("Ctrl+Alt+Shift+F20")), "the hotkey thread is no longer responsive");
+    }
+}
+
 public class HotkeyTests
 {
     [Theory]

@@ -86,6 +86,9 @@ public sealed class HotkeyManager : IDisposable
         {
             if (_disposed || !_thread.IsAlive) return fallback;
         }
+        // Called from a Pressed handler, i.e. already on the hotkey thread: run inline. Posting and waiting here
+        // would wait on ourselves forever (found by the audit).
+        if (Environment.CurrentManagedThreadId == _thread.ManagedThreadId) return func();
 
         var result = fallback;
         using var done = new ManualResetEventSlim(false);
