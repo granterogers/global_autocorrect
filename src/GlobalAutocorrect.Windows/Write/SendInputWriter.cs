@@ -17,16 +17,34 @@ public sealed class SendInputWriter(nuint tag)
 
     private static readonly int InputSize = Marshal.SizeOf<INPUT>();
 
+    /// <summary>Modifiers a user might still be holding when we write (Ctrl+Z, Ctrl+Alt+Z, Shift). Never Win: a lone Win
+    /// release opens the Start menu, and AI writes already wait while it is held.</summary>
+    private static readonly ushort[] Releasable = [VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU];
+
+    /// <summary>Physical key state; replaceable in tests.</summary>
+    public Func<int, bool> IsKeyDown { get; init; } = vk => IsDown(vk);
+
     /// <param name="caretDistance">Text elements between the end of the replaced range and the caret.</param>
     /// <param name="deleteCount">Text elements to remove (the original range).</param>
     public INPUT[] BuildEditBatch(int caretDistance, int deleteCount, string replacement)
     {
-        var list = new List<INPUT>(caretDistance * 4 + deleteCount * 2 + replacement.Length * 2);
+        var list = new List<INPUT>(caretDistance * 4 + deleteCount * 2 + replacement.Length * 2 + 12);
+        // Undo runs while the user still holds Ctrl (or Ctrl+Alt): release held modifiers for the batch, then press them
+        // again, or Left/Backspace/letters would arrive as Ctrl+Left, Ctrl+Backspace, AltGr+letter (found by the audit).
+        var held = Releasable.Where(vk => IsKeyDown(vk)).ToArray();
+        foreach (var vk in held) list.Add(Modifier(vk, up: true));
         for (int i = 0; i < caretDistance; i++) AddVk(list, VK_LEFT);
         for (int i = 0; i < deleteCount; i++) AddVk(list, VK_BACK);
         AddUnicode(list, replacement);
         for (int i = 0; i < caretDistance; i++) AddVk(list, VK_RIGHT);
+        foreach (var vk in held.Reverse()) list.Add(Modifier(vk, up: false));
         return [.. list];
+    }
+
+    private INPUT Modifier(ushort vk, bool up)
+    {
+        uint flags = (vk is VK_RCONTROL or VK_RMENU ? KEYEVENTF_EXTENDEDKEY : 0) | (up ? KEYEVENTF_KEYUP : 0);
+        return Key(vk, (ushort)MapVirtualKeyW(vk, MAPVK_VK_TO_VSC), flags);
     }
 
     public INPUT[] BuildTyping(string text)

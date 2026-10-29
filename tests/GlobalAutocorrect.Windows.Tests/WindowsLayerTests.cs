@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using GlobalAutocorrect.Windows.Input;
+using GlobalAutocorrect.Windows.Native;
 using GlobalAutocorrect.Windows.Overlay;
 using GlobalAutocorrect.Windows.Uia;
 using GlobalAutocorrect.Windows.Write;
@@ -37,6 +38,22 @@ public sealed class WindowsLayerTests
         Assert.Equal([VK_RIGHT, VK_RIGHT, VK_RIGHT], vks[^3..]);
         Assert.Equal(2, vks.Length - 8);   // two typed characters in between
         Assert.Equal(batch.Length, batch.Count(i => i.type == INPUT_KEYBOARD));
+    }
+
+    [Fact]
+    public void R4_8_a_HeldModifiersAreReleasedForTheBatchAndRestoredAfter_R4_8_b()
+    {
+        // The user still holds Ctrl+Alt from the global undo shortcut while our batch goes out.
+        var writer = new SendInputWriter(InjectionTag.Value) { IsKeyDown = vk => vk is VK_LCONTROL or VK_LMENU };
+        var batch = writer.BuildEditBatch(1, 1, "a");
+        bool Up(INPUT i) => (i.U.ki.dwFlags & KEYEVENTF_KEYUP) != 0;
+        Assert.Equal((VK_LCONTROL, true), (batch[0].U.ki.wVk, Up(batch[0])));
+        Assert.Equal((VK_LMENU, true), (batch[1].U.ki.wVk, Up(batch[1])));
+        Assert.Equal((VK_LMENU, false), (batch[^2].U.ki.wVk, Up(batch[^2])));
+        Assert.Equal((VK_LCONTROL, false), (batch[^1].U.ki.wVk, Up(batch[^1])));
+        // Nothing in between is sent while a modifier is down.
+        Assert.DoesNotContain(batch[2..^2], i => i.U.ki.wVk is VK_LCONTROL or VK_LMENU or VK_RCONTROL or VK_RMENU);
+        Assert.DoesNotContain(batch, i => i.U.ki.wVk is VK_LWIN or VK_RWIN);
     }
 
     [Fact]
