@@ -66,6 +66,13 @@ public sealed class WordDiffTests
     }
 
     [Fact]
+    public void R4_4_c_SpacesMovedAcrossSeveralWordsAreOneSpacingEdit()
+    {
+        var e = Assert.Single(Diff("move it to Wednesday ev eninginstead?", "move it to Wednesday evening instead?"));
+        Assert.Equal(EditKind.Spacing, e.Kind);
+    }
+
+    [Fact]
     public void R4_4_c_InsertsAndDeletesFunctionWords()
     {
         var ins = Assert.Single(Diff("I going home", "I am going home"));

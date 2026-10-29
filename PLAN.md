@@ -156,7 +156,23 @@ Model download URL form: `https://huggingface.co/<repo>/resolve/<commit>/<file>`
 - The about 4 GB "in use" before loading is the Windows desktop, WebView2 apps and an unrelated llama-server from another project. 7,043 MiB was free at load.
 - Most remaining misses are noise that deleted "the", leaving valid English ("Ring council about…"), and "Wi-fi" capitalised to "Wi-Fi". Tuning happens in M6 on the tuning set only.
 
-**Spike B (2.4.b):** _pending. The run waits for 2 minutes without keyboard/mouse use (2.8, D20)._
+**Spike B (2.4.b), 2026-10-29: PASS, 6/7 without desync.** Type `alpha bravo chralie delta echo` as the user (untagged SendInput), read the caret context with UIA, fix `chralie` → `charlie` with one tagged batch from 11 characters before the caret, then re-read and verify the text and the caret position (`artifacts/spikeB.json`; run 1 in `spikeB-run1.json`).
+
+| Target | Read via | Run 1 | Run 2 (after D22) |
+|---|---|---|---|
+| Notepad (Win11, 11.2607) | TextPattern2 caret range | desync: `alpha bravo  delta echoeeeeeee` | ✅ |
+| Word | TextPattern2 caret range | ✅ (Word auto-capitalised "Alpha"; adopted) | ✅ |
+| Outlook (classic) | — | ❌ harness couldn't focus the message body | ❌ same |
+| Edge textarea | TextPattern selection | ✅ | ✅ |
+| Edge contenteditable | TextPattern selection | ✅ | ✅ |
+| Edge ProseMirror | TextPattern selection | ✅ | ✅ |
+| Edge Lexical (production build, rich-text plugin) | TextPattern selection | ✅ | ✅ |
+
+- Run 1's Notepad desync led to D22: replacement text is typed as real key events. Notepad reorders a burst of Unicode packets.
+- Outlook is a harness limitation, not an observed desync. The compose body is Word's editor, which passes. It is listed as untested in the README.
+- Chromium exposed the caret through `TextPattern.GetSelection` (collapsed), not TextPattern2, which is the 10.6.a fallback path.
+
+**Both spikes pass. Versions in §4 are pinned for the build (2.4.c).**
 
 ---
 

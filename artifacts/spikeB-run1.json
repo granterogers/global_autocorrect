@@ -1,0 +1,79 @@
+[
+  {
+    "Target": "Notepad",
+    "Status": "Ok",
+    "Source": "TextPattern2",
+    "ControlType": "document",
+    "ReadBefore": "alpha bravo chralie delta echo",
+    "ReadAfterWrite": "alpha bravo  delta echoeeeeeee",
+    "Verified": false,
+    "Desync": true,
+    "Note": "text mismatch"
+  },
+  {
+    "Target": "Word",
+    "Status": "Ok",
+    "Source": "TextPattern2",
+    "ControlType": "document",
+    "ReadBefore": "Alpha bravo chralie delta echo",
+    "ReadAfterWrite": "Alpha bravo charlie delta echo",
+    "Verified": true,
+    "Desync": false,
+    "Note": ""
+  },
+  {
+    "Target": "Outlook",
+    "Status": "NoTextPattern",
+    "Source": "",
+    "ControlType": "button",
+    "ReadBefore": "",
+    "ReadAfterWrite": "",
+    "Verified": false,
+    "Desync": false,
+    "Note": "OUTLOOK"
+  },
+  {
+    "Target": "Edge textarea",
+    "Status": "Ok",
+    "Source": "Selection",
+    "ControlType": "edit",
+    "ReadBefore": "alpha bravo chralie delta echo",
+    "ReadAfterWrite": "alpha bravo charlie delta echo",
+    "Verified": true,
+    "Desync": false,
+    "Note": ""
+  },
+  {
+    "Target": "Edge contenteditable",
+    "Status": "Ok",
+    "Source": "Selection",
+    "ControlType": "group",
+    "ReadBefore": "alpha bravo chralie delta echo",
+    "ReadAfterWrite": "alpha bravo charlie delta echo",
+    "Verified": true,
+    "Desync": false,
+    "Note": ""
+  },
+  {
+    "Target": "Edge prosemirror",
+    "Status": "Ok",
+    "Source": "Selection",
+    "ControlType": "group",
+    "ReadBefore": "alpha bravo chralie delta echo",
+    "ReadAfterWrite": "alpha bravo charlie delta echo",
+    "Verified": true,
+    "Desync": false,
+    "Note": ""
+  },
+  {
+    "Target": "Edge lexical",
+    "Status": "Ok",
+    "Source": "Selection",
+    "ControlType": "group",
+    "ReadBefore": "alpha bravo chralie delta echo",
+    "ReadAfterWrite": "alpha bravo charlie delta echo",
+    "Verified": true,
+    "Desync": false,
+    "Note": ""
+  }
+]

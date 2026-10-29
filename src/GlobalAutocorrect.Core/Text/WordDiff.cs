@@ -48,6 +48,18 @@ public static class WordDiff
         {
             var aText = a[aFrom..aTo].Select(t => t.Text).ToArray();
             var bText = b[bFrom..bTo].Select(t => t.Text).ToArray();
+            // Same letters, only the spaces moved ("ev eninginstead" → "evening instead"): one spacing edit for the stretch.
+            if (aText.Length > 0 && bText.Length > 0 && aText.Length + bText.Length > 2
+                && string.Concat(aText.Select(Similarity.Key)) == string.Concat(bText.Select(Similarity.Key)))
+            {
+                var at = a[aFrom..aTo];
+                var bt = b[bFrom..bTo];
+                AddEdit(original, cleaned, oCur, at[^1].End, cCur, bt[^1].End, at, bt, at[0].Start, at[^1].End, edits);
+                oCur = at[^1].End;
+                cCur = bt[^1].End;
+                AddEdit(original, cleaned, oCur, oLimit, cCur, cLimit, [], [], oCur, oLimit, edits);
+                return;
+            }
             foreach (var u in SequenceAligner.Align(aText, bText, PairCost))
             {
                 var at = a.AsSpan(aFrom + u.AStart, u.ACount).ToArray();
@@ -90,7 +102,8 @@ public static class WordDiff
         if (nw.Length == 0) return EditKind.Deletion;
         if (string.Concat(ow.Select(Similarity.Key)) == string.Concat(nw.Select(Similarity.Key)))
         {
-            if (ow.Length != nw.Length) return EditKind.Spacing;
+            if (ow.Length != nw.Length || !ow.Zip(nw).All(p => Similarity.Key(p.First) == Similarity.Key(p.Second)))
+                return EditKind.Spacing;   // the letters stayed, the word boundaries moved
             return ow.Zip(nw).All(p => string.Equals(p.First, p.Second, StringComparison.OrdinalIgnoreCase))
                 ? EditKind.Capitalisation
                 : EditKind.Apostrophe;

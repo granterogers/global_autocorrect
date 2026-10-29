@@ -22,11 +22,13 @@ namespace GlobalAutocorrect.App;
 /// </summary>
 public sealed class AppHost : IAsyncDisposable
 {
-    public static string DataDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GlobalAutocorrect");
+    /// <summary>All user data (8.6). GA_DATA_DIR overrides it so E2E runs never touch the user's own settings or dictionary.</summary>
+    public static string DataDir { get; } = Environment.GetEnvironmentVariable("GA_DATA_DIR")
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GlobalAutocorrect");
     public static string CacheDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlobalAutocorrect", "cache");
     public static string AssetsDir { get; } = Path.Combine(AppContext.BaseDirectory, "assets");
 
-    private readonly SettingsStore _store = new(SettingsStore.DefaultPath);
+    private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
     private readonly Counters _counters = new();
     private readonly DailyCounts _daily = new(Path.Combine(DataDir, "counters.json"));
     private KeyboardHook? _hook;
@@ -40,7 +42,7 @@ public sealed class AppHost : IAsyncDisposable
     private ISuggester? _suggester;
 
     public AppSettings Settings { get; private set; } = new();
-    public PersonalDictionary Dictionary { get; } = new(PersonalDictionary.DefaultPath);
+    public PersonalDictionary Dictionary { get; } = new(Path.Combine(DataDir, "dictionary.txt"));
     public UiaTextTarget? Target { get; private set; }
     public bool Paused => Settings.Paused;
     public ServerState ModelState => _llm?.Host.State ?? ServerState.Stopped;
@@ -94,15 +96,30 @@ public sealed class AppHost : IAsyncDisposable
         RegisterShortcuts();
 
         _daily.Load();
-        _maintenance = new Timer(_ => _ = MaintainAsync(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
-        if (!Settings.Paused) _ = _llm.Host.StartAsync(CancellationToken.None).ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
+        // E2E reads desyncs from counters.json before checking text (11.3.d), so save it every second there.
+        var every = Environment.GetEnvironmentVariable("GA_E2E") == "1" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(5);
+        _maintenance = new Timer(_ => _ = MaintainAsync(), null, every, every);
+        bool mocked = Environment.GetEnvironmentVariable("GA_E2E_LLM_URL") is not null && Environment.GetEnvironmentVariable("GA_E2E") == "1";
+        if (!Settings.Paused && !mocked) _ = _llm.Host.StartAsync(CancellationToken.None).ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
         await Task.CompletedTask;
     }
+
+    /// <summary>
+    /// E2E only (11.1.d): with GA_E2E=1, GA_E2E_LLM_URL points the app at a mock model server on loopback instead of
+    /// starting llama-server. The client still refuses anything that isn't loopback (3.3).
+    /// </summary>
+    private ILlmClient? ModelClient()
+    {
+        string? mock = Environment.GetEnvironmentVariable("GA_E2E") == "1" ? Environment.GetEnvironmentVariable("GA_E2E_LLM_URL") : null;
+        return mock is null ? _llm : (_mockClient ??= new LlamaServerClient(new Uri(mock), PromptTemplate.Default));
+    }
+
+    private LlamaServerClient? _mockClient;
 
     private CorrectionEngine BuildEngine()
     {
         var engine = new CorrectionEngine(Settings.ToEngineOptions(new EngineOptions()), new EngineDeps(
-            SystemClock.Instance, _hook!, _speller!, _suggester!, _llm,
+            SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
             Dictionary.Contains, Dictionary.Add, _counters)) { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
         return engine;

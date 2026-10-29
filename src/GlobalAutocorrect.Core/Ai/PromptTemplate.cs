@@ -11,7 +11,7 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
     public static PromptTemplate Default { get; } = new(
         """
         You fix typing mistakes in short messages written in British English.
-        Fix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words.
+        Fix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Put back a small word (the, a, to, is) only when it was clearly dropped by mistake.
         Keep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Use British spelling (colour, organise, travelling).
         If the text has no mistakes, return it unchanged.
         Reply with the corrected text only: no quotes, no notes.
@@ -25,6 +25,10 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
             new("assistant", "Lovely to see you yesterday, let's do it again soon."),
             new("user", "we shoud organise a meeting nextweek to dicsuss the budjet and there plans"),
             new("assistant", "We should organise a meeting next week to discuss the budget and their plans"),
+            new("user", "can you leave report on my desk, its for meeting at 3"),
+            new("assistant", "Can you leave the report on my desk, it's for the meeting at 3"),
+            new("user", "Fancy a quick coffee before the train?"),
+            new("assistant", "Fancy a quick coffee before the train?"),
         ]);
 
     public IReadOnlyList<ChatTurn> BuildMessages(string text) =>
