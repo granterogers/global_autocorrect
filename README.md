@@ -55,7 +55,21 @@ A program that watches the keyboard and types for you can look like a keylogger 
 
 ## Measured accuracy and speed
 
-_Filled in from the holdout run at release (6.6)._
+Measured on 200 test messages that were never used for tuning. These are everyday UK English messages with realistic typing slips added, plus hand-mangled ones. The whole pipeline was scored: instant fixes, the AI and the safety rules together. Measured 29 October 2026 with Gemma 4 E4B on the RTX PRO 2000 (full report: `docs/metrics/holdout-2026-10-29.md`).
+
+| | Result | Target |
+|---|---|---|
+| Mistakes fixed | **92.3%** | 95% ❌ (not met) |
+| Correct words wrongly changed | **0.19%** (about 1 in 500) | under 1% ✅ |
+| Messages left exactly as intended | 84% | — |
+| Time for an AI clean-up | 344 ms typical, 507 ms slowest 5% | under 2 s ✅ |
+
+**Where it falls short.** Light slips and heavily mangled messages are fixed 95% of the time. Messages with many different slips are fixed 86% of the time. Most misses are:
+- a dropped small word the model won't guess ("ask council" instead of "ask the council");
+- a slip that turns one real word into another;
+- run-together words next to a capitalised name.
+
+It prefers leaving a mistake to changing something you meant. That's why wrong changes are so rare.
 
 ## Apps tested
 
