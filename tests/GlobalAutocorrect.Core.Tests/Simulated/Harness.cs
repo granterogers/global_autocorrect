@@ -32,6 +32,7 @@ public sealed class FakeSuggester(Dictionary<string, SpellSuggestion[]> table) :
         ["smiht"] = [new("smith", 2, 40_000)],
         ["wnet"] = [new("went", 1, 300_000), new("wet", 1, 300_000)],   // a swap beats a dropped letter: obvious
         ["bst"] = [new("bat", 1, 1_000), new("bet", 1, 1_000)],        // a/e are both next to s: a genuine tie (4.3.d)
+        ["andwich"] = [new("sandwich", 1, 900)],                         // only reachable by adding a letter
         ["ofr"] = [new("of", 1, 505_000), new("for", 1, 239_000)],     // close once slip likelihood is counted: needs context
         ["ifyou"] = [new("you", 2, 900_000), new("ifs", 2, 900)],       // a missing space, not two typos
     });

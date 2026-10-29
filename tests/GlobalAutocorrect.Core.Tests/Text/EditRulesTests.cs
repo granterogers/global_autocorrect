@@ -92,7 +92,7 @@ public sealed class EditRulesTests
     [Fact]
     public void R4_5_e_SettingsAreConfigurable()
     {
-        var strict = new EditRuleSettings { MaxNormalisedDistance = 0.2, MaxChangedWordRatio = 0.9 };
+        var strict = new EditRuleSettings { MaxNormalisedDistance = 0.2, MaxChangedWordRatio = 0.9, AcceptLikelyKeyboardSlips = false };
         Assert.Empty(Run("teh cat", "the cat", strict).Accepted);           // 0.33 > 0.2
         Assert.Single(Run("teh cat", "the cat").Accepted);
         var tight = new EditRuleSettings { MaxChangedWordRatio = 0.1 };
@@ -154,6 +154,14 @@ public sealed class EditRulesTests
         Assert.Equal(a, Apply(a, Run(a, "book a taxi to the station at 7 today")));   // "for" → "at" hidden in a split
         const string b = "the policy isno the intranet";
         Assert.Equal("the policy is on the intranet", Apply(b, Run(b, "the policy is on the intranet")));
+    }
+
+    [Fact]
+    public void R4_5_a_OneLikelyKeyboardSlipIsAcceptedEvenInAOneLetterWord()
+    {
+        const string a = "book q taxi";
+        Assert.Equal("book a taxi", Apply(a, Run(a, "book a taxi")));       // q and a are neighbouring keys
+        Assert.Equal(a, Apply(a, Run(a, "book I taxi")));                   // q and I are not
     }
 
     [Fact]

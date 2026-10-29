@@ -90,6 +90,14 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_3_d_HalfOfASplitWordIsLeftForTheAi()
+    {
+        var h = new Harness();
+        h.Type("a half eaten s andwich ");   // "s" + "andwich" is "sandwich": a misplaced space
+        Assert.Equal("a half eaten s andwich ", h.Text);
+    }
+
+    [Fact]
     public void R4_4_c_KeepsTheSpaceTheUserJustTyped()
     {
         // The model trims its reply; the space after the full stop must survive so the next word isn't glued on.

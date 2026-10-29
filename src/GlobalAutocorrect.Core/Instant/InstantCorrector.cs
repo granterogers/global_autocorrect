@@ -18,9 +18,11 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
     /// </summary>
     public double Distance1ScoreRatio { get; init; } = 4;
 
+    /// <param name="previousWord">The word just before, if only a space separates them: "s andwich" is a misplaced space.</param>
     /// <returns>The replacement word, or null to leave the word alone.</returns>
-    public string? TryCorrect(string word, bool isSentenceStart)
+    public string? TryCorrect(string word, bool isSentenceStart, string? previousWord = null)
     {
+        if (previousWord is not null && speller.IsValid(previousWord + word)) return null;   // D27: leave the space to the AI
         // 4.3.c, in order: valid, personal, capitalised mid-sentence, digits, URL/email/code-like.
         if (word.Length < 2) return null;
         if (speller.IsValid(word)) return null;

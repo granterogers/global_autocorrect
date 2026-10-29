@@ -77,7 +77,7 @@ public sealed class CorrectionEngine
 
         if (effect.Word is { } fw && _o.InstantEnabled)
         {
-            string? fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart);   // 4.3
+            string? fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord);   // 4.3
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq));
@@ -99,6 +99,18 @@ public sealed class CorrectionEngine
             if (rerun || _ai.PauseDue(Session)) _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a pause
         }
         _gate.TryWrite(Target);
+    }
+
+    /// <summary>
+    /// Types an accepted suggestion at the caret (7.4) as our own tagged input, and adds it to the typed buffer so the
+    /// session stays in step with the field.
+    /// </summary>
+    public bool InsertAtCaret(string text)
+    {
+        if (Target is null || text.Length == 0) return false;
+        if (!Target.ApplyEdit(0, 0, text)) return false;
+        Session.ApplyOwnEdit(Session.Length, Session.Length, text);
+        return true;
     }
 
     /// <summary>

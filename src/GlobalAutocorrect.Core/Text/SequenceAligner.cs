@@ -6,7 +6,7 @@ public readonly record struct AlignedUnit(int AStart, int ACount, int BStart, in
 /// <summary>Needleman–Wunsch alignment with merge and split moves, used for word-level diffs and scoring.</summary>
 public static class SequenceAligner
 {
-    private const byte Diag = 1, Del = 2, Ins = 3, Merge = 4, Split = 5;
+    private const byte Diag = 1, Del = 2, Ins = 3, Merge = 4, Split = 5, Merge3 = 6, Split3 = 7;
 
     public static IReadOnlyList<AlignedUnit> Align(
         IReadOnlyList<string> a, IReadOnlyList<string> b, Func<string, string, double> pairCost,
@@ -38,6 +38,17 @@ public static class SequenceAligner
                     v = d[i - 1, j - 2] + pairCost(a[i - 1], b[j - 2] + b[j - 1]) + mergePenalty;
                     if (v < best) { best = v; op = Split; }
                 }
+                // Three words run together ("meknowif" → "me know if") or split across two spaces.
+                if (i >= 3)
+                {
+                    v = d[i - 3, j - 1] + pairCost(a[i - 3] + a[i - 2] + a[i - 1], b[j - 1]) + 2 * mergePenalty;
+                    if (v < best) { best = v; op = Merge3; }
+                }
+                if (j >= 3)
+                {
+                    v = d[i - 1, j - 3] + pairCost(a[i - 1], b[j - 3] + b[j - 2] + b[j - 1]) + 2 * mergePenalty;
+                    if (v < best) { best = v; op = Split3; }
+                }
                 d[i, j] = best;
                 back[i, j] = op;
             }
@@ -54,6 +65,8 @@ public static class SequenceAligner
                 case Ins: units.Add(new(x, 0, y - 1, 1)); y--; break;
                 case Merge: units.Add(new(x - 2, 2, y - 1, 1)); x -= 2; y--; break;
                 case Split: units.Add(new(x - 1, 1, y - 2, 2)); x--; y -= 2; break;
+                case Merge3: units.Add(new(x - 3, 3, y - 1, 1)); x -= 3; y--; break;
+                case Split3: units.Add(new(x - 1, 1, y - 3, 3)); x--; y -= 3; break;
                 default: throw new InvalidOperationException("alignment backtrack failed");
             }
         }

@@ -16,6 +16,9 @@ public sealed record EditRuleSettings
     /// <summary>4.5.d: reject the whole correction when more than this share of words would change.</summary>
     public double MaxChangedWordRatio { get; init; } = 0.5;
 
+    /// <summary>D27: accept one likely keyboard slip even when it fails the distance threshold (short words).</summary>
+    public bool AcceptLikelyKeyboardSlips { get; init; } = true;
+
     /// <summary>4.5.b: words that may be inserted or deleted on their own.</summary>
     public IReadOnlyList<string> FunctionWords { get; init; } = DefaultFunctionWords;
 }

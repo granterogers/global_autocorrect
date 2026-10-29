@@ -116,7 +116,12 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
     {
         string a = string.Concat(e.OriginalWords.Select(Similarity.Key));
         string b = string.Concat(e.NewWords.Select(Similarity.Key));
-        if (Similarity.NormDist(a, b) > settings.MaxNormalisedDistance) return RejectReason.TooDissimilar;
+        // D27: one likely keyboard slip (neighbouring key, doubled key, swap) is a typo however short the word is:
+        // "q" → "a" is distance 1.0 normalised but the most typical slip there is.
+        bool oneLikelySlip = settings.AcceptLikelyKeyboardSlips
+                             && e.OriginalWords.Count == e.NewWords.Count && Similarity.DamerauLevenshtein(a, b) == 1
+                             && Instant.TypoChannel.Likelihood(a, b) >= Instant.TypoChannel.ExtraNeighbour;
+        if (!oneLikelySlip && Similarity.NormDist(a, b) > settings.MaxNormalisedDistance) return RejectReason.TooDissimilar;
         // When words are split or merged, the letters must be almost the same; otherwise a long run-together word
         // dilutes the distance and hides a word swap ("stationfor" → "station at").
         if (e.OriginalWords.Count != e.NewWords.Count && Similarity.DamerauLevenshtein(a, b) > 1) return RejectReason.TooDissimilar;

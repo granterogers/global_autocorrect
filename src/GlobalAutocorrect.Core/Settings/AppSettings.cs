@@ -38,6 +38,7 @@ public sealed record AppSettings
                 Boldness.Bold => Math.Max(tuned.Rules.MaxNormalisedDistance, 0.6),
                 _ => tuned.Rules.MaxNormalisedDistance,
             },
+            AcceptLikelyKeyboardSlips = Boldness != Boldness.Cautious && tuned.Rules.AcceptLikelyKeyboardSlips,
         },
     };
 }

@@ -97,6 +97,32 @@ public sealed class UiaReader
         }
     }
 
+    /// <summary>
+    /// Screen rectangle (physical pixels) of the text that ends <paramref name="caretDistance"/> characters before the
+    /// caret and is <paramref name="length"/> long: where a correction just landed (4.7). Null if it can't be measured.
+    /// </summary>
+    public (double X, double Y, double W, double H)? RangeRect(int caretDistance, int length)
+    {
+        try
+        {
+            var el = _uia.GetFocusedElement();
+            if (el is null) return null;
+            IUIAutomationTextRange? caret = (el.GetCurrentPattern(TextPattern2Id) as IUIAutomationTextPattern2)?.GetCaretRange(out _);
+            if (caret is null && el.GetCurrentPattern(TextPatternId) is IUIAutomationTextPattern tp && tp.GetSelection() is { Length: 1 } sel)
+                caret = sel.GetElement(0);
+            if (caret is null) return null;
+            var r = caret.Clone();
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -(caretDistance + length));
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, TextUnit.TextUnit_Character, -caretDistance);
+            var rects = (double[]?)r.GetBoundingRectangles();
+            if (rects is not { Length: >= 4 }) return null;
+            // A word can wrap: use the last line's rectangle (where the user is looking).
+            int last = rects.Length - 4;
+            return (rects[last], rects[last + 1], rects[last + 2], rects[last + 3]);
+        }
+        catch (COMException) { return null; }
+    }
+
     /// <summary>Touches the focused element's text pattern so Chromium/Electron turn on full accessibility (10.6.d).</summary>
     public void Warm()
     {

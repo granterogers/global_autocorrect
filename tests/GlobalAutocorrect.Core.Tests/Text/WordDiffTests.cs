@@ -59,6 +59,13 @@ public sealed class WordDiffTests
         Assert.Equal(kind, Assert.Single(Diff(a, b)).Kind);
 
     [Fact]
+    public void R4_4_c_ThreeRunTogetherWordsAreOneSpacingEdit()
+    {
+        var e = Assert.Single(Diff("let meknowif it works", "let me know if it works"));
+        Assert.Equal(EditKind.Spacing, e.Kind);
+    }
+
+    [Fact]
     public void R4_4_c_InsertsAndDeletesFunctionWords()
     {
         var ins = Assert.Single(Diff("I going home", "I am going home"));

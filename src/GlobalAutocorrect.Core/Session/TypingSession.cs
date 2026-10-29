@@ -5,7 +5,7 @@ using GlobalAutocorrect.Core.Text;
 namespace GlobalAutocorrect.Core.Session;
 
 /// <summary>A word the user has just finished: [Start, End) in typed-buffer coordinates.</summary>
-public readonly record struct FinishedWord(int Start, int End, string Word, bool IsSentenceStart);
+public readonly record struct FinishedWord(int Start, int End, string Word, bool IsSentenceStart, string? PreviousWord = null);
 
 public readonly record struct KeyEffect(FinishedWord? Word, bool SentenceEnded);
 
@@ -111,7 +111,7 @@ public sealed class TypingSession
             if (wordTokens.Length == 1 && !wordTokens[0].IsProtected)
             {
                 var w = wordTokens[0];
-                word = new FinishedWord(start + w.Start, start + w.End, w.Text, IsSentenceStart(start + w.Start));
+                word = new FinishedWord(start + w.Start, start + w.End, w.Text, IsSentenceStart(start + w.Start), PreviousPlainWord(start));
             }
         }
         bool sentenceEnded = char.IsWhiteSpace(c) && EndsSentence;
@@ -128,6 +128,16 @@ public sealed class TypingSession
         while (i >= 0 && (char.IsWhiteSpace(_typed[i]) || _typed[i] is '"' or '\'' or '(')) i--;
         if (i < 0) return false;
         return _typed[i] is '.' or '!' or '?' or '\n';
+    }
+
+    /// <summary>The plain word directly before <paramref name="chunkStart"/>, if exactly one space separates them.</summary>
+    private string? PreviousPlainWord(int chunkStart)
+    {
+        if (chunkStart < 2 || _typed[chunkStart - 1] != ' ' || char.IsWhiteSpace(_typed[chunkStart - 2])) return null;
+        int s = chunkStart - 1;
+        while (s > 0 && !char.IsWhiteSpace(_typed[s - 1])) s--;
+        string prev = _typed.ToString(s, chunkStart - 1 - s);
+        return Tokeniser.Tokenise(prev) is [{ IsWord: true, IsProtected: false } t] && t.Length == prev.Length ? prev : null;
     }
 
     private static bool IsWordEnd(char c) => char.IsWhiteSpace(c) || c is ',' or ';' or '!' or '?' or ')' or '"';
