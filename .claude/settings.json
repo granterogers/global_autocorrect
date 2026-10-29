@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet *)",
+      "Bash(pwsh *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "PowerShell(dotnet *)",
+      "PowerShell(pwsh *)",
+      "PowerShell(git *)",
+      "PowerShell(node *)"
+    ]
+  }
+}

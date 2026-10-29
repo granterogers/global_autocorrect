@@ -1,0 +1,32 @@
+# Decisions and assumptions
+
+Each entry: requirement ID, the decision, and why. The brief (`BRIEF.md`) wins over anything here; these only fill gaps or resolve tensions within it (2.2.b, 2.3.e).
+
+## Process
+
+- **D1 (13.3, user hook).** The user's global push hook tags `v1.0.0` on a repo's first push, which 13.3 forbids. With the user's approval (2026-10-29) a one-off annotated baseline tag `v0.1.0` was pushed with the first commit. The hook only bumps the minor version, so every later push is `v0.N.0` and `v1.0.0` is never created automatically. Push with a plain `git push`: the hook reads the first word after `push` as the remote name, so `git push -u ...` silently produces no tag.
+- **D2 (2.12, Learning output style).** The session's output style asks for human-written code contributions. The brief requires unattended work (2.1, 2.3.e), so no "Learn by Doing" pauses are used for this project. Explanations are still given in chat.
+- **D3 (11.1, 3.6).** `check.ps1` targets PowerShell 7 (`pwsh`), installed 2026-10-29 (7.6.9).
+- **D4 (11.4, disk).** Only 12.5 GB is free on C:. Model, llama.cpp and corpus downloads go to `%LOCALAPPDATA%\GlobalAutocorrect\cache`. Spike A keeps at most two GGUFs at once (the best so far plus the one being measured) and deletes the loser.
+
+## Text access and timing
+
+- **D5 (4.2).** "Only the user's own typing" is enforced by a *typed buffer*: the characters produced by physical keystrokes since the last break, translated with `ToUnicodeEx` on the UK layout. A correction may only touch characters inside the typed buffer, and only if the field's text before the caret still ends with that buffer. Any mismatch (paste, dictation, text expander, host-app autocorrect, click elsewhere) is a session break. Injected events that are not ours (`LLKHF_INJECTED` without our tag) and physical Ctrl+V / Shift+Insert are also breaks.
+- **D6 (4.6.c, 4.3.a).** Writes are key-relative: a batch moves Left from the caret, deletes, types and moves back. Windows guarantees a `SendInput` batch is not interleaved with user input, and anything typed after the batch is queued behind it. So the hazard is only keys that arrive between our snapshot and our `SendInput` call. That is checked with a key sequence number from the hook, just before sending.
+  - AI writes: also wait for a 150 ms keystroke gap (4.6.c) and require the snapshot text to be a prefix of the current text before the caret, with any extra characters coming from keystrokes recorded since the snapshot. Strict "text unchanged" would discard almost every AI fix for someone who keeps typing, which defeats 0.2. The edit position is rebased by the appended length.
+  - Instant writes (4.3): the decision is made within 100 ms of the word-ending key. If no key has arrived since that key, the write goes out at once. Otherwise it is retried at the next 150 ms gap, using the same key-relative offsets.
+- **D7 (4.6.a).** "Never touch the word being typed or the word before it" applies to the AI layer. The instant layer's job (4.3.a) is to fix the word just finished, so it is the explicit exception. It still never touches the word currently being typed.
+- **D8 (10.7.a).** Edits never cross a line break. The AI context (4.4.b) is taken from the current paragraph only, because caret movement over line breaks differs between editors (CRLF vs LF, soft wraps). Left/Right counts use text elements (grapheme clusters), not UTF-16 units.
+- **D9 (4.8.b).** "Reverts the most recent correction from anywhere" means anywhere in the field that holds the correction, wherever the caret is. If a different field or window has focus, the shortcut does nothing and the tray shows a short notice. The app never moves focus by itself.
+- **D10 (4.8, 14.5).** Only the single most recent correction is held in memory, for undo. Nothing is written to disk, and there is no list.
+- **D11 (10.6, 10.3.b).** UI Automation uses raw COM (`Interop.UIAutomationClient`) on a dedicated STA thread with `IUIAutomation2` connection and transaction timeouts of 250 ms. If a call hangs past 500 ms, the thread is abandoned and replaced, and that window is skipped for 30 s.
+
+## Model and data
+
+- **D12 (5.3, 2.3.d).** llama.cpp is pinned to build `b11960`, the build that the stable `v0.8.0` release points to, not the newest nightly. GGUFs come from `unsloth/*-GGUF`, pinned by repository commit: they're the most downloaded, smallest at each quantisation, and Apache-2.0.
+- **D13 (5.4, 12.8).** Thinking is disabled two ways: the `--reasoning-budget 0` server flag, and `chat_template_kwargs: {enable_thinking: false}` in each request.
+- **D14 (7.2, 1.5).** Corpus: Leipzig Corpora Collection `eng-uk_web-public_2018_1M` (UK web text, CC BY). It provides both the SymSpell word frequencies and the prediction n-grams. Every word is filtered through Hunspell en_GB-ise, so American spellings never appear as suggestions or correction targets (3.4).
+- **D15 (7.3).** The user's typing history is stored as unigram word counts only. Pair counts could partly reconstruct sentences, so they are not kept.
+- **D16 (3.4, 4.5).** Mechanism for "never Americanise": an AI substitution is rejected if the new word is not valid in Hunspell en_GB-ise or the personal dictionary, unless it is a capitalised proper noun at least as similar as 4.5.a requires. This is a rule on the mechanism, not a word list (2.10).
+- **D17 (6.1).** Each eval message is short (one to three sentences), so a message fits the AI context window of 4.4.b. Split: 450 messages (400 synthetic-noise plus 50 hand-garbled) into 250 tuning and 200 holdout, by a fixed seeded shuffle.
+- **D18 (2.4.a).** Spike A scores the raw model output (no edit rules) against the clean text. That is stricter than the shipped pipeline, so a pass is a safe signal. If a model fails narrowly, the result with edit rules is reported too.
