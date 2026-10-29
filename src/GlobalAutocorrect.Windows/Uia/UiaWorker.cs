@@ -23,8 +23,13 @@ public sealed class UiaWorker : IDisposable
         _thread = StartThread(_jobs);
     }
 
+    /// <summary>After a hang, give the app a moment before asking again, so a stuck app can't cost a thread per key.</summary>
+    public int CooldownMs { get; init; } = 3000;
+    private long _cooldownUntil;
+
     public T? Invoke<T>(Func<UiaReader, T> work, T? onTimeout = default)
     {
+        if (Environment.TickCount64 < Interlocked.Read(ref _cooldownUntil)) return onTimeout;
         var job = new Job(r => work(r), new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously));
         BlockingCollection<Job> queue;
         lock (this)
@@ -32,8 +37,13 @@ public sealed class UiaWorker : IDisposable
             if (_disposed) return onTimeout;
             queue = _jobs;
         }
-        queue.Add(job);
-        if (job.Done.Task.Wait(_timeoutMs)) return job.Done.Task.Result is T t ? t : onTimeout;
+        // The queue may be retired by another caller's timeout at this very moment: then just report "can't read".
+        try { if (!queue.TryAdd(job)) return onTimeout; }
+        catch (InvalidOperationException) { return onTimeout; }
+
+        var task = job.Done.Task;
+        if (((IAsyncResult)task).AsyncWaitHandle.WaitOne(_timeoutMs))
+            return task.IsCompletedSuccessfully && task.Result is T t ? t : onTimeout;   // a faulted read is "can't read", not a crash
 
         // Timed out: leave the stuck thread behind (it is a background thread) and start a new one.
         lock (this)
@@ -44,6 +54,7 @@ public sealed class UiaWorker : IDisposable
                 _jobs = new BlockingCollection<Job>();
                 _thread = StartThread(_jobs);
                 Replacements++;
+                Interlocked.Exchange(ref _cooldownUntil, Environment.TickCount64 + CooldownMs);
             }
         }
         return onTimeout;

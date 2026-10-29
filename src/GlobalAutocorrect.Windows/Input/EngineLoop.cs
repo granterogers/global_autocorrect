@@ -47,17 +47,38 @@ public sealed class EngineLoop : IDisposable
         _wake.Set();
     }
 
+    /// <summary>Steps that threw and were skipped. Counts only; the loop itself never dies (10.3.b).</summary>
+    public int Errors { get; private set; }
+
+    /// <summary>A focus change or other non-key input, fed in from another thread.</summary>
+    public void Feed(KeyInput k) => Post(e =>
+    {
+        e.OnInput(k);
+        KeyProcessed?.Invoke(k);
+    });
+
     private void Run()
     {
         var reader = _hook.Events;
+        Task<bool>? waitInput = null;
         while (!_stop)
         {
-            while (reader.TryRead(out var e)) Handle(e);
-            while (_posted.TryDequeue(out var work)) work(_engine);
-            _engine.Tick();
-            // Wake as soon as input arrives, or at the next tick.
-            var waitInput = reader.WaitToReadAsync().AsTask();
+            while (reader.TryRead(out var e)) Guard(() => Handle(e));
+            while (_posted.TryDequeue(out var work)) Guard(() => work(_engine));
+            Guard(_engine.Tick);
+            // Wake as soon as input arrives, or at the next tick. One pending wait is reused until it completes.
+            if (waitInput is null || waitInput.IsCompleted) waitInput = reader.WaitToReadAsync().AsTask();
             WaitHandle.WaitAny([((IAsyncResult)waitInput).AsyncWaitHandle, _wake], 25);
+        }
+    }
+
+    /// <summary>One bad event (a hung or odd app, a race) must never take the whole app and its keyboard hook down.</summary>
+    private void Guard(Action step)
+    {
+        try { step(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Errors++;
         }
     }
 
@@ -73,7 +94,9 @@ public sealed class EngineLoop : IDisposable
                 }
                 break;
             case RawKind.MouseDown:
-                _engine.OnInput(new KeyInput(KeyKind.Click, '\0', e.Seq, e.AtMs));
+                var click = new KeyInput(KeyKind.Click, '\0', e.Seq, e.AtMs);
+                _engine.OnInput(click);
+                KeyProcessed?.Invoke(click);   // e.g. the suggestion overlay hides on a click (7.5)
                 break;
             case RawKind.UndoLocal:
                 _engine.Undo(global: false);

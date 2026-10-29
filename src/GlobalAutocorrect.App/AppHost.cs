@@ -107,7 +107,7 @@ public sealed class AppHost : IAsyncDisposable
         _loop.Start();
 
         _focus = new FocusTracker(_uia);
-        _focus.FocusChanged += _ => _loop.Post(e => e.OnInput(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs)));
+        _focus.FocusChanged += _ => _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));
 
         _hotkeys = new HotkeyManager();
         _hotkeys.Pressed += OnHotkey;

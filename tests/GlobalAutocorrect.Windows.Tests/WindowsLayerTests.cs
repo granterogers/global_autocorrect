@@ -148,7 +148,7 @@ public sealed class WindowsLayerTests
     [Fact]
     public void R10_3_b_AHungUiaCallIsAbandonedAndTheWorkerReplaced()
     {
-        using var worker = new UiaWorker(timeoutMs: 300);
+        using var worker = new UiaWorker(timeoutMs: 300) { CooldownMs = 0 };
         var sw = Stopwatch.StartNew();
         int r = worker.Invoke(_ => { Thread.Sleep(10_000); return 1; }, onTimeout: -1);
         sw.Stop();
@@ -156,6 +156,27 @@ public sealed class WindowsLayerTests
         Assert.True(sw.ElapsedMilliseconds < 2000, $"took {sw.ElapsedMilliseconds} ms");
         Assert.Equal(1, worker.Replacements);
         Assert.Equal(2, worker.Invoke(_ => 2, onTimeout: -1));   // the fresh thread works
+    }
+
+    [Fact]
+    public void R10_3_b_AReadThatThrowsIsCantReadNotACrash()
+    {
+        // UIA timeouts arrive as TimeoutException, access denied as UnauthorizedAccessException: neither may escape.
+        using var worker = new UiaWorker(timeoutMs: 1000);
+        Assert.Equal(-1, worker.Invoke<int>(_ => throw new TimeoutException(), onTimeout: -1));
+        Assert.Equal(-1, worker.Invoke<int>(_ => throw new UnauthorizedAccessException(), onTimeout: -1));
+        Assert.Equal(5, worker.Invoke(_ => 5, onTimeout: -1));   // and the worker carries on
+    }
+
+    [Fact]
+    public void R10_3_b_AfterAHangItBacksOffInsteadOfLeakingAThreadPerKey()
+    {
+        using var worker = new UiaWorker(timeoutMs: 200) { CooldownMs = 2000 };
+        worker.Invoke(_ => { Thread.Sleep(5000); return 1; }, onTimeout: -1);
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < 20; i++) Assert.Equal(-1, worker.Invoke(_ => 1, onTimeout: -1));
+        Assert.True(sw.ElapsedMilliseconds < 500, "calls during the cool-down must return at once");
+        Assert.Equal(1, worker.Replacements);
     }
 
     // ---- Hook and arms (10.3.a, 7.4, 4.8.a) ---------------------------------------------------------------

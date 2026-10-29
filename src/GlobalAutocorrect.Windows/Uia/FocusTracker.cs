@@ -58,6 +58,7 @@ public sealed class FocusTracker : IDisposable
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try { _worker.Invoke(r => { r.Warm(); return true; }); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }   // a warm-up failure must never crash the app
                 finally { Volatile.Write(ref _warming, 0); }
             });
         }

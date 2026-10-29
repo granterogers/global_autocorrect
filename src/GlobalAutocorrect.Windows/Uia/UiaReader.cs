@@ -46,7 +46,7 @@ public sealed class UiaReader
     {
         IUIAutomationElement? el;
         try { el = _uia.GetFocusedElement(); }
-        catch (COMException) { return UiaSnapshot.Fail(ReadStatus.NoFocus); }
+        catch (Exception e) when (IsUiaFailure(e)) { return UiaSnapshot.Fail(ReadStatus.NoFocus); }
         if (el is null) return UiaSnapshot.Fail(ReadStatus.NoFocus);
 
         int pid = 0;
@@ -91,7 +91,7 @@ public sealed class UiaReader
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
             return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret));
         }
-        catch (COMException)
+        catch (Exception e) when (IsUiaFailure(e))
         {
             return UiaSnapshot.Fail(ReadStatus.Failed, pid, proc, type);
         }
@@ -120,17 +120,24 @@ public sealed class UiaReader
             int last = rects.Length - 4;
             return (rects[last], rects[last + 1], rects[last + 2], rects[last + 3]);
         }
-        catch (COMException) { return null; }
+        catch (Exception e) when (IsUiaFailure(e)) { return null; }
     }
 
     /// <summary>Touches the focused element's text pattern so Chromium/Electron turn on full accessibility (10.6.d).</summary>
     public void Warm()
     {
         try { _ = _uia.GetFocusedElement()?.GetCurrentPattern(TextPatternId); }
-        catch (COMException) { }
+        catch (Exception e) when (IsUiaFailure(e)) { }
     }
 
     public IUIAutomation2 Automation => _uia;
+
+    /// <summary>
+    /// What a target app can throw at us through UIA: COM errors, UIA timeouts (TimeoutException), access denied,
+    /// an element or process that just went away. All mean "can't read here", never "crash" (10.3.b).
+    /// </summary>
+    private static bool IsUiaFailure(Exception e) => e is COMException or TimeoutException or UnauthorizedAccessException
+        or InvalidOperationException or ArgumentException or InvalidCastException or NullReferenceException;
 
     private static (double, double, double, double)? CaretRect(IUIAutomationTextRange caret)
     {
@@ -143,12 +150,12 @@ public sealed class UiaReader
             rects = (double[]?)one.GetBoundingRectangles();
             return rects is { Length: >= 4 } ? (rects[0] + rects[2], rects[1], 0, rects[3]) : null;
         }
-        catch (COMException) { return null; }
+        catch (Exception e) when (IsUiaFailure(e)) { return null; }
     }
 
     private static string ProcessName(int pid)
     {
         try { using var p = Process.GetProcessById(pid); return p.ProcessName; }
-        catch (ArgumentException) { return ""; }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { return ""; }
     }
 }
