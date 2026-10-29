@@ -282,7 +282,7 @@ public class SettingsViewModelTests
             Assert.True(vm.HasMetrics);
             Assert.False(vm.HasNoMetrics);
             Assert.Equal("95.2%", vm.Metrics!.ErrorsFixed);
-            Assert.Equal("0.4%", vm.Metrics.FalseEdits);
+            Assert.Equal("0.40%", vm.Metrics.FalseEdits);   // below 1%: two decimals
             Assert.Equal("346 ms", vm.Metrics.TypicalTime);
             Assert.Equal("Gemma 4 E4B (recommended)", vm.Metrics.Model);
             Assert.Equal("29 October 2026", vm.Metrics.Date);

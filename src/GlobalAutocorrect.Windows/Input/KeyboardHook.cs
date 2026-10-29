@@ -140,11 +140,21 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
                 return 1;
             }
         }
+        // A modifier on its own changes no text and moves no caret. It must not count as "something happened", or
+        // the Ctrl in Ctrl+Z would always cancel the undo arm before the Z arrives (found by E2E, 4.8.a).
+        if (IsModifier(k.vkCode))
+        {
+            _channel.Writer.TryWrite(new RawInput(RawKind.Key, k.vkCode, k.scanCode, k.flags, true, injected, Interlocked.Read(ref _seq), at));
+            return CallNextHookEx(_kb, nCode, wParam, lParam);
+        }
         SuggestionArm.Disarm();
         UndoArm.Disarm();
         Enqueue(RawKind.Key, k, true, injected, at);
         return CallNextHookEx(_kb, nCode, wParam, lParam);
     }
+
+    public static bool IsModifier(uint vk) => vk is VK_SHIFT or VK_CONTROL or VK_MENU or VK_LSHIFT or VK_RSHIFT
+        or VK_LCONTROL or VK_RCONTROL or VK_LMENU or VK_RMENU or VK_LWIN or VK_RWIN;
 
     private nint MouseProc(int nCode, nint wParam, nint lParam)
     {

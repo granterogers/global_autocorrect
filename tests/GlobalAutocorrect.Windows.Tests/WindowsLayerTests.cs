@@ -169,6 +169,16 @@ public sealed class WindowsLayerTests
     }
 
     [Fact]
+    public void R4_8_a_ModifiersDoNotCountAsAKeyInBetween()
+    {
+        // Ctrl must not cancel the undo arm before the Z of Ctrl+Z arrives.
+        foreach (ushort vk in new ushort[] { VK_CONTROL, VK_LCONTROL, VK_RCONTROL, VK_SHIFT, VK_LSHIFT, VK_MENU, VK_LWIN })
+            Assert.True(KeyboardHook.IsModifier(vk));
+        foreach (uint vk in new uint[] { 'Z', 'A', VK_TAB, VK_BACK, VK_LEFT })
+            Assert.False(KeyboardHook.IsModifier(vk));
+    }
+
+    [Fact]
     public void R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey_R4_8_a()
     {
         var arm = new InputArm();
