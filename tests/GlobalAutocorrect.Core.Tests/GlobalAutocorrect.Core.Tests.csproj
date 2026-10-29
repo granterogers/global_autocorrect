@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GlobalAutocorrect.Core\GlobalAutocorrect.Core.csproj" />
+    <ProjectReference Include="..\..\tools\GlobalAutocorrect.DataGen\GlobalAutocorrect.DataGen.csproj" />
   </ItemGroup>
 </Project>
