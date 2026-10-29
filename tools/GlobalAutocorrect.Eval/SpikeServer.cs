@@ -18,21 +18,24 @@ internal sealed class SpikeServer : IAsyncDisposable
     public IReadOnlyList<string> Log { get { lock (_log) return [.. _log]; } }
     public int ProcessId => _proc.Id;
 
-    private SpikeServer(Process proc, int port)
+    private SpikeServer(Process proc, int port, string apiKey)
     {
         _proc = proc;
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}"), Timeout = TimeSpan.FromSeconds(60) };
+        _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
     }
 
     public static async Task<SpikeServer> StartAsync(string serverExe, string modelPath, int gpuLayers = 99)
     {
         int port = FreePort();
+        // D21: a per-launch key stops web pages in the user's browser from calling the server; no slots endpoint.
+        string apiKey = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
         var psi = new ProcessStartInfo(serverExe)
         {
             ArgumentList =
             {
                 "-m", modelPath, "--host", "127.0.0.1", "--port", port.ToString(), "-ngl", gpuLayers.ToString(),
-                "-c", "4096", "-np", "1", "--reasoning-budget", "0",
+                "-c", "4096", "-np", "1", "--reasoning-budget", "0", "-lv", "4", "--no-slots", "--api-key", apiKey,
             },
             RedirectStandardError = true,
             RedirectStandardOutput = true,
@@ -40,7 +43,7 @@ internal sealed class SpikeServer : IAsyncDisposable
             CreateNoWindow = true,
         };
         var proc = Process.Start(psi) ?? throw new InvalidOperationException("llama-server did not start");
-        var s = new SpikeServer(proc, port);
+        var s = new SpikeServer(proc, port, apiKey);
         proc.ErrorDataReceived += (_, e) => { if (e.Data is not null) lock (s._log) s._log.Add(e.Data); };
         proc.OutputDataReceived += (_, e) => { if (e.Data is not null) lock (s._log) s._log.Add(e.Data); };
         proc.BeginErrorReadLine();

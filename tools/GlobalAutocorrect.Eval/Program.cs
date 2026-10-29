@@ -33,7 +33,9 @@ internal static class Program
         string outDir = o.GetValueOrDefault("out", "artifacts");
         Directory.CreateDirectory(outDir);
 
-        var items = File.ReadLines(set).Where(l => l.Trim().Length > 0).Take(n)
+        // Evenly spaced sample, so every noise level and the garbled set are represented (the file is sorted by id).
+        var all = File.ReadLines(set).Where(l => l.Trim().Length > 0).ToArray();
+        var items = Enumerable.Range(0, Math.Min(n, all.Length)).Select(i => all[(int)((long)i * all.Length / Math.Min(n, all.Length))])
             .Select(l => JsonDocument.Parse(l).RootElement)
             .Select(e => (Id: e.GetProperty("id").GetString()!, Clean: e.GetProperty("clean").GetString()!, Noisy: e.GetProperty("noisy").GetString()!))
             .ToList();
@@ -67,7 +69,7 @@ internal static class Program
         long vramPeak = GpuMemoryUsedMiB();
 
         var log = srv.Log;
-        string cuda = log.FirstOrDefault(l => l.Contains("CUDA0", StringComparison.Ordinal) && l.Contains("compute capability", StringComparison.OrdinalIgnoreCase))
+        string cuda = log.FirstOrDefault(l => l.Contains("using device CUDA0", StringComparison.Ordinal))
                       ?? log.FirstOrDefault(l => l.Contains("CUDA0", StringComparison.Ordinal)) ?? "(no CUDA0 line)";
         string offload = log.FirstOrDefault(l => Regex.IsMatch(l, @"offloaded \d+/\d+ layers")) ?? "(no offload line)";
 
@@ -77,7 +79,7 @@ internal static class Program
         {
             name, model = Path.GetFileName(model), messages = items.Count,
             p50Ms = Percentile(sorted, 0.50), p95Ms = Percentile(sorted, 0.95), meanMs = lat.Average(),
-            errorsFixed = agg.ErrorsFixedRate, falseEdits = agg.FalseEditRate, exact = agg.ExactMatchRate,
+            errorsFixedRate = agg.ErrorsFixedRate, falseEditRate = agg.FalseEditRate, exactMatchRate = agg.ExactMatchRate,
             agg.NeedFix, agg.Fixed, agg.CorrectWords, agg.FalseEdits,
             vramBeforeMiB = vramBefore, vramLoadedMiB = vramLoaded, vramPeakMiB = vramPeak,
             loadSeconds = loadSw.Elapsed.TotalSeconds, cudaLine = cuda.Trim(), offloadLine = offload.Trim(),

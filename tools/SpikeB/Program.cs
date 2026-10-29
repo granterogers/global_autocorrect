@@ -248,10 +248,15 @@ internal static class Program
         }
     }
 
+    /// <summary>The repo root, found from the exe's folder or, when run from a copy outside the repo, the working directory.</summary>
     private static string FindRepo()
     {
-        var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d is not null && !File.Exists(Path.Combine(d.FullName, "GlobalAutocorrect.slnx"))) d = d.Parent;
-        return d?.FullName ?? throw new InvalidOperationException("repo root not found");
+        foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        {
+            var d = new DirectoryInfo(start);
+            while (d is not null && !File.Exists(Path.Combine(d.FullName, "GlobalAutocorrect.slnx"))) d = d.Parent;
+            if (d is not null) return d.FullName;
+        }
+        throw new InvalidOperationException("repo root not found; run from inside the repository");
     }
 }

@@ -31,11 +31,14 @@ function Invoke-Fast {
     Invoke-Step 'test (Core)' {
         dotnet test --project tests/GlobalAutocorrect.Core.Tests --no-build -- --filter-not-trait "Category=Model" --filter-not-trait "Category=E2E"
     }
+    Invoke-Step 'test (Llm)' {
+        dotnet test --project tests/GlobalAutocorrect.Llm.Tests --no-build -- --filter-not-trait "Category=Model"
+    }
 }
 
 function Invoke-Model {
     Invoke-Build
-    Invoke-Step 'test (Llm)' { dotnet test --project tests/GlobalAutocorrect.Llm.Tests --no-build }
+    Invoke-Step 'test (Llm)' { dotnet test --project tests/GlobalAutocorrect.Llm.Tests --no-build -- --filter-trait "Category=Model" }
 }
 
 function Invoke-Eval {
