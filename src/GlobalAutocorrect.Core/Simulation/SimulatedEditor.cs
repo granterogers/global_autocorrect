@@ -68,8 +68,12 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         return Key(KeyKind.Foreign, '\0');
     }
 
+    /// <summary>The next N reads fail, as a busy app's UIA sometimes does for a moment.</summary>
+    public int FailNextReads { get; set; }
+
     public TextWindow ReadWindow()
     {
+        if (FailNextReads > 0) { FailNextReads--; return TextWindow.Unavailable(TargetStatus.Unavailable, Id); }
         if (!CaretKnown) return TextWindow.Unavailable(TargetStatus.CaretUnknown, Id);
         return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..Caret], Text[Caret..Math.Min(Text.Length, Caret + 80)]);
     }

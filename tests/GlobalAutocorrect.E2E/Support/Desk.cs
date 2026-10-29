@@ -72,6 +72,19 @@ public static class Desk
         U = new InputUnion { ki = new KEYBDINPUT { wVk = vk, wScan = (ushort)MapVirtualKeyW(vk, MAPVK_VK_TO_VSC), dwFlags = up ? KEYEVENTF_KEYUP : 0 } },
     };
 
+    /// <summary>Windows only lets the foreground app hand over focus; borrow its input queue for the call.</summary>
+    public static void BringToFront(nint hwnd)
+    {
+        for (int i = 0; i < 5 && GetForegroundWindow() != hwnd; i++)
+        {
+            uint fg = GetWindowThreadProcessId(GetForegroundWindow(), out _), me = GetCurrentThreadId();
+            AttachThreadInput(me, fg, true);
+            SetForegroundWindow(hwnd);
+            AttachThreadInput(me, fg, false);
+            Thread.Sleep(200);
+        }
+    }
+
     public static bool WaitUntil(Func<bool> condition, int ms = 4000)
     {
         var sw = Stopwatch.StartNew();

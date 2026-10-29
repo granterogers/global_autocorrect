@@ -24,15 +24,29 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
-        session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs;
+        session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs
+        && clock.NowMs >= _retryAtMs;
+
+    // A read that fails (a busy app) doesn't use up the trigger: retry shortly, a few times (found by E2E in ProseMirror).
+    private long _retryAtMs = long.MinValue;
+    private long _failedSeq = -1;
+    private int _failedReads;
+    private const int RetryAfterMs = 300, MaxReadRetries = 3;
+
+    private void ReadFailed(TypingSession session)
+    {
+        if (_failedSeq != session.LastKeySeq) { _failedSeq = session.LastKeySeq; _failedReads = 0; }
+        if (++_failedReads >= MaxReadRetries) _lastTriggerSeq = session.LastKeySeq;   // give up on this text: a password box etc.
+        _retryAtMs = clock.NowMs + RetryAfterMs;
+    }
 
     public void Start(TypingSession session, ITextTarget target, Func<string, bool> isDesynced)
     {
         if (_pending is not null) { _rerun = true; return; }
-        _lastTriggerSeq = session.LastKeySeq;
-
         var win = target.ReadWindow();
-        if (!win.CaretKnown || isDesynced(win.TargetId)) return;   // 4.1.b, 10.6.c
+        if (!win.CaretKnown) { ReadFailed(session); return; }   // 4.1.b, 10.6.c (retried shortly)
+        _lastTriggerSeq = session.LastKeySeq;
+        if (isDesynced(win.TargetId)) return;
         if (!session.MatchesField(win.Before)) { session.Break(SessionBreakReason.FieldMismatch); return; }
 
         string before = TextNorm.Normalise(win.Before);

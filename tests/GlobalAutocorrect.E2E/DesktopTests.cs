@@ -70,7 +70,7 @@ public sealed class DesktopTests
             Directory.CreateDirectory(Path.Combine(Desk.Repo, "artifacts", "screens"));
             FlaUI.Core.Capturing.Capture.Element(doc).ToFile(Path.Combine(Desk.Repo, "artifacts", "screens", "e2e-underline.png"));
             Assert.Equal(0, app.Desyncs);   // 11.3.d
-            Assert.Equal("we saw the book ", Text(doc));
+            Assert.True(Text(doc) == "we saw the book ", $"got \"{Text(doc)}\"; {app.Diagnostics()}");
         }
         finally { close(); }
     }
@@ -88,7 +88,7 @@ public sealed class DesktopTests
             Desk.Type("i went their yesterday. ");
             Desk.WaitUntil(() => Text(doc).StartsWith("I went there", StringComparison.Ordinal), 5000);
             Assert.Equal(0, app.Desyncs);
-            Assert.Equal("I went there yesterday. ", Text(doc));
+            Assert.True(Text(doc) == "I went there yesterday. ", $"got \"{Text(doc)}\"; {app.Diagnostics()}");
             Assert.True(llm.Requests >= 1);
         }
         finally { close(); }
@@ -107,9 +107,9 @@ public sealed class DesktopTests
             Desk.Type("we saw teh ");
             Assert.True(Desk.WaitUntil(() => Text(doc) == "we saw the "));
             Desk.Keys(VK_CONTROL, (ushort)'Z');
-            Assert.True(Desk.WaitUntil(() => Text(doc) == "we saw teh "), Text(doc));
+            Assert.True(Desk.WaitUntil(() => Text(doc) == "we saw teh "), $"got \"{Text(doc)}\"; {app.Diagnostics()}");
             Assert.Equal(0, app.Desyncs);
-            Assert.Contains("teh", File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")));
+            Assert.True(File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh"), $"the app's own undo didn't run (Notepad's did); {app.Diagnostics()}");
         }
         finally { close(); }
     }
@@ -197,11 +197,14 @@ public sealed class DesktopTests
         ready.Wait(10_000, TestContext.Current.CancellationToken);
         try
         {
+            nint hwnd = window!.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(window).Handle);
+            Desk.BringToFront(hwnd);
+            window.Dispatcher.Invoke(() => box!.Focus());
             Thread.Sleep(800);
             Desk.Type("we saw teh cat ");
             Desk.WaitUntil(() => { box!.Dispatcher.Invoke(() => text = box.Text); return text == "we saw the cat "; });
             Assert.Equal(0, app.Desyncs);
-            Assert.Equal("we saw the cat ", text);
+            Assert.True(text == "we saw the cat ", $"got \"{text}\"; {app.Diagnostics()}");
         }
         finally
         {

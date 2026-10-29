@@ -293,6 +293,41 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_4_a_AMomentaryReadFailureAtTheSentenceEndIsRetried()
+    {
+        // Found by E2E in ProseMirror: one failed read used up the trigger and the AI never ran.
+        var h = new Harness(model: FixTheir, latencyMs: 100);
+        h.Type("i went their yesterday");
+        h.Ed.FailNextReads = 1;
+        h.Type(". ");
+        h.Wait(2500);
+        Assert.Equal("I went there yesterday. ", h.Text);
+    }
+
+    [Fact]
+    public void R4_6_c_AMomentaryReadFailureBeforeAWriteDoesNotLoseTheEdit()
+    {
+        // Found by E2E in Notepad: a failed read just before writing dropped "their" -> "there".
+        var h = new Harness(model: FixTheir, latencyMs: 100);
+        h.Type("i went their yesterday. ");
+        h.Clock.Advance(150);
+        h.Ed.FailNextReads = 2;   // the reads right before the writes fail once or twice
+        h.Wait(2500);
+        Assert.Equal("I went there yesterday. ", h.Text);
+        Assert.Equal(0, h.Counters.DroppedWrites);
+    }
+
+    [Fact]
+    public void R4_1_b_APasswordFieldIsNotPolledForever()
+    {
+        var h = new Harness(model: FixTheir);
+        h.Ed.CaretKnown = false;
+        h.Type("i went their yesterday");
+        h.Wait(10_000);
+        Assert.Empty(h.Llm!.Requests);   // gave up after a few reads; nothing sent
+    }
+
+    [Fact]
     public void R4_1_b_CaretUnknownMeansNothingIsWritten()
     {
         var h = new Harness(model: FixTheir);

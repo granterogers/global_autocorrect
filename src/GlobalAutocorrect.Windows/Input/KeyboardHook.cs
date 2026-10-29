@@ -112,6 +112,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         bool down = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;
         long at = NowMs(Stopwatch.GetTimestamp());
 
+        // Modifier state as this hook has seen it. Windows' own key state can lag behind back-to-back events (Ctrl then Z
+        // in one burst), which made Ctrl+Z look like a plain Z (found by E2E).
+        TrackModifier(k.vkCode, down);
         if (!down)
         {
             if (k.vkCode == VK_TAB && _swallowTabUp) { _swallowTabUp = false; return 1; }
@@ -124,7 +127,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         long prev = Interlocked.Read(ref _seq);
         if (!injected)
         {
-            bool ctrl = IsDown(VK_CONTROL), alt = IsDown(VK_MENU), shift = IsDown(VK_SHIFT), win = IsDown(VK_LWIN) || IsDown(VK_RWIN);
+            bool ctrl = _ctrl || IsDown(VK_CONTROL), alt = _alt || IsDown(VK_MENU), shift = _shift || IsDown(VK_SHIFT), win = _win || IsDown(VK_LWIN) || IsDown(VK_RWIN);
             // 7.4: Tab takes the suggestion only if it is showing and nothing happened since it was shown.
             if (k.vkCode == VK_TAB && !ctrl && !alt && !win && !shift && SuggestionArm.TryConsume(prev))
             {
@@ -151,6 +154,19 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         UndoArm.Disarm();
         Enqueue(RawKind.Key, k, true, injected, at);
         return CallNextHookEx(_kb, nCode, wParam, lParam);
+    }
+
+    private volatile bool _ctrl, _alt, _shift, _win;
+
+    private void TrackModifier(uint vk, bool down)
+    {
+        switch (vk)
+        {
+            case VK_CONTROL or VK_LCONTROL or VK_RCONTROL: _ctrl = down; break;
+            case VK_MENU or VK_LMENU or VK_RMENU: _alt = down; break;
+            case VK_SHIFT or VK_LSHIFT or VK_RSHIFT: _shift = down; break;
+            case VK_LWIN or VK_RWIN: _win = down; break;
+        }
     }
 
     public static bool IsModifier(uint vk) => vk is VK_SHIFT or VK_CONTROL or VK_MENU or VK_LSHIFT or VK_RSHIFT

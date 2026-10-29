@@ -92,7 +92,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (tail.Contains('\n')) { Drop(w); return false; }   // D8: never move across a line break
 
         var win = target.ReadWindow();
-        if (!win.CaretKnown || _desynced.Contains(win.TargetId)) { Drop(w); return false; }
+        if (_desynced.Contains(win.TargetId)) { Drop(w); return false; }
+        // A busy app sometimes can't be read for a moment: keep the edit and try again next tick; the deadline drops it
+        // if the field never comes back (found by E2E: one failed read lost a correction).
+        if (!win.CaretKnown) return false;
         if (!session.MatchesField(win.Before))
         {
             session.Break(SessionBreakReason.FieldMismatch);
