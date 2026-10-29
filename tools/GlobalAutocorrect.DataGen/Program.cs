@@ -7,11 +7,12 @@ internal static class Program
           GlobalAutocorrect.DataGen noise --in <messages.jsonl> --out <noisy.jsonl> --seed <int>
           GlobalAutocorrect.DataGen split --noisy <noisy.jsonl> --garbled <garbled.jsonl> --seed <int> --holdout <int> --out <dir>
           GlobalAutocorrect.DataGen freq --words <words.txt> --assets <assetsDir> --out <freq_en_GB.txt>
+          GlobalAutocorrect.DataGen ngram --sentences <sentences.txt> --assets <assetsDir> --out <ngram.bin> [--min-count <int>]
         """;
 
     private static int Main(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq"))
+        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq" or "ngram"))
         {
             Console.Error.WriteLine(Usage);
             return 2;
@@ -30,6 +31,13 @@ internal static class Program
             {
                 if (!Has(opts, "in", "out", "seed") || !int.TryParse(opts["seed"], out int seed)) return Fail();
                 Commands.Noise(opts["in"], opts["out"], seed);
+            }
+            else if (args[0] == "ngram")
+            {
+                if (!Has(opts, "sentences", "assets", "out")) return Fail();
+                int minCount = 3;
+                if (opts.TryGetValue("min-count", out var mc) && !int.TryParse(mc, out minCount)) return Fail();
+                NgramBuilder.Build(opts["sentences"], opts["assets"], opts["out"], minCount);
             }
             else if (args[0] == "freq")
             {
