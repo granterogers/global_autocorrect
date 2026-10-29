@@ -47,6 +47,18 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void R5_2_PromptIsASettingAndABrokenFileFallsBack()
+    {
+        Directory.CreateDirectory(_dir);
+        string good = Path.Combine(_dir, "prompt.json"), bad = Path.Combine(_dir, "bad.json");
+        File.WriteAllText(good, """{ "System": "Fix typos.", "Examples": [ { "Role": "user", "Content": "teh" }, { "Role": "assistant", "Content": "the" } ] }""");
+        File.WriteAllText(bad, "{ nope");
+        Assert.Equal("Fix typos.", GlobalAutocorrect.Core.Ai.PromptTemplate.LoadOrDefault(good).System);
+        Assert.Same(GlobalAutocorrect.Core.Ai.PromptTemplate.Default, GlobalAutocorrect.Core.Ai.PromptTemplate.LoadOrDefault(bad));
+        Assert.Same(GlobalAutocorrect.Core.Ai.PromptTemplate.Default, GlobalAutocorrect.Core.Ai.PromptTemplate.LoadOrDefault(null));
+    }
+
+    [Fact]
     public void R5_2_ModelIsASettingDefaultingToTheSpikeAWinner() =>
         Assert.Equal("gemma-4-E4B-it-Q5_K_M.gguf", new AppSettings().Model);
 }

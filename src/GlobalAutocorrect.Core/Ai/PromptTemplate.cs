@@ -35,6 +35,24 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
             new("assistant", "Dinner at mine on Friday, bring wine if you like."),
         ]);
 
+    /// <summary>
+    /// The prompt is a setting (5.2): a JSON file { "System": "...", "Examples": [ { "Role", "Content" } ] } replaces the
+    /// built-in one. A missing or broken file falls back to the default, so a bad edit never stops corrections.
+    /// </summary>
+    public static PromptTemplate LoadOrDefault(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return Default;
+        try
+        {
+            var p = global::System.Text.Json.JsonSerializer.Deserialize<PromptTemplate>(File.ReadAllText(path));
+            return p is { System.Length: > 0, Examples: not null } ? p : Default;
+        }
+        catch (Exception e) when (e is global::System.Text.Json.JsonException or IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return Default;
+        }
+    }
+
     public IReadOnlyList<ChatTurn> BuildMessages(string text) =>
         [new("system", System), .. Examples, new("user", text)];
 

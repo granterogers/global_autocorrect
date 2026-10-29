@@ -69,6 +69,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         _pending = null;
         rerun = TakeRerun();
         LastLatencyMs = result.LatencyMs;
+        _recent.Enqueue(result.LatencyMs);
+        if (_recent.Count > 20) _recent.Dequeue();
         if (p.Generation != session.Generation) return [];
 
         string cleaned = AlignToContext(p.Context, result.Text);
@@ -99,6 +101,19 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         if (!userEnded && text.Length > 0 && text[^1] is '.' or '!' && !trimmed.EndsWith(text[^1]))
             text = text[..^1];
         return lead + text + trail;
+    }
+
+    private readonly Queue<double> _recent = new();
+
+    /// <summary>Median of the last 20 clean-ups: the "typical clean-up time" on the Home page (9.3.a).</summary>
+    public double TypicalLatencyMs
+    {
+        get
+        {
+            if (_recent.Count == 0) return 0;
+            var s = _recent.Order().ToArray();
+            return s.Length % 2 == 1 ? s[s.Length / 2] : (s[s.Length / 2 - 1] + s[s.Length / 2]) / 2;
+        }
     }
 
     /// <summary>Latency of the last completed request (6.3.d, 9.3.a).</summary>

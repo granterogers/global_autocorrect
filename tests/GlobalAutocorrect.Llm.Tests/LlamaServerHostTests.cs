@@ -128,6 +128,38 @@ public sealed class LlamaServerHostTests
     }
 
     [Fact]
+    public void R5_6_TheServerProcessIsTiedToTheAppsLifetime()
+    {
+        using var p = Process.Start(new ProcessStartInfo("ping", "-n 3 127.0.0.1") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+        try
+        {
+            Assert.True(KillOnCloseJob.Assign(p));
+            Assert.True(KillOnCloseJob.Contains(p));
+        }
+        finally { if (!p.HasExited) p.Kill(); }
+    }
+
+    [Fact]
+    public async Task R5_6_a_AFailedStartIsNotRetriedOnEveryKeystroke()
+    {
+        var f = new Fake { HealthOverride = false };   // the server never comes up (e.g. model not downloaded)
+        var clock = new ManualClock();
+        await using var rt = new LlmRuntime(f.Host(cpu: null), clock, () => PromptTemplate.Default);
+        rt.NotifyActivity();
+        for (int i = 0; i < 100 && f.Starts.Count == 0; i++) await Task.Delay(20, TestContext.Current.CancellationToken);
+        for (int i = 0; i < 150 && rt.Host.State != ServerState.Failed; i++) await Task.Delay(20, TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        int starts = f.Starts.Count;
+        for (int i = 0; i < 20; i++) rt.NotifyActivity();   // twenty keystrokes
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.Equal(starts, f.Starts.Count);
+        clock.Advance(61_000);   // a minute later it may try again
+        rt.NotifyActivity();
+        for (int i = 0; i < 100 && f.Starts.Count == starts; i++) await Task.Delay(20, TestContext.Current.CancellationToken);
+        Assert.True(f.Starts.Count > starts);
+    }
+
+    [Fact]
     public async Task R5_6_b_UnloadsAfterIdleAndReloadsOnNextKey()
     {
         var f = new Fake();

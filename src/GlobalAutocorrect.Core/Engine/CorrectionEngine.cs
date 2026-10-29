@@ -40,6 +40,7 @@ public sealed class CorrectionEngine
     public bool Paused { get; set; }
     public Counters Counters => _d.Counters;
     public double LastAiLatencyMs => _ai?.LastLatencyMs ?? 0;
+    public double TypicalAiLatencyMs => _ai?.TypicalLatencyMs ?? 0;
     public bool AiInFlight => _ai?.InFlight ?? false;
     public int QueuedWrites => _gate.Count;
     public CorrectionRecord? LastCorrection => _undo.Last;

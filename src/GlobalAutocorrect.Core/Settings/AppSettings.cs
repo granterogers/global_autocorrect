@@ -18,6 +18,7 @@ public sealed record AppSettings
     public bool UnderlineEnabled { get; init; } = true;            // 4.7
     public string Model { get; init; } = "gemma-4-E4B-it-Q5_K_M.gguf";   // 5.2, chosen by Spike A
     public string FallbackModel { get; init; } = "gemma-4-E2B-it-Q5_K_M.gguf";
+    public string? PromptFile { get; init; }                         // 5.2: null = the built-in prompt
     public bool PredictionEnabled { get; init; } = true;           // 7.7
     public string PauseShortcut { get; init; } = "Ctrl+Alt+P";     // 8.2
     public string UndoShortcut { get; init; } = "Ctrl+Alt+Z";      // 4.8.b

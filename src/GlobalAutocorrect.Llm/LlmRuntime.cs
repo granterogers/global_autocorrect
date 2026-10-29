@@ -69,16 +69,25 @@ public sealed class LlmRuntime : ILlmClient, IAsyncDisposable
         }
     }
 
+    /// <summary>After a failed start, wait this long before trying again (a missing model must not relaunch per key).</summary>
+    public int RetryAfterFailureMs { get; set; } = 60_000;
+
     private Task<bool> EnsureStarting()
     {
         lock (_lock)
         {
             if (_starting is { IsCompleted: false }) return _starting;
+            if (_starting is { IsCompleted: true } last && !last.Result && _host.State == ServerState.Failed
+                && _clock.NowMs - _failedAtMs < RetryAfterFailureMs)
+                return last;
             ResetClient();
             _starting = _host.StartAsync(CancellationToken.None);
+            _starting.ContinueWith(t => { if (!t.IsCompletedSuccessfully || !t.Result) _failedAtMs = _clock.NowMs; }, TaskScheduler.Default);
             return _starting;
         }
     }
+
+    private long _failedAtMs = long.MinValue / 2;
 
     private LlamaServerClient GetClient()
     {

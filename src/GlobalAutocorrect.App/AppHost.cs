@@ -87,7 +87,7 @@ public sealed class AppHost : IAsyncDisposable
             Path.Combine(CacheDir, "models", Settings.Model),
             Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"),
             CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel)));
-        _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.Default) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
+        _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();
         Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)));
@@ -227,7 +227,7 @@ public sealed class AppHost : IAsyncDisposable
             _daily.Save(_counters);
             History.Save();
             if (_llm is not null && _llm.Host.State == ServerState.Ready && _loop is not null)
-                _loop.Post(e => { if (e.LastAiLatencyMs > 0) TypicalLatencyMs = TypicalLatencyMs == 0 ? e.LastAiLatencyMs : TypicalLatencyMs * 0.8 + e.LastAiLatencyMs * 0.2; });
+                _loop.Post(e => { if (e.TypicalAiLatencyMs > 0) TypicalLatencyMs = e.TypicalAiLatencyMs; });   // median of recent (9.3.a)
             if (ModelState != before) StateChanged?.Invoke();
         }
         catch (Exception e) when (e is not OutOfMemoryException) { }   // a timer must never crash the app

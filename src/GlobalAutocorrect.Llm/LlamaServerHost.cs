@@ -201,6 +201,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
         public ServerProcess(ProcessStartInfo psi)
         {
             _p = Process.Start(psi) ?? throw new InvalidOperationException("llama-server did not start");
+            KillOnCloseJob.Assign(_p);   // 5.6: never outlives the app, even after a crash
             _p.ErrorDataReceived += (_, e) => Add(e.Data);
             _p.OutputDataReceived += (_, e) => Add(e.Data);
             _p.BeginErrorReadLine();
