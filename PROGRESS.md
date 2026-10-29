@@ -2,6 +2,31 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-29 (evening) — Spikes passed; Feature A wired end to end; tuning in progress
+
+- **BRIEF re-read** (2.2.c).
+- **Spike A PASS** (PLAN §4.1): Gemma 4 E4B Q5_K_M is the default (p50 360 ms, 91.8% fixed, 0.63% false edits, 43/43 layers on CUDA0). E2B is the CPU fallback. **Spike B PASS 6/7** after D22 (key-event typing fixed a Notepad reorder bug). Outlook is a harness limitation, logged as untested.
+- **Done since last entry:**
+  - M3 (SymSpell from Leipzig UK, I; noisy-channel instant layer D23, L).
+  - M5 (host, watchdog, idle unload, CPU fallback with E2B, verify.ps1: all 7 checks pass on this PC; D21 per-launch API key).
+  - M7 (hook, translator, UIA worker, target, focus tracker, engine loop, exclusions and integrity gate (I), hotkeys (I), app host, single instance, never elevated).
+  - M6 runner with tracing.
+  - E2E suite (FlaUI, Playwright, mock model, idle guard; not yet run).
+  - Overlays.
+  - Packaging script.
+  - README draft.
+- **Tuning (tuning set only):** errors fixed 86.1 → 88.6 → 89.2 → 90.5% (T4), false edits 0.67 → 0.29%. T5 is running. Log: `docs/tuning-log.md`. Decisions D23–D27.
+- **Checks:** fast tier green (145 Core, 17 Llm, 32 Windows).
+- **In flight:** T8.1/T8.2 n-grams and predictor (I). T9.1/9.2/9.5 tokens, icons and tray (I). Tuning T5.
+- **Next tasks:**
+  - Prediction controller and Tab path (L).
+  - Settings and first-run windows (I, using `Models/ModelDownloader`).
+  - Screenshot review (9.5, L).
+  - E2E run when idle.
+  - Holdout eval once (6.1.e).
+  - README numbers, then `check.ps1 full`, then RC stop (2.6.e).
+- **Noted for the user:** their global push hook double-fires and tags commits that weren't pushed (tags v0.2–v0.9 so far; never v1.0.0).
+
 ## 2026-10-29 — M0, M1, M2, M4 core; spikes in progress
 
 - **BRIEF re-read** before closing this block (2.2.c).
