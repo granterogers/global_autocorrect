@@ -9,11 +9,13 @@
     <Project Path="tools/GlobalAutocorrect.DataGen/GlobalAutocorrect.DataGen.csproj" />
     <Project Path="tools/GlobalAutocorrect.Eval/GlobalAutocorrect.Eval.csproj" />
     <Project Path="tools/SpikeB/SpikeB.csproj" />
+    <Project Path="tools/GlobalAutocorrect.Icons/GlobalAutocorrect.Icons.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GlobalAutocorrect.Core.Tests/GlobalAutocorrect.Core.Tests.csproj" />
     <Project Path="tests/GlobalAutocorrect.Llm.Tests/GlobalAutocorrect.Llm.Tests.csproj" />
     <Project Path="tests/GlobalAutocorrect.Windows.Tests/GlobalAutocorrect.Windows.Tests.csproj" />
+    <Project Path="tests/GlobalAutocorrect.App.Tests/GlobalAutocorrect.App.Tests.csproj" />
     <Project Path="tests/GlobalAutocorrect.E2E/GlobalAutocorrect.E2E.csproj" />
   </Folder>
 </Solution>

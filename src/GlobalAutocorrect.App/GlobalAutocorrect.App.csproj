@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>GlobalAutocorrect</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\icons\app.ico</ApplicationIcon>
     <Version>0.9.0-rc1</Version>
   </PropertyGroup>
   <ItemGroup>

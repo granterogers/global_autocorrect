@@ -1,0 +1,106 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <!--
+        Design tokens (9.2.a-c). ONE palette: Theme/Palette.cs holds the same hex values and a test keeps them equal.
+        ThemeService copies the Light* or Dark* colours into the un-prefixed names and rebuilds the *Brush entries
+        whenever Windows switches between light and dark (9.2.d). Everything in the UI references the *Brush keys
+        (DynamicResource) and never a literal colour.
+    -->
+
+    <!-- Accent: used for toggles, buttons, highlights, the correction underline and the tray icon (9.2.b). -->
+    <Color x:Key="AccentPrimary">#1F6FEB</Color>
+    <Color x:Key="AccentLight">#5B9BFF</Color>
+    <Color x:Key="AccentDark">#134FB0</Color>
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{StaticResource AccentPrimary}" />
+    <SolidColorBrush x:Key="AccentLightBrush" Color="{StaticResource AccentLight}" />
+    <SolidColorBrush x:Key="AccentDarkBrush" Color="{StaticResource AccentDark}" />
+
+    <!-- Light mode neutrals. -->
+    <Color x:Key="LightSurfaceBase">#F7F9FC</Color>
+    <Color x:Key="LightSurfaceCard">#FFFFFF</Color>
+    <Color x:Key="LightBorderSoft">#E3E8F0</Color>
+    <Color x:Key="LightTextPrimary">#0B1220</Color>
+    <Color x:Key="LightTextSecondary">#4A5568</Color>
+
+    <!-- Dark mode neutrals. -->
+    <Color x:Key="DarkSurfaceBase">#0F1622</Color>
+    <Color x:Key="DarkSurfaceCard">#172131</Color>
+    <Color x:Key="DarkBorderSoft">#26324A</Color>
+    <Color x:Key="DarkTextPrimary">#E8EEF8</Color>
+    <Color x:Key="DarkTextSecondary">#A9B6CC</Color>
+
+    <!-- Current mode (light until ThemeService says otherwise). -->
+    <Color x:Key="SurfaceBase">#F7F9FC</Color>
+    <Color x:Key="SurfaceCard">#FFFFFF</Color>
+    <Color x:Key="BorderSoft">#E3E8F0</Color>
+    <Color x:Key="TextPrimary">#0B1220</Color>
+    <Color x:Key="TextSecondary">#4A5568</Color>
+    <SolidColorBrush x:Key="SurfaceBaseBrush" Color="#F7F9FC" />
+    <SolidColorBrush x:Key="SurfaceCardBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="BorderSoftBrush" Color="#E3E8F0" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0B1220" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#4A5568" />
+
+    <!-- Type scale (9.2.c). Segoe UI Variable has optical sizes: Display for big text, Text for body. -->
+    <FontFamily x:Key="FontFamilyDisplay">Segoe UI Variable Display, Segoe UI Variable, Segoe UI</FontFamily>
+    <FontFamily x:Key="FontFamilyText">Segoe UI Variable Text, Segoe UI Variable, Segoe UI</FontFamily>
+    <sys:Double x:Key="FontSizeDisplay">28</sys:Double>
+    <sys:Double x:Key="FontSizeTitle">20</sys:Double>
+    <sys:Double x:Key="FontSizeSubtitle">16</sys:Double>
+    <sys:Double x:Key="FontSizeBody">14</sys:Double>
+    <sys:Double x:Key="FontSizeCaption">12</sys:Double>
+
+    <!-- Spacing scale. -->
+    <sys:Double x:Key="Space4">4</sys:Double>
+    <sys:Double x:Key="Space8">8</sys:Double>
+    <sys:Double x:Key="Space12">12</sys:Double>
+    <sys:Double x:Key="Space16">16</sys:Double>
+    <sys:Double x:Key="Space24">24</sys:Double>
+    <sys:Double x:Key="Space32">32</sys:Double>
+
+    <!-- Corner radii: 8 for cards, 4 for controls. -->
+    <CornerRadius x:Key="RadiusCard">8</CornerRadius>
+    <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+
+    <!-- Text styles. -->
+    <Style x:Key="TextDisplay" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyDisplay}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeDisplay}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style x:Key="TextTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyDisplay}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeTitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style x:Key="TextSubtitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyText}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeSubtitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style x:Key="TextBody" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyText}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="TextCaption" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamilyText}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Rounded card with a soft border (9.2.c). -->
+    <Style x:Key="CardBorder" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusCard}" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+</ResourceDictionary>
