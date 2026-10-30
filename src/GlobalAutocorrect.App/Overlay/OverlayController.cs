@@ -46,7 +46,11 @@ public sealed class OverlayController
         // drawn at a stale place.
         Hide();
         long gen = Interlocked.Increment(ref _generation);
-        _ = Task.Run(() => Predict(k.Seq, gen));
+        _ = Task.Run(() =>
+        {
+            try { Predict(k.Seq, gen); }
+            catch (Exception e) { Why("failed " + e.GetType().Name, null); throw; }
+        });
     }
 
     private void Predict(long seq, long gen)
@@ -83,8 +87,9 @@ public sealed class OverlayController
         if (completion.Length == 0 || hook is null) { Hide(); return; }
         _ui.BeginInvoke(() =>
         {
-            if (hook.LatestKeySeq != seq) return;   // something happened in between: don't show a stale suggestion
+            if (hook.LatestKeySeq != seq) { Why("stale-at-show", null); return; }   // something happened in between
             _suggestion.ShowAt(completion, caret, fontName, caretIsFontHeight);
+            Why($"drawn h={caret.H:F0}", null);
             _shown = completion;
             hook.SuggestionArm.ArmAt(seq);   // Tab now means "accept", until anything else happens
         });

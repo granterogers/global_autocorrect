@@ -35,6 +35,8 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public static void Diagnose(string line)
     {
+        // One writer at a time: lines come from background tasks, and a collision used to drop a line silently.
+        lock (DiagnoseLock)
         try
         {
             string path = Path.Combine(DataDir, "diagnostics.log");
@@ -48,6 +50,8 @@ public sealed class AppHost : IAsyncDisposable
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    private static readonly Lock DiagnoseLock = new();
     private NgramModel? _ngram;
     private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
     private readonly Counters _counters = new();
