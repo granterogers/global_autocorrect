@@ -77,6 +77,7 @@ public static partial class Tokeniser
 
     private static bool HasInnerCapital(string w)
     {
+        if (IsArticleRunIntoAWord(w)) return false;
         for (int i = 1; i < w.Length; i++)
         {
             if (!char.IsUpper(w[i]) || !char.IsLower(w[i - 1])) continue;
@@ -85,6 +86,19 @@ public static partial class Tokeniser
             return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// D54: "theServicees", "aCustomer": an article with the space after it missed, before a capitalised word. Not code:
+    /// identifiers rarely start with an article, unlike "toString", "isValid" or "onClick", which stay protected. Only
+    /// one capital, followed by lower case to the end.
+    /// </summary>
+    private static bool IsArticleRunIntoAWord(string w)
+    {
+        int cap = w.StartsWith("the", StringComparison.Ordinal) ? 3 : w.StartsWith("an", StringComparison.Ordinal) ? 2 : w.StartsWith('a') ? 1 : -1;
+        if (cap < 0 || cap >= w.Length - 1 || !char.IsUpper(w[cap])) return false;
+        for (int i = cap + 1; i < w.Length; i++) if (!char.IsLower(w[i])) return false;
+        return true;
     }
 
     private static bool IsChunkStart(string t, int i) => i == 0 || char.IsWhiteSpace(t[i - 1]) || t[i - 1] is '(' or '<' or '"' or '[';

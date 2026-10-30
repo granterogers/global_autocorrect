@@ -182,6 +182,26 @@ public sealed class EditRulesTests
     }
 
     [Theory]
+    [InlineData("liaise with theServicees team", "liaise with the Services team")]   // the user's Intercom reply
+    [InlineData("send it to aCustomer today", "send it to a customer today")]
+    public void R4_5_a_AnArticleRunIntoACapitalisedWordIsAMissedSpace_D54(string typed, string model)
+    {
+        var s = new FakeSpeller("liaise", "with", "the", "services", "team", "send", "it", "to", "a", "customer", "today");
+        Assert.Equal(model, ApplyWith(s, typed, model));
+    }
+
+    [Theory]
+    [InlineData("call toStrng first", "call to String first")]
+    [InlineData("set isValdi here", "set is Valid here")]
+    [InlineData("the theValueFeild field", "the the Value Field field")]   // an article, but more than one capital
+    public void R4_5_a_CodeLikeWordsStayProtected_D54(string typed, string model)
+    {
+        // D54 only excuses an article run into one capitalised word; identifiers like these are still never respelt.
+        var s = new FakeSpeller("call", "to", "string", "first", "set", "is", "valid", "here", "the", "value", "field");
+        Assert.Equal(typed, ApplyWith(s, typed, model));
+    }
+
+    [Theory]
     [InlineData("so quickly aboutkitchen quote", "so quickly about the kitchen quote")]   // a small word dropped inside the run
     [InlineData("I'm not surelast paragraph", "I'm not sure the last paragraph")]
     [InlineData("I thinkI will go", "I think I will go")]                                 // "thinkI" is not code

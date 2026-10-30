@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -9,6 +10,14 @@ namespace GlobalAutocorrect.App.Tests;
 /// </summary>
 internal static class WpfApp
 {
+    /// <summary>
+    /// Before any test runs: the app's data folder is a temp folder, never the user's %APPDATA%. The real App's crash
+    /// handler writes there, and these tests once filled the user's crash.txt with their own records.
+    /// </summary>
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void UseTempDataDir() =>
+        Environment.SetEnvironmentVariable("GA_DATA_DIR", Path.Combine(Path.GetTempPath(), "ga-app-tests-" + Environment.ProcessId));
+
     private static readonly Lazy<App> Instance = new(Start);
 
     public static void Run(Action<App> body) => Instance.Value.Dispatcher.Invoke(() => body(Instance.Value));

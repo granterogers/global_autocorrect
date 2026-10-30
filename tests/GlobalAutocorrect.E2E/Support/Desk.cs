@@ -215,7 +215,11 @@ public sealed class AppUnderTest : IDisposable
         string counters = File.Exists(Path.Combine(DataDir, "counters.json")) ? File.ReadAllText(Path.Combine(DataDir, "counters.json")) : "(no counters)";
         string crash = File.Exists(Path.Combine(DataDir, "crash.txt")) ? File.ReadAllText(Path.Combine(DataDir, "crash.txt")) : "(no crash)";
         string exit = _proc.HasExited ? $" (exit 0x{_proc.ExitCode:X8})" : "";
-        return $"app alive: {!_proc.HasExited}{exit}; counters: {counters}; crash: {crash}";
+        // The app's own reason codes (verify failures; under E2E also why a suggestion was or wasn't shown).
+        string diag = File.Exists(Path.Combine(DataDir, "diagnostics.log"))
+            ? string.Join(" | ", File.ReadLines(Path.Combine(DataDir, "diagnostics.log")).TakeLast(12))
+            : "(no diagnostics)";
+        return $"app alive: {!_proc.HasExited}{exit}; counters: {counters}; crash: {crash}; diagnostics: {diag}";
     }
 
     /// <summary>11.3.d: checked before any text assertion.</summary>

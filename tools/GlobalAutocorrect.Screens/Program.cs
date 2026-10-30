@@ -49,6 +49,8 @@ internal static class ScreenTool
 
     private static int RunCore(string[] args)
     {
+        // The real App's crash handler writes to the data folder: never the user's %APPDATA% from this tool.
+        Environment.SetEnvironmentVariable("GA_DATA_DIR", Path.Combine(Path.GetTempPath(), "GlobalAutocorrect.Screens", "data"));
         string root = args.Length > 0 ? args[0] : FindRoot();
         string outDir = Path.Combine(root, "artifacts", "screens");
         string extraDir = Path.Combine(outDir, "extra");

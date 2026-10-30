@@ -54,12 +54,27 @@ public sealed class OverlayController
         var target = _host.Target;
         var hook = _host.Hook;
         if (target is null || hook is null) return;
-        if (!target.ReadWindow().CaretKnown || target.LastSnapshot is not { CaretRect: { } caret } snap) return;
+        if (!target.ReadWindow().CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
+        if (target.LastSnapshot is not { CaretRect: { } caret } snap) { Why("no-caret-rect", target.LastSnapshot?.Before); return; }
         // Stale if the user typed on while we read (7.4: the caret must not have moved since).
-        if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) return;
+        if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) { Why("stale", null); return; }
         var s = _host.Predictor?.Suggest(snap.Before);
-        if (s is null || s.Completion.Length == 0) return;
+        if (s is null || s.Completion.Length == 0) { Why("no-suggestion", snap.Before); return; }
+        Why("shown", snap.Before);
         Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight);
+    }
+
+    private static readonly bool UnderTest = Environment.GetEnvironmentVariable("GA_E2E") == "1";
+
+    /// <summary>
+    /// Screen tests only (GA_E2E=1): why a suggestion was or wasn't shown, with the code points of the last few
+    /// characters before the caret, so a CI failure can be diagnosed. Never the text itself, and never in normal use (8.6).
+    /// </summary>
+    private static void Why(string reason, string? before)
+    {
+        if (!UnderTest) return;
+        string tail = before is null ? "" : string.Join(' ', before[Math.Max(0, before.Length - 4)..].Select(c => $"U+{(int)c:X4}"));
+        AppHost.Diagnose($"predict: {reason} beforeLength={before?.Length ?? -1} last=[{tail}]");
     }
 
     private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false)
