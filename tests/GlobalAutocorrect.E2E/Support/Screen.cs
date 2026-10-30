@@ -69,18 +69,26 @@ public static class Screen
     public static void Hide(nint hwnd) => ShowWindowAsync(hwnd, 0);   // SW_HIDE
 
     /// <summary>
-    /// The focused field's caret, measured as UIA reports it (the same way the app does): the collapsed selection's own
-    /// rectangle, or else the right edge of the character before it, with that character's line height.
+    /// The focused field's caret, measured as UIA reports it (the same way the app does): the TextPattern2 caret range,
+    /// else the collapsed selection; its own rectangle, or else the right edge of the character before it, with that
+    /// character's height. <paramref name="source"/> says which.
     /// </summary>
-    public static Rectangle? CaretRect(UIA3Automation uia)
+    public static Rectangle? CaretRect(UIA3Automation uia, out string source)
     {
+        source = "none";
         try
         {
             var el = uia.FocusedElement();
             if (el is null || !el.Patterns.Text.IsSupported) return null;
-            var sel = el.Patterns.Text.Pattern.GetSelection();
-            if (sel is not { Length: 1 }) return null;
-            var caret = sel[0];
+            FlaUI.Core.ITextRange caret;
+            if (el.Patterns.Text2.IsSupported) { caret = el.Patterns.Text2.Pattern.GetCaretRange(out _); source = "TextPattern2 caret range"; }
+            else
+            {
+                var sel = el.Patterns.Text.Pattern.GetSelection();
+                if (sel is not { Length: 1 }) return null;
+                caret = sel[0];
+                source = "TextPattern selection";
+            }
             var rects = caret.GetBoundingRectangles();
             if (rects is { Length: > 0 } && rects[0].Height > 0) return rects[0];
             var one = caret.Clone();
@@ -88,9 +96,33 @@ public static class Screen
             rects = one.GetBoundingRectangles();
             if (rects is not { Length: > 0 }) return null;
             var c = rects[^1];
+            source += ", character before it";
             return new Rectangle(c.Right, c.Top, 0, c.Height);
         }
         catch (Exception e) when (e is COMException or InvalidOperationException or ArgumentException or NotSupportedException) { return null; }
+    }
+
+    [DllImport("user32.dll")] private static extern bool GetGUIThreadInfo(uint thread, ref GUITHREADINFO info);
+    [DllImport("user32.dll")] private static extern bool ClientToScreen(nint hwnd, ref POINT p);
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GUITHREADINFO
+    {
+        public int cbSize, flags;
+        public nint hwndActive, hwndFocus, hwndCapture, hwndMenuOwner, hwndMoveSize, hwndCaret;
+        public RECT rcCaret;
+    }
+
+    /// <summary>The system caret of the foreground window's thread (what the app draws as its blinking caret), if it has one.</summary>
+    public static Rectangle? SystemCaret()
+    {
+        uint thread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+        var info = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
+        if (!GetGUIThreadInfo(thread, ref info) || info.hwndCaret == 0) return null;
+        var p = new POINT { X = info.rcCaret.Left, Y = info.rcCaret.Top };
+        ClientToScreen(info.hwndCaret, ref p);
+        return new Rectangle(p.X, p.Y, info.rcCaret.Right - info.rcCaret.Left, info.rcCaret.Bottom - info.rcCaret.Top);
     }
 
     /// <summary>The focused element's font name as UIA reports it for the character before the caret, or "".</summary>
@@ -128,9 +160,9 @@ public static class Screen
     private static double Lum(Color c) => 0.299 * c.R + 0.587 * c.G + 0.114 * c.B;
 
     /// <summary>
-    /// Ink rows of dark, unsaturated text in <paramref name="area"/> (relative to <paramref name="bmp"/>): rows holding a
-    /// pixel at least half as dark against the area's background as the darkest one. Coloured pixels (spell-check
-    /// squiggles, selection, ClearType fringes) don't count. Returns (top, bottom) inclusive, or null if there's no ink.
+    /// Ink rows of dark text in <paramref name="area"/> (relative to <paramref name="bmp"/>): rows holding a pixel at
+    /// least half as dark against the area's background as the darkest one. ClearType colours the edges of thin stems,
+    /// so colour counts; only a bright red spell-check squiggle is left out. Returns (top, bottom) inclusive, or null.
     /// </summary>
     public static (int Top, int Bottom)? TextInk(Bitmap bmp, Rectangle area)
     {
@@ -144,8 +176,8 @@ public static class Screen
         return Rows(area, (x, y) =>
         {
             var c = bmp.GetPixel(x, y);
-            int sat = Math.Max(c.R, Math.Max(c.G, c.B)) - Math.Min(c.R, Math.Min(c.G, c.B));
-            return sat > 40 ? 0 : Math.Max(0, bg - Lum(c));
+            bool squiggle = c.R > 150 && c.G < 90 && c.B < 90;
+            return squiggle ? 0 : Math.Max(0, bg - Lum(c));
         });
     }
 

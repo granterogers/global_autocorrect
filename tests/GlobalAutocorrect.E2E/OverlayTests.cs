@@ -79,7 +79,8 @@ public sealed class OverlayTests
             overlay = all.OrderByDescending(o => o.Rect.Height).First();
             return true;
         }, 5000);
-        var caretOrNull = Screen.CaretRect(uia);
+        var caretOrNull = Screen.CaretRect(uia, out string caretSource);
+        var systemCaret = Screen.SystemCaret();
         string font = Screen.FontName(uia);
         var full = Screen.Bounds;
         string Facts() => $"{name}: caret {caretOrNull}, overlay {(shown ? overlay.Rect.ToString() : "none")}, field font \"{font}\"; {app.Diagnostics()}";
@@ -109,7 +110,8 @@ public sealed class OverlayTests
         // right next to it). Field ink: the line's own text just before the caret ("to hea"), not the caret itself.
         var ov = Local(overlay.Rect);
         var overlayInk = Screen.DiffInk(with, without, Rectangle.FromLTRB(ov.Left + 4, ov.Top, ov.Right, ov.Bottom));
-        var line = Local(caret);
+        // Rows: the caret's and the overlay's together, so neither measurement is cut off by the other's box.
+        var line = Local(Rectangle.FromLTRB(caret.Left, Math.Min(caret.Top, overlay.Rect.Top), caret.Right, Math.Max(caret.Bottom, overlay.Rect.Bottom)));
         var fieldInk = Screen.TextInk(without, Rectangle.FromLTRB(line.Left - (int)(2.5 * h), line.Top, line.Left - 2, line.Bottom));
 
         int? overlayInkH = overlayInk is { } o ? o.Bottom - o.Top + 1 : null;
@@ -120,7 +122,8 @@ public sealed class OverlayTests
             app: {name}
             typed: "{Typed}" (expected suggestion "{Expected}")
             field font (UIA): "{font}"
-            caret rect (UIA, px): {caret}
+            caret rect (UIA, px): {caret} from {caretSource}
+            system caret (GetGUIThreadInfo, px): {(systemCaret?.ToString() ?? "none")}
             overlay window (px): {overlay.Rect}
             overlay height / caret height: {overlay.Rect.Height} / {h} = {windowRatio:F2}
             overlay ink rows: {(overlayInk is { } oi ? $"{oi.Top}..{oi.Bottom}" : "none")} = {overlayInkH?.ToString() ?? "-"} px
