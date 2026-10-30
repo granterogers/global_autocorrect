@@ -2,6 +2,14 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-30 (evening) — Rework: field is the truth; realistic simulator; CI screen tests
+
+- **User:** "it works if I type slowly, not when I just type"; wants it confirmed internally, screen tests without them.
+- **Root cause (D42):** the app compared its own copy of the typed keys with the field and silently stopped on any difference; real editors differ constantly (blank lines, non-breaking spaces, their own autocorrect, Edge's suggestion after the caret, lagging reads). Now: comparisons tolerant of how editors report text, re-read and carry on instead of stopping (3 failures a minute still stop), whole paragraph (D43), Edge suggestion tolerated and AI context in typed coordinates, Enter ends a line for the AI (D44), in-flight request positions move with earlier fixes (D45), CKEditor 5 (Teams) fixes retyped not arrowed and never across a line break (D46), instant fixes wait for 60 ms of quiet (D47).
+- **Realistic simulator:** each real-editor quirk modelled (`SimulatedEditor`), eval `--realistic`; each has a test that fails without its fix (checked both ways).
+- **Results (real model, stress set with all quirks on):** 67.2% → 88.6% fixed, desyncs 52 → 0, 96.4% of obvious misspellings fixed; the user's three real texts fixed. Tuning set unchanged (94.4%, 0.20%). Holdout not re-scored (it has no multi-line text, which is what changed).
+- **CI screen tests (GitHub Actions, Windows Server, mock model):** `.github/workflows/e2e.yml` on every push to main; 14 tests (Notepad, WPF, Edge: textarea, contenteditable, ProseMirror, Lexical, CKEditor 5, password box). Found the CKEditor wrong-place bug (D46) and the in-flight key race (D47); latest runs all green.
+- **Not automated:** real Teams and Intercom (need the user's accounts); a short session on the user's PC if wanted.
 ## 2026-10-30 (late afternoon) — Long garbled paragraphs, Ctrl+Z removed, suggestion font
 
 - **User reports:** a long, badly typed paragraph in Notepad left obvious misspellings; "inorganic" became "in organic"; the suggestion's text size didn't match the field; Ctrl+Z interception clashes with other apps. (The first Notepad test ran while an E2E run had closed the installed app; that run was stopped and the app restarted.)
