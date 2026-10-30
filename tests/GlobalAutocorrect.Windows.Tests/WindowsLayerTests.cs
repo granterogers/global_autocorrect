@@ -110,13 +110,15 @@ public sealed class WindowsLayerTests
     public void R4_1_a_NoAppIsSpecialCasedOutsideTheExclusionList()
     {
         // The correction path (Core and the Windows layer) must never branch on which app it is in; only the
-        // exclusion list names apps. Comments are ignored.
+        // exclusion list names apps. Comments are ignored, and so are comparisons with UIA's FrameworkId (D53): "Chrome"
+        // there is the Chromium engine that Edge, Chrome, Teams, Slack and every Electron app share, not an app.
         string[] apps = ["notepad", "winword", "outlook", "msedge", "chrome", "firefox", "slack", "teams"];
         var files = Sources(Path.Combine("src", "GlobalAutocorrect.Core")).Concat(Sources(Path.Combine("src", "GlobalAutocorrect.Windows")))
             .Where(f => !f.EndsWith("AppExclusions.cs", StringComparison.Ordinal));
         foreach (var f in files)
         {
-            string code = string.Join('\n', File.ReadLines(f).Where(l => !l.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+            string code = string.Join('\n', File.ReadLines(f).Where(l => !l.TrimStart().StartsWith("//", StringComparison.Ordinal)
+                && !Regex.IsMatch(l, "FrameworkId\\s*==\\s*\"Chrome\"")));
             foreach (Match m in Regex.Matches(code, "\"([A-Za-z]+)(\\.exe)?\""))
                 Assert.DoesNotContain(m.Groups[1].Value.ToLowerInvariant(), apps);
         }
@@ -224,6 +226,16 @@ public sealed class WindowsLayerTests
     {
         // User feedback: the suggestion was a fixed 72% of the caret, so it didn't match the text in Notepad.
         Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, lineSpacing), 2);
+    }
+
+    [Fact]
+    public void R7_6_D53_InChromiumTheCaretHeightIsTheFontSize()
+    {
+        // CI measurement in CKEditor 5 (Edge, Arial): a 17 px caret beside 12 px capitals, i.e. a 17 px font. Dividing by
+        // Arial's line spacing as for Notepad drew the suggestion at 14.8 px (10 px capitals).
+        Assert.Equal(17.0, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(17.0, 1.15, caretIsFontHeight: true), 2);
+        Assert.True(new UiaSnapshot(ReadStatus.Ok, "", "", "", 0, "", "", "", null, FrameworkId: "Chrome").CaretIsFontHeight);
+        Assert.False(new UiaSnapshot(ReadStatus.Ok, "", "", "", 0, "", "", "", null, FrameworkId: "Win32").CaretIsFontHeight);
     }
 
     [Fact]

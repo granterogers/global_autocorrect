@@ -59,17 +59,17 @@ public sealed class OverlayController
         if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) return;
         var s = _host.Predictor?.Suggest(snap.Before);
         if (s is null || s.Completion.Length == 0) return;
-        Show(s.Completion, caret, seq, snap.FontName);
+        Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight);
     }
 
-    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName)
+    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false)
     {
         var hook = _host.Hook;
         if (completion.Length == 0 || hook is null) { Hide(); return; }
         _ui.BeginInvoke(() =>
         {
             if (hook.LatestKeySeq != seq) return;   // something happened in between: don't show a stale suggestion
-            _suggestion.ShowAt(completion, caret, fontName);
+            _suggestion.ShowAt(completion, caret, fontName, caretIsFontHeight);
             _shown = completion;
             hook.SuggestionArm.ArmAt(seq);   // Tab now means "accept", until anything else happens
         });

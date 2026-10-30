@@ -142,6 +142,8 @@ public sealed class OverlayTests
         // "The suggestion uses the field's font": its letters are as tall as the field's own (within 25%).
         Assert.True(overlayInkH is not null, $"no suggestion text was found in the overlay\n{report}");
         Assert.True(fieldInkH is not null, $"no field text was found before the caret\n{report}");
-        Assert.True(inkRatio is >= 0.75 and <= 1.25, $"7.6: the suggestion's letters are not the field's size (ink {overlayInkH} px vs {fieldInkH} px)\n{report}");
+        // D53: within a pixel (10% for large text). ±25% let CKEditor's 10 px letters next to 12 px pass.
+        Assert.True(Math.Abs(overlayInkH!.Value - fieldInkH!.Value) <= Math.Max(1.0, fieldInkH.Value * 0.1),
+            $"7.6: the suggestion's letters are not the field's size (ink {overlayInkH} px vs {fieldInkH} px)\n{report}");
     }
 }

@@ -2,7 +2,16 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
-## 2026-10-30 (evening) — Rework: field is the truth; realistic simulator; CI screen tests
+## 2026-10-30 (night) — Split words joined, prediction scored, settings switches, wider CI screen tests
+
+- **Accepted plan (user: "Go ahead and do"):** five steps, each with tests, real-model measurement where it applies, CI screen tests, deploy and push.
+- **D50:** words split into pieces ("ne arly", "the ir") are joined when the joined word is in the dictionary. Realistic stress: obvious misspellings left 6 → 3, fixed 89.5% → 90.6%, desyncs 0; tuning 94.6%.
+- **D51:** word prediction scored for the first time (`eval predict`). Right suggestions on unseen text 23% → 43.5%, suggestions shown down about 40%, keystrokes saved 10–14%.
+- **D52 (9.3.b):** Clean-up page switches "Fix the whole paragraph" and "Look back when you pause" (on by default; Cautious overrides) and "Free the AI's memory after" 5/15/30/60 minutes. New page-load test caught a misspelt icon (would have crashed the page) and a missing row.
+- **CI screen tests (11.3.b, 7.6):** 27 tests on the Windows runner. Edge and Chrome, each with textarea, contenteditable, ProseMirror, Lexical, CKEditor 5, Quill, TinyMCE and Slate; Notepad, WPF, password box; suggestion size measured on screen in Notepad and CKEditor. No fixing bugs found in the new editors or Chrome.
+- **D53 (7.6):** that size check found the suggestion 15% small in Chromium (caret is one em there, not one line); fixed, and the check tightened to one pixel.
+- **Known:** the screenshot tool (`tools/GlobalAutocorrect.Screens`) fails on this PC with "URI prefix is not recognized" from WPF-UI when it isn't run as GlobalAutocorrect.exe; it was already broken before these changes. The page-load test covers what it was used for here.
+- **Not automated:** real Teams and Intercom (the user's accounts), Google Docs.## 2026-10-30 (evening) — Rework: field is the truth; realistic simulator; CI screen tests
 
 - **User:** "it works if I type slowly, not when I just type"; wants it confirmed internally, screen tests without them.
 - **Root cause (D42):** the app compared its own copy of the typed keys with the field and silently stopped on any difference; real editors differ constantly (blank lines, non-breaking spaces, their own autocorrect, Edge's suggestion after the caret, lagging reads). Now: comparisons tolerant of how editors report text, re-read and carry on instead of stopping (3 failures a minute still stop), whole paragraph (D43), Edge suggestion tolerated and AI context in typed coordinates, Enter ends a line for the AI (D44), in-flight request positions move with earlier fixes (D45), CKEditor 5 (Teams) fixes retyped not arrowed and never across a line break (D46), instant fixes wait for 60 ms of quiet (D47).
