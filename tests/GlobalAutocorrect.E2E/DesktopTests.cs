@@ -225,9 +225,9 @@ public sealed class DesktopTests
     }
 
     [Fact]
-    public void R4_8_a_CtrlZIsLeftToTheApp_D36()
+    public void R4_8_a_CtrlZIsLeftToTheApp_D34()
     {
-        // D36: the user's apps keep their own Ctrl+Z. Ours never takes it, so nothing is learnt and no undo is counted.
+        // D34: the user's apps keep their own Ctrl+Z. Ours never takes it, so nothing is learnt and no undo is counted.
         Desk.RequireIdle();
         using var llm = new MockLlm(Model);
         using var app = new AppUnderTest(llm);

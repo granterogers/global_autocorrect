@@ -15,7 +15,7 @@ public readonly record struct RawInput(RawKind Kind, uint Vk, uint Scan, uint Fl
 /// <summary>
 /// Low-level keyboard and mouse hooks on a dedicated thread (10.3.a). The callback only timestamps, numbers and enqueues,
 /// then returns, because Windows silently removes a slow low-level hook (12.6). Events we injected (tagged) are ignored
-/// (10.7.b). Tab is swallowed only when its arm says so (7.4). Ctrl+Z always goes to the app (D36).
+/// (10.7.b). Tab is swallowed only when its arm says so (7.4). Ctrl+Z always goes to the app (D34).
 /// </summary>
 public sealed class KeyboardHook : IKeyMonitor, IDisposable
 {

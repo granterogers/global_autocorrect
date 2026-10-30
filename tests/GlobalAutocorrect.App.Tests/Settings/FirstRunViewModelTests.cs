@@ -95,7 +95,7 @@ public class FirstRunViewModelTests
         Assert.Equal(["Ctrl", "Alt", "P"], rows[0].Keys);
         Assert.Equal(["Ctrl", "Alt", "Z"], rows[1].Keys);
         Assert.Equal(["Tab"], rows[2].Keys);
-        Assert.DoesNotContain(rows, r => r.Keys.SequenceEqual(["Ctrl", "Z"]));   // D36: Ctrl+Z is the app's own undo
+        Assert.DoesNotContain(rows, r => r.Keys.SequenceEqual(["Ctrl", "Z"]));   // D34: Ctrl+Z is the app's own undo
         Assert.Equal(3, rows.Count);
     }
 

@@ -161,7 +161,7 @@ public sealed class CorrectionEngine
     /// <summary>
     /// Undo the most recent correction (4.8). Global = the shortcut, from anywhere in the same field (4.8.b, D9); the app
     /// only uses this. Local = straight after it, nothing typed and the caret unmoved (4.8.a): the app no longer takes
-    /// Ctrl+Z (D36), so local is only reached from tests.
+    /// Ctrl+Z (D34), so local is only reached from tests.
     /// </summary>
     public UndoResult Undo(bool global)
     {

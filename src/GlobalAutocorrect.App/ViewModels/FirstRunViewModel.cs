@@ -73,7 +73,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
     public bool IsLastStep => Step == LastStep;
     public bool HasMessage => Message.Length > 0;
 
-    /// <summary>Pause, undo and Tab (9.4), as keycap chips. No Ctrl+Z: that stays the app's own undo (D36).</summary>
+    /// <summary>Pause, undo and Tab (9.4), as keycap chips. No Ctrl+Z: that stays the app's own undo (D34).</summary>
     public IReadOnlyList<ShortcutRow> ShortcutRows
     {
         get
