@@ -6,7 +6,8 @@ namespace GlobalAutocorrect.Core.Telemetry;
 /// D64 (12.1, 12.2): how long each stage of a correction takes in real use, as durations only, never text (8.6). Keeps
 /// the last <see cref="Keep"/> samples per stage and reports the typical (p50) and slowest-5% (p95) values. Stages:
 /// <c>instant.keyToFix</c> and <c>ai.keyToFix</c> (from the key that finished the word or sentence to the fix landing,
-/// what the user feels), <c>ai.model</c>, <c>read</c>, <c>write</c> and <c>verify</c>.
+/// what the user feels), <c>ai.model</c>, <c>read</c>, <c>write</c> and <c>verify</c>. D67 adds <c>model.load</c>,
+/// <c>model.reloadWait</c> and <c>model.reloadKeyToFix</c> (see <c>EarlyReload</c>).
 /// </summary>
 public sealed class Timings
 {

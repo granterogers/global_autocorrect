@@ -74,6 +74,7 @@ public sealed class AppHost : IAsyncDisposable
     private FocusTracker? _focus;
     private HotkeyManager? _hotkeys;
     private LlmRuntime? _llm;
+    private EarlyReload? _reload;
     private Timer? _maintenance;
     private ISpellChecker? _speller;
     private ISuggester? _suggester;
@@ -137,18 +138,27 @@ public sealed class AppHost : IAsyncDisposable
 
         _loop = new EngineLoop(BuildEngine(), _hook);
         _loop.SuggestionAccepted += () => SuggestionAcceptedByTab?.Invoke();
+        // D67: after an idle unload, start reloading as soon as focus lands in a field the app corrects, or on the first key.
+        _reload = new EarlyReload(_llm, SystemClock.Instance, () => Settings.Paused, UiaTextTarget.OwnWindowInForeground,
+            () => Target?.FocusIsCorrectable() == true, _counters.Timings);
+        _llm.Loaded += _ => StateChanged?.Invoke();   // a reload between maintenance passes: the tray and Home page refresh
         _loop.KeyProcessed += k =>
         {
             // 5.6.b: reload on the next keystroke, in the background. Never under a mock model (E2E): that started real
             // servers the tests then orphaned.
-            if (k.Kind == KeyKind.Char && !MockedModel) _llm.NotifyActivity();
+            if (k.Kind == KeyKind.Char && !MockedModel) _reload.OnKey();
             KeyProcessed?.Invoke(k);
         };
+        Corrected += n => { if (n.Layer == GlobalAutocorrect.Core.Write.Layer.Ai) _reload.OnAiFix(); };   // D67 timing
         _loop.Post(e => e.SetTarget(Target));
         _loop.Start();
 
         _focus = new FocusTracker(_uia);
-        _focus.FocusChanged += _ => _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));
+        _focus.FocusChanged += _ =>
+        {
+            _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));
+            if (!MockedModel) _reload.OnFocusChanged();   // D67
+        };
 
         _hotkeys = new HotkeyManager();
         _hotkeys.Pressed += OnHotkey;
@@ -158,7 +168,7 @@ public sealed class AppHost : IAsyncDisposable
         // E2E reads desyncs from counters.json before checking text (11.3.d), so save it every second there.
         var every = Environment.GetEnvironmentVariable("GA_E2E") == "1" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(5);
         _maintenance = new Timer(_ => _ = MaintainAsync(), null, every, every);
-        if (!Settings.Paused && !MockedModel) _ = _llm.Host.StartAsync(CancellationToken.None).ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
+        if (!Settings.Paused && !MockedModel) _ = _llm.StartAsync().ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
         await Task.CompletedTask;
     }
 
