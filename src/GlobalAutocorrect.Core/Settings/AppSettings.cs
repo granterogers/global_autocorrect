@@ -31,6 +31,7 @@ public sealed record AppSettings
     public EngineOptions ToEngineOptions(EngineOptions tuned) => tuned with
     {
         PauseMs = Math.Clamp(PauseMs, 300, 2000),
+        FixWholeParagraph = Boldness != Boldness.Cautious && tuned.FixWholeParagraph,   // D43
         Rules = tuned.Rules with
         {
             MaxNormalisedDistance = Boldness switch

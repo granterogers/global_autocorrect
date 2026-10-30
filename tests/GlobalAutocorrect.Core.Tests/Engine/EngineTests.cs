@@ -128,9 +128,20 @@ public sealed class EngineTests
     // ---- Only the user's own typing (4.2, 14.4) ----------------------------------------------------
 
     [Fact]
-    public void R4_2_PastedTextIsNeverCorrected()
+    public void R4_2_PastedTextInTheParagraphIsCorrectedToo_D43()
     {
+        // User: "you should be seeing everything". Pasted text in the paragraph is corrected along with what was typed.
         var h = new Harness(model: s => s.Replace("teh", "the"));
+        h.Engine.OnInput(h.Ed.Paste("I saw teh cat. "));
+        h.Type("Then left. ");
+        h.Wait(3000);
+        Assert.StartsWith("I saw the cat. ", h.Text);
+    }
+
+    [Fact]
+    public void R4_2_CautiousStillLeavesPastedTextAlone_D43()
+    {
+        var h = new Harness(model: s => s.Replace("teh", "the"), options: new EngineOptions { FixWholeParagraph = false });
         h.Engine.OnInput(h.Ed.Paste("I saw teh cat. "));
         h.Type("Then left. ");
         h.Wait(3000);
@@ -138,15 +149,14 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_2_ForeignInsertedTextBreaksTheSessionAndIsNotCorrected()
+    public void R4_2_DictatedTextInTheParagraphIsCorrectedToo_D43()
     {
         var h = new Harness(model: s => s.Replace("teh", "the"));
         h.Type("hello ");
         h.Engine.OnInput(h.Ed.ForeignInsert("teh dictated "));
-        h.Type("more ");
+        h.Type("more. ");
         h.Wait(3000);
-        Assert.Contains("teh dictated", h.Text);
-        Assert.Equal(SessionBreakReason.Foreign, h.Engine.Session.LastBreak);
+        Assert.Contains("the dictated", h.Text);
     }
 
     // ---- AI layer (4.4) --------------------------------------------------------------------------
@@ -255,15 +265,65 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_6_d_DesyncStopsCorrectingThatField()
+    public void R4_6_d_ABlankLineTheEditorReportsAsOneBreakStillMatches_D42()
     {
+        // Found in Edge (Intercom): Enter Enter read back as one line break, so every later check failed.
+        var h = new Harness(model: FixTheir, latencyMs: 500);
+        h.Ed.ReportsBlankLinesOnce = true;
+        h.Type("Hi there,\n\ni went their yesterday.\n\nThanks");
+        h.Wait(3000);
+        Assert.Equal("Hi there,\n\nI went there yesterday.\n\nThanks", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_6_d_DoubleSpacesStoredAsNonBreakingStillMatch_D42()
+    {
+        var h = new Harness(model: FixTheir, latencyMs: 300);
+        h.Ed.ReportsDoubleSpaceAsNbsp = true;
+        h.Type("Thanks.  i went their yesterday. ");
+        h.Wait(3000);
+        Assert.Equal("Thanks.  I went there yesterday. ", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_6_d_TheAppsOwnAutocorrectDoesNotSwitchUsOff_D42()
+    {
+        // Notepad, Word and Outlook fix some typos themselves. That used to look like "changed under us" and end the
+        // session; now the field is re-read and the rest is still corrected.
+        var h = new Harness(model: FixTheir, latencyMs: 300);
+        h.Ed.HostAutocorrect = w => w == "teh" ? "the" : null;
+        h.Type("we saw teh cat and then i went their yesterday. ");
+        h.Wait(3000);
+        Assert.Equal("we saw the cat and then I went there yesterday. ", h.Text);
+    }
+
+    [Fact]
+    public void R4_6_d_AnEdgeSuggestionAfterTheCaretIsNotAMismatch_D42()
+    {
+        var h = new Harness(model: FixTheir, latencyMs: 300);
+        h.Ed.GhostAfterCaret = " and more";
+        h.Ed.Chance = new Random(1);
+        h.Ed.GhostChance = 1.0;                         // showing when the app reads before writing...
+        h.Ed.BeforeApply = ed => ed.GhostChance = 0;    // ...and gone once the fix is typed, as Edge does
+        h.Type("i went their yesterday. ");
+        h.Wait(3000);
+        Assert.Equal("I went there yesterday. ", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_6_d_AfterADesyncTheFieldIsReReadAndCorrectionCarriesOn_D42()
+    {
+        // User report: after one desync nothing more was corrected. Now the field is re-read and correcting carries on.
         var h = new Harness();
-        h.Ed.BeforeApply = ed => { ed.Text = ed.Text.Insert(ed.Caret, "x"); ed.Caret++; };   // something changes the field mid-write
+        int once = 1;
+        h.Ed.BeforeApply = ed => { if (once-- > 0) { ed.Text = ed.Text.Insert(ed.Caret, "x"); ed.Caret++; } };
         h.Type("we saw teh ");
         Assert.Equal(1, h.Counters.Desyncs);
-        h.Ed.BeforeApply = null;
         h.Type("and teh ");
-        Assert.EndsWith("and teh ", h.Text);
+        Assert.EndsWith("and the ", h.Text);
     }
 
     [Fact]
@@ -288,20 +348,19 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_6_d_ADesyncLastsOnlyForTheRestOfTheSession()
+    public void R4_6_d_AFieldThatKeepsSurprisingIsLeftAloneForTheSession_D42()
     {
-        // User report: one desync in an Intercom reply box silenced every later reply until the app restarted. 4.6.d says
-        // "for the rest of the session": after a caret move or click, the field is corrected again.
+        // The safety brake stays: three failed checks in a minute, and the field is left alone until the caret moves.
         var h = new Harness();
         h.Ed.BeforeApply = ed => { ed.Text = ed.Text.Insert(ed.Caret, "x"); ed.Caret++; };
-        h.Type("we saw teh ");
-        Assert.Equal(1, h.Counters.Desyncs);
+        for (int i = 0; i < 8 && h.Counters.Desyncs < 3; i++) h.Type("teh ");
+        Assert.Equal(3, h.Counters.Desyncs);
         h.Ed.BeforeApply = null;
         h.Type("and teh ");
-        Assert.EndsWith("and teh ", h.Text);        // same session: left alone
+        Assert.EndsWith("and teh ", h.Text);        // left alone for the rest of the session
         h.Engine.OnInput(h.Ed.MoveCaret(0));        // the user moves the caret: a new session
         h.Type("then teh ");
-        Assert.EndsWith("then the ", h.Text);       // corrected again
+        Assert.EndsWith("then the ", h.Text);
     }
 
     [Fact]
@@ -314,6 +373,41 @@ public sealed class EngineTests
         Assert.Equal(0, h.Counters.Desyncs);
         Assert.Equal(1, h.Counters.InstantCorrections);
         Assert.StartsWith("we saw the ", h.Text);
+    }
+
+    [Fact]
+    public void R4_4_a_EnterSendsALineWithoutAFullStopToTheAi_D44()
+    {
+        // User report (Notepad): "...smart enenough to see that" Enter, typing straight on: the line never reached the AI.
+        var h = new Harness(model: s => s.Replace("i went their", "I went there"), latencyMs: 400);
+        h.Type("i went their today\nand then more words follow here");
+        h.Wait(3000);
+        Assert.StartsWith("I went there today\n", h.Text);
+    }
+
+    [Fact]
+    public void R4_4_a_TwoLinesEachFinishedWithEnterAreBothFixed_D45()
+    {
+        string Model(string s) => s.Replace("well, lets", "Well, let's").Replace("enenough", "enough")
+                                    .Replace("if I type a bunches of tpargaea", "If I type a bunch of paragraphs");
+        var h = new Harness(model: Model, latencyMs: 500);
+        h.Type("well, lets see if you are smart enenough to see that\nif I type a bunches of tpargaea that what I meant\n", msPerKey: 90);
+        h.Wait(4000);
+        // Found with the realistic simulator: line 1's fixes landed first and moved the text under line 2's reply.
+        Assert.Equal("Well, let's see if you are smart enough to see that\nIf I type a bunch of paragraphs that what I meant\n", h.Text);
+        Assert.Equal(0, h.Counters.DroppedWrites);
+    }
+
+    [Fact]
+    public void R4_6_d_PressingEnterWhileTheFixIsCheckedIsNotADesync_D42()
+    {
+        // User report (Notepad): a fast typist hit Enter while the app was checking its fix; the check refused any line
+        // break after the fix, so it called a desync and stopped.
+        var h = new Harness();
+        h.Ed.BeforeApply = ed => ed.TypedDuringVerify = "\nNe";
+        h.Type("we saw teh ");
+        Assert.Equal(0, h.Counters.Desyncs);
+        Assert.StartsWith("we saw the \nNe", h.Text);
     }
 
     [Fact]
@@ -381,15 +475,16 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_6_c_AFieldThatReallyChangedStillDropsTheSession()
+    public void R4_6_c_AFieldThatChangedIsReReadAndStillCorrected_D42()
     {
-        // The lag allowance must not hide a real change: text that isn't a shorter copy of what was typed still breaks.
+        // Something other than the user changed the field (the app's own autocorrect, say). It used to end the session
+        // silently; now the field is re-read and the paragraph is still corrected, with nothing damaged.
         var h = new Harness(model: FixTheir, latencyMs: 100);
         h.Type("i went their yesterday");
         h.Ed.Text = h.Ed.Text.Replace("yesterday", "today"); h.Ed.Caret = h.Ed.Text.Length;
         h.Type(". ");
         h.Wait(2500);
-        Assert.DoesNotContain("there", h.Text);
+        Assert.Equal("I went there today. ", h.Text);
         Assert.True(h.Counters.FieldMismatches >= 1);
     }
 

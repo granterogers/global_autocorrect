@@ -21,6 +21,9 @@ public sealed record EngineOptions
     /// </summary>
     public int WriteDeadlineMs { get; init; } = 60_000;
 
+    /// <summary>D43: correct the whole current paragraph, not only what was typed since the last click or paste.</summary>
+    public bool FixWholeParagraph { get; init; } = true;
+
     /// <summary>D39: how many line breaks typed since a word a fix may still cross to reach it.</summary>
     public int MaxLineBreaksCrossed { get; init; } = 8;
 

@@ -77,7 +77,7 @@ public sealed class TypingSession
     /// </summary>
     public bool FieldBehind(string fieldBefore)
     {
-        string f = TextNorm.Normalise(fieldBefore), t = TextNorm.Normalise(Typed);
+        string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(Typed);
         for (int k = 1; k <= Math.Min(8, t.Length - 1); k++)
             if (f.EndsWith(t[..^k], StringComparison.Ordinal)) return true;
         return false;
@@ -85,8 +85,9 @@ public sealed class TypingSession
 
     public bool MatchesField(string fieldBefore)
     {
-        string f = TextNorm.Normalise(fieldBefore), t = TextNorm.Normalise(Typed);
-        if (t.Length != _typed.Length) return f.EndsWith(t, StringComparison.Ordinal);   // buffer had CRs; compare only
+        // D42: line-break runs compare as one, so a blank line reported differently by the editor still matches.
+        string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(Typed);
+        if (t.Length != _typed.Length) return f.EndsWith(t, StringComparison.Ordinal);   // CRs or blank lines differ: compare only
         if (f.EndsWith(t, StringComparison.Ordinal)) return true;
         if (f.Length >= t.Length && f.EndsWith(t, StringComparison.OrdinalIgnoreCase))
         {
@@ -94,6 +95,38 @@ public sealed class TypingSession
             return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// D42: start again from what the field shows, instead of giving up. The buffer becomes the field's current
+    /// paragraph before the caret (one paragraph: no line breaks whose caret steps could be miscounted). Pending plans
+    /// are dropped (new generation), but correcting carries on.
+    /// </summary>
+    public void Resync(string fieldBefore)
+    {
+        string f = TextNorm.Normalise(fieldBefore);
+        string para = f[(f.LastIndexOf('\n') + 1)..];
+        if (para.Length > MaxLength) para = para[^MaxLength..];
+        _typed.Clear().Append(para);
+        Generation++;
+        LastBreak = SessionBreakReason.Resync;
+    }
+
+    /// <summary>
+    /// D43: the user wants every obvious mistake in the paragraph fixed, not only what was typed since the last click.
+    /// When the buffer matches the field and the field's current paragraph starts earlier, the earlier part is taken
+    /// in as if typed. Returns how many characters were added at the front (so queued writes can shift); 0 if none.
+    /// </summary>
+    public int ExtendToParagraph(string fieldBefore)
+    {
+        if (!MatchesField(fieldBefore)) return 0;
+        string f = TextNorm.Normalise(fieldBefore), t = Typed;
+        if (t.Contains('\n')) return 0;   // the buffer already reaches back past the paragraph start
+        string para = f[(f.LastIndexOf('\n') + 1)..];
+        int extra = para.Length - t.Length;
+        if (extra <= 0 || !para.EndsWith(t, StringComparison.Ordinal) || para.Length > MaxLength) return 0;
+        _typed.Insert(0, para[..extra]);
+        return extra;
     }
 
     /// <summary>[start, end) of the last two words (the word being typed and the one before it), for 4.6.a.</summary>
@@ -127,7 +160,8 @@ public sealed class TypingSession
                 word = new FinishedWord(start + w.Start, start + w.End, w.Text, IsSentenceStart(start + w.Start), PreviousPlainWord(start));
             }
         }
-        bool sentenceEnded = char.IsWhiteSpace(c) && EndsSentence;
+        // Enter finishes a line even without a full stop (D44: "...to see that" Enter, typing on, never reached the AI).
+        bool sentenceEnded = c == '\n' || (char.IsWhiteSpace(c) && EndsSentence);
         return new KeyEffect(word, sentenceEnded);
     }
 

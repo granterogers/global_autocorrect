@@ -207,7 +207,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 int d = Similarity.DamerauLevenshtein(a, b);
                 if (rest.Length != e.OriginalWords.Count && d > 1 && Instant.TypoChannel.TwoSlipLikelihood(a, b) < Instant.TypoChannel.TwoLikelySlips) continue;
                 double norm = Similarity.NormDist(a, b);
-                if (norm <= settings.MaxNormalisedDistance || (norm <= settings.MaxNonWordDistance && a[0] == b[0])) return true;
+                // The first letter kept, or an extra or swapped first key ("tpargaea" → "paragraphs": the p comes second).
+                bool start = a[0] == b[0] || (a.Length > 1 && a[1] == b[0]);
+                if (norm <= settings.MaxNormalisedDistance || (norm <= settings.MaxNonWordDistance && start)) return true;
             }
         }
         return false;

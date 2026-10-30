@@ -17,6 +17,18 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     private sealed record Pending(Task<LlmResult> Task, long RequestedAtMs, string Context, int ContextStartInTyped, long Generation, long KeySeq);
 
     private Pending? _pending;
+    private int _pendingShift;   // D45: own fixes written earlier in the text since the request went out
+
+    /// <summary>
+    /// D45: one of our fixes was written at [<paramref name="start"/>, <paramref name="end"/>) while a request is out.
+    /// If it lies before that request's context, the reply's positions move by the same amount. Two lines finished with
+    /// Enter in a row lost every fix of the second: the first line's fixes landed first and moved the text under it.
+    /// </summary>
+    public void NoteOwnEdit(int start, int end, int replacementLength)
+    {
+        if (_pending is not null && end <= _pending.ContextStartInTyped + _pendingShift)
+            _pendingShift += replacementLength - (end - start);
+    }
     private long _lastTriggerSeq = -1;
     private bool _rerun;
 
@@ -24,6 +36,9 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
     /// <summary>D38: fixes obvious misspellings the model's reply left behind. Null turns it off ("Cautious").</summary>
     public NonWordSweep? Sweep { get; init; }
+
+    /// <summary>D43: characters taken in at the front of the typed buffer, so queued writes can move with them.</summary>
+    public event Action<int>? Extended;
 
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
@@ -52,15 +67,19 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         if (!session.MatchesField(win.Before))
         {
             if (session.FieldBehind(win.Before)) { ReadFailed(session); return; }   // the app hasn't drawn the last keys yet
-            _lastTriggerSeq = session.LastKeySeq;
+            // D42: the field differs from what was typed (the app's own autocorrect, a paste): carry on from what it shows.
             counters.FieldMismatch();
-            session.Break(SessionBreakReason.FieldMismatch);
-            return;
+            session.Resync(win.Before);
         }
         _lastTriggerSeq = session.LastKeySeq;
+        // D43: the whole paragraph, not only what was typed since the last click or paste.
+        if (options.FixWholeParagraph && session.ExtendToParagraph(win.Before) is > 0 and var added) Extended?.Invoke(added);
 
-        string before = TextNorm.Normalise(win.Before);
-        int typedStart = before.Length - TextNorm.Normalise(session.Typed).Length;
+        // D42: the context comes from the typed buffer, which was just checked against the field (and reaches back to the
+        // paragraph start, D43), so edit positions are in typed coordinates by construction. Taken from the field text,
+        // they were off by one for every blank line an editor reports as a single break.
+        string before = session.Typed;
+        const int typedStart = 0;
         // D8: one paragraph only. If the caret is just after Enter, that's the paragraph that has just ended: it used to
         // be the empty new one, so a paragraph finished with Enter never reached the AI at all (user report, Intercom).
         int end = before.Length;
@@ -72,6 +91,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         if (ctx.Trim().Length == 0 || before.Length <= Math.Max(ctxStart, typedStart)) return;
 
         counters.AiRequest();
+        _pendingShift = 0;
         _pending = new Pending(llm.CleanAsync(ctx, CancellationToken.None), clock.NowMs, ctx, ctxStart - typedStart,
             session.Generation, session.LastKeySeq);
     }
@@ -107,7 +127,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         var writes = new List<PendingWrite>();
         foreach (var e in verdicts.Accepted)
         {
-            int s = p.ContextStartInTyped + e.Start, en = p.ContextStartInTyped + e.End;
+            int s = p.ContextStartInTyped + _pendingShift + e.Start, en = p.ContextStartInTyped + _pendingShift + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
             writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords));
         }
@@ -115,9 +135,9 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         {
             foreach (var f in Sweep.Find(p.Context, verdicts.Accepted, verdicts.Verdicts.Where(v => !v.Accepted).Select(v => v.Edit).ToArray()))
             {
-                int s = p.ContextStartInTyped + f.Start;
+                int s = p.ContextStartInTyped + _pendingShift + f.Start;
                 if (s < 0) continue;   // D5
-                writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, p.ContextStartInTyped + f.End, f.Original, f.Replacement, clock.NowMs, p.KeySeq, [f.Original]));
+                writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, p.ContextStartInTyped + _pendingShift + f.End, f.Original, f.Replacement, clock.NowMs, p.KeySeq, [f.Original]));
             }
         }
         return writes;

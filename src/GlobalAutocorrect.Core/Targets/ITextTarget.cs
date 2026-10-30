@@ -50,5 +50,37 @@ public static class TextNorm
         return sb.ToString();
     }
 
+    /// <summary>
+    /// D42: for comparing what was typed with what the field shows. On top of <see cref="Normalise"/>, a run of line
+    /// breaks counts as one: rich editors report a blank line differently from the Enter presses that made it (Edge
+    /// gave two characters fewer than typed, and every multi-paragraph reply then looked "changed under us").
+    /// </summary>
+    public static string Comparable(string s)
+    {
+        string n = Normalise(s);
+        if (n.IndexOf('\n') < 0) return n;
+        var sb = new System.Text.StringBuilder(n.Length);
+        for (int i = 0; i < n.Length; i++)
+        {
+            if (n[i] == '\n' && sb.Length > 0 && sb[^1] == '\n') continue;
+            sb.Append(n[i]);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// D42: the text after the caret, before and after a write, is consistent: the same, or one has a suggestion the
+    /// app shows after the caret (Edge's text prediction) that the other hasn't. That suggestion came and went between
+    /// reads and made 23 of 25 realistic stress paragraphs "desync". The text before the caret is what proves the fix
+    /// landed in the right place.
+    /// </summary>
+    public static bool AfterConsistent(string expectedFirstLine, string actualAfter)
+    {
+        string actual = actualAfter.Split('\n')[0];
+        string key = actual.Length > 24 ? actual[..24] : actual;
+        return expectedFirstLine.Length == 0 || actual.Contains(expectedFirstLine, StringComparison.Ordinal)
+               || expectedFirstLine.Contains(key, StringComparison.Ordinal) || expectedFirstLine.EndsWith(key, StringComparison.Ordinal);
+    }
+
     public static int Elements(string s) => s.Length == 0 ? 0 : new System.Globalization.StringInfo(s).LengthInTextElements;
 }

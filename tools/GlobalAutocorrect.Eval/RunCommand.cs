@@ -49,7 +49,7 @@ internal static class RunCommand
         var ngram = NgramModel.FromAssets(Path.Combine(repo, "assets"));
         var runner = new PipelineRunner(HunspellSpellChecker.FromAssets(Path.Combine(repo, "assets")),
             SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options,
-            pairCount: ngram.PairCount, wordCount: ngram.CountOf) { TraceIds = trace };
+            pairCount: ngram.PairCount, wordCount: ngram.CountOf) { TraceIds = trace, Quirks = o.TryGetValue("realistic", out var rq) ? (rq == "true" ? ["all"] : rq.Split(",").ToHashSet()) : [] };
 
         var results = new List<ItemResult>();
         foreach (var item in items)
@@ -65,7 +65,7 @@ internal static class RunCommand
             var raw = new Dictionary<string, string>();
             foreach (var r in results) raw[r.Item.Id] = (await client.CleanAsync(r.Item.Noisy, CancellationToken.None)).Text;   // whole message, no rules
             await File.WriteAllLinesAsync(Path.Combine(outDir, $"items-{set}.jsonl"), results.Select(r => JsonSerializer.Serialize(new
-                { r.Item.Id, r.Item.Level, ops = r.Item.Ops, r.Score.NeedFix, r.Score.Fixed, r.Score.FalseEdits, noisy = r.Item.Noisy, output = r.Output, raw = raw[r.Item.Id], clean = r.Item.Clean })));
+                { r.Item.Id, r.Item.Level, ops = r.Item.Ops, r.Score.NeedFix, r.Score.Fixed, r.Score.FalseEdits, noisy = r.Item.Noisy, output = r.Output, raw = raw[r.Item.Id], clean = r.Item.Clean, counters = r.Counters })));
         }
         var agg = Scorer.Combine(results.Select(r => r.Score));
         var lat = runner.Latencies.Order().ToArray();

@@ -53,7 +53,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     {
         // The app processes the injected keys asynchronously: poll briefly until it shows the result (4.6.d). The user
         // keeps typing meanwhile (4.6.e), so the expected text may be followed by a few new characters on the same line.
-        string e = TextNorm.Normalise(expectedBefore), ea = TextNorm.Normalise(expectedAfter);
+        string e = TextNorm.Comparable(expectedBefore), ea = TextNorm.Comparable(expectedAfter);   // D42
         string tail = e.Length > 48 ? e[^48..] : e;
         // The text after the caret only has to still be there: browsers can show their own suggestion (Edge's text
         // prediction) right after the caret, which used to count as a mismatch.
@@ -68,10 +68,11 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             if (w.CaretKnown)
             {
                 read = true;
-                b = TextNorm.Normalise(w.Before); a = TextNorm.Normalise(w.After);
+                b = TextNorm.Comparable(w.Before); a = TextNorm.Comparable(w.After);
                 int at = b.LastIndexOf(tail, StringComparison.Ordinal);
-                beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify && !b.AsSpan(at + tail.Length).Contains('\n');
-                if (beforeOk && (afterKey.Length == 0 || a.Contains(afterKey, StringComparison.Ordinal))) return true;
+                // Typing may go on after the fix, Enter included (a fast typist starts the next line straight away).
+                beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify;
+                if (beforeOk && TextNorm.AfterConsistent(afterKey, a)) return true;
             }
             Thread.Sleep(35);
         }
