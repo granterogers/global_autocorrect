@@ -29,6 +29,7 @@ public sealed class AppHost : IAsyncDisposable
     public static string CacheDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlobalAutocorrect", "cache");
     public static string AssetsDir { get; } = Path.Combine(AppContext.BaseDirectory, "assets");
 
+    private NgramModel? _ngram;
     private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
     private readonly Counters _counters = new();
     private readonly DailyCounts _daily = new(Path.Combine(DataDir, "counters.json"));
@@ -79,7 +80,8 @@ public sealed class AppHost : IAsyncDisposable
 
         _speller = HunspellSpellChecker.FromAssets(AssetsDir);
         _suggester = SymSpellSuggester.FromAssets(AssetsDir);
-        Predictor = new Predictor(NgramModel.FromAssets(AssetsDir), History) { Enabled = Settings.PredictionEnabled };
+        _ngram = NgramModel.FromAssets(AssetsDir);
+        Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled };
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
@@ -143,7 +145,9 @@ public sealed class AppHost : IAsyncDisposable
             SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
             Dictionary.Contains, Dictionary.Add, _counters,
             ObserveWord: History.Observe,                      // 7.3, gated in the engine (8.3)
-            NoteUnrecognised: Dictionary.NoteUnrecognised))    // 8.5
+            NoteUnrecognised: Dictionary.NoteUnrecognised,     // 8.5
+            PairCount: _ngram is null ? null : _ngram.PairCount,    // D37, D38
+            WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
         return engine;

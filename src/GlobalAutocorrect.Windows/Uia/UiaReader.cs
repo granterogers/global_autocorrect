@@ -17,7 +17,8 @@ public sealed record UiaSnapshot(
     string ControlType,
     string RuntimeId,
     (double X, double Y, double W, double H)? CaretRect,
-    int ControlTypeId = 0)   // UIA control type id: language-independent, unlike ControlType
+    int ControlTypeId = 0,   // UIA control type id: language-independent, unlike ControlType
+    string? FontName = null) // the field's font where the app reports it, so the suggestion can match it (7.6)
 {
     public bool CaretKnown => Status == ReadStatus.Ok;
 
@@ -90,7 +91,7 @@ public sealed class UiaReader
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType);
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, FontName(caret));
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
@@ -139,6 +140,20 @@ public sealed class UiaReader
     /// </summary>
     private static bool IsUiaFailure(Exception e) => e is COMException or TimeoutException or UnauthorizedAccessException
         or InvalidOperationException or ArgumentException or InvalidCastException or NullReferenceException;
+
+    private const int FontNameAttributeId = 40005;   // UIA_FontNameAttributeId
+
+    /// <summary>The font of the character just before the caret; null if the app doesn't say (or it's mixed).</summary>
+    private static string? FontName(IUIAutomationTextRange caret)
+    {
+        try
+        {
+            var r = caret.Clone();
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -1);
+            return r.GetAttributeValue(FontNameAttributeId) is string s && s.Length > 0 ? s : null;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return null; }
+    }
 
     private static (double, double, double, double)? CaretRect(IUIAutomationTextRange caret)
     {

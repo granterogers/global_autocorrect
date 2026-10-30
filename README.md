@@ -98,6 +98,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 - **Some apps also autocorrect.** If Word, Outlook or Notepad changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
 - **Code editors are excluded by default.** In VS Code and similar editors, only about a page of text is visible to other apps.
 - **Changing the AI model takes effect after a restart.**
+- **While the model is loaded it uses about 4 GB of ordinary memory as well as about 4.5 GB of graphics memory.** That's how this model is built (part of it lives in ordinary memory so the rest fits on the graphics card). It unloads itself after 15 minutes without typing (Settings › AI) and reloads in about 3 seconds on the next key.
 - **Other GPU-heavy apps can slow clean-ups down.** The model needs about 3.5 GB of the 8 GB of graphics memory. If games, video tools or other AI apps take the rest, Windows quietly moves graphics memory into ordinary memory and clean-ups can take seconds instead of a third of a second. `scripts/verify.ps1` measures this.
 - **Ctrl+Alt+Z undoes from anywhere in the field that was corrected**, not from another window. If you've moved to another window, it tells you to switch back.
 - **A shortcut can be taken by another app.** If Ctrl+Alt+P or Ctrl+Alt+Z is already in use, the tray tells you and you can choose another in Settings.
@@ -115,8 +116,8 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 0.2.a | Tested (incl. E2E) | 3 test(s), e.g. `R0_2_a_RealDictionariesFixTehAndBookk` |
 | 0.2.b | Tested (incl. E2E) | 9 test(s), e.g. `R11_3_a_NotepadAiFix_R0_2_b` |
 | 0.2.c | Tested | 1 test(s), e.g. `R0_2_c_AppliesEveryAcceptedEdit` |
-| 0.2.d | Tested | 25 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
-| 0.3 | Tested (incl. E2E) | 20 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
+| 0.2.d | Tested | 34 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
+| 0.3 | Tested (incl. E2E) | 21 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 0.4 | Tested | 1 test(s), e.g. `R3_4_InterfaceTextIsBritishAndSpeltCorrectly_R0_4` |
 | 0.5 | Recorded check | milestone order in PROGRESS |
 | 0.6 | Recorded check | DECISIONS.md raised items |
@@ -182,18 +183,18 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 4.3.b | Tested | 1 test(s), e.g. `R4_3_b_InstantLayerNeverCallsTheModel` |
 | 4.3.c | Tested | 8 test(s), e.g. `R4_3_c_AdjacentSwapIsAnObviousFix` |
 | 4.3.d | Tested | 4 test(s), e.g. `R4_3_d_CloseCandidatesAreLeftForTheAi` |
-| 4.4 | Tested | 30 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
-| 4.4.a | Tested | 6 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
+| 4.4 | Tested | 39 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
+| 4.4.a | Tested | 9 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
 | 4.4.b | Tested | 2 test(s), e.g. `R4_4_b_SendsCurrentSentencePlusTwoBefore` |
 | 4.4.c | Tested | 8 test(s), e.g. `R4_4_c_ClassifiesApostropheCapitalisationPunctuation` |
-| 4.4.d | Tested | 6 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
+| 4.4.d | Tested | 12 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
 | 4.4.e | Tested | 8 test(s), e.g. `R4_4_e_HeavyGarbleStillDiffsWordByWord` |
-| 4.5 | Tested | 19 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
-| 4.5.a | Tested | 10 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
+| 4.5 | Tested | 22 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
+| 4.5.a | Tested | 11 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
 | 4.5.b | Tested | 2 test(s), e.g. `R4_5_b_AcceptsFunctionWordInsertionButNotContentWords` |
 | 4.5.c | Tested | 1 test(s), e.g. `R4_5_c_RejectsOneEditButKeepsTheRest` |
-| 4.5.d | Tested | 4 test(s), e.g. `R4_5_d_NeverRespacesNumbers` |
-| 4.5.e | Tested | 2 test(s), e.g. `R4_5_e_CautiousTurnsOffTwoSlips_D30` |
+| 4.5.d | Tested | 5 test(s), e.g. `R4_5_d_ABadlyGarbledSentenceIsFixedNotRejectedWhole_D36` |
+| 4.5.e | Tested | 3 test(s), e.g. `R4_5_e_CautiousTurnsOffNonWordLeniency_D36` |
 | 4.6 | Tested | 7 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
 | 4.6.a | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
 | 4.6.b | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
@@ -252,7 +253,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 7.3 | Tested | 5 test(s), e.g. `R7_3_HistoryBoostsTheUsersOwnWords` |
 | 7.4 | Tested (incl. E2E) | 5 test(s), e.g. `R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey` |
 | 7.5 | Tested | 1 test(s), e.g. `R7_5_NoSuggestionAfterNonMatchingText` |
-| 7.6 | Tested (incl. E2E) | 2 test(s), e.g. `R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6` |
+| 7.6 | Tested (incl. E2E) | 3 test(s), e.g. `R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6` |
 | 7.7 | Tested | 1 test(s), e.g. `R7_7_DisabledPredictorSuggestsNothing` |
 | 8.1 | Tested | 2 test(s), e.g. `R8_1_StartupRegistrationDefaultsToTheUserRunKey` |
 | 8.2 | Tested | 3 test(s), e.g. `R8_2_DefaultPauseIsCtrlAltP` |
@@ -332,7 +333,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 14.6 | Out of scope (14) | Out of scope |
 | 14.7 | Out of scope (14) | Out of scope |
 | 14.8 | Out of scope (14) | Out of scope |
-| 14.9 | Tested | 6 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
+| 14.9 | Tested | 12 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
 
 ## For developers
 

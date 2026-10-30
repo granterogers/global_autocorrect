@@ -26,6 +26,16 @@ Every change below was made by looking at the **tuning** set only (260 messages)
 
 | (8-bit) | Same code with `gemma-4-E4B-it-Q8_0.gguf` (same model, same pinned revision, 7.63 GB). Not adopted: no gain, slower, about 5.4 GB of graphics memory instead of about 3.5 GB | 94.4% | 0.20% | 89% | 420 / 659 ms |
 
+**Long garbled paragraphs (2026-10-30, user report).** New tuning material: `data/eval/stress.jsonl`, 16 new multi-sentence messages at heavy and severe noise (heavy noise applied twice, about half the words slipped), each also clean, plus the user's own paragraph. Tuning only; the holdout is untouched by it.
+
+| Run | Change | Stress fixed | Stress false | Tuning fixed | Tuning false |
+|---|---|---|---|---|---|
+| S0 | T10 code | 83.5% | 0.32% | 94.4% | 0.20% |
+| S1 / T11 | D36: non-words fixed leniently and not counted towards 4.5.d | 89.2% | 0.32% | 94.4% | 0.20% |
+| S2 / T12 | D38 sweep, first version (no limits). Not adopted: corrupted re-spaced words | 86.6% | 0.32% | 92.9% | 0.23% |
+| S3 / T13 | Sweep only where the model tried; plausible slips only; whole-word spans | 88.7% | 0.32% | 94.4% | 0.20% |
+| S4 / T14 | D37: a real word split only when the pair is 3× as common (`anew` → `a new`) | **89.1%** | **0.32%** | **94.4%** | **0.20%** |
+
 **Tuning frozen again after T10** (prompt v4, rules D19–D31). The holdout is scored once more on this code; the earlier holdout score (92.3%) was seen before this round, which is disclosed with the new number.
 
 **Tuning frozen after T6** (prompt v3, rules D19–D27, instant layer D23). The holdout is scored once, next.

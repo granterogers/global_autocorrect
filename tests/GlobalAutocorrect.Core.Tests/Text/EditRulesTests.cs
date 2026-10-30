@@ -128,6 +128,67 @@ public sealed class EditRulesTests
         Assert.Equal("the heating's broken again", ApplyWith(s, "the heating broken again", "the heating's broken again"));
     }
 
+    private static readonly FakeSpeller Garble = new("i", "I", "read", "the", "forecast", "says", "it", "will", "rain", "so", "we",
+        "went", "over", "to", "bus", "and", "caught", "a", "train", "station", "at", "for", "would've", "been", "maybe", "date", "have");
+
+    [Theory]
+    [InlineData("i read gorecastsays it will rain", "i read the forecast says it will rain")]   // merge + dropped "the"
+    [InlineData("we went ovwared to the bus", "we went over to the bus")]                       // first letter kept, 0.57 apart
+    [InlineData("we caught t train", "we caught the train")]                                   // a stray letter
+    [InlineData("so n we went", "so and we went")]
+    public void R4_5_a_ANonWordIsFixedEvenWhenFarFromTheFix_D36(string typed, string model) =>
+        Assert.Equal(model, ApplyWith(Garble, typed, model));
+
+    [Fact]
+    public void R4_5_d_ABadlyGarbledSentenceIsFixedNotRejectedWhole_D36()
+    {
+        // Found by the stress set: more than half the words were misspelt, so 4.5.d rejected every fix in the message.
+        const string typed = "i raed teh forcast sasy it wil rain", model = "i read the forecast says it will rain";
+        Assert.Equal(model, ApplyWith(Garble, typed, model));
+    }
+
+    [Theory]
+    [InlineData("we saw the date", "we saw the the")]                   // a real word keeps the strict rule
+    [InlineData("would've hve been", "would've maybe been")]            // different first letter and 0.6 apart: a guess
+    [InlineData("we went to the stationfor seven", "we went to the station at seven")]   // D26: no hidden word swap
+    [InlineData("we saw Zetters today", "we saw Settle today")]        // capitalised: treated as a name
+    public void R4_4_d_NonWordLeniencyStillRefusesGuessesAndRealWords_D36(string typed, string model) =>
+        Assert.Equal(typed, ApplyWith(Garble, typed, model));
+
+    [Fact]
+    public void R4_4_d_ASpaceNeverSplitsARealWord_D37()
+    {
+        // User report: "inorganic" became "in organic". Every letter kept, meaning changed.
+        var s = new FakeSpeller("the", "inorganic", "in", "organic", "samples", "on", "your", "way");
+        Assert.Equal("the inorganic samples", ApplyWith(s, "the inorganic samples", "the in organic samples"));
+        Assert.Equal("on your way", ApplyWith(s, "onyour way", "on your way"));   // a run-together non-word is still split
+    }
+
+    [Fact]
+    public void R4_4_d_ARealWordIsSplitOnlyWhenThePairIsFarMoreCommon_D37()
+    {
+        // "anew" → "a new" is a missing space (the pair is 500× as common); "inorganic" → "in organic" is not.
+        var s = new FakeSpeller("buy", "anew", "a", "new", "mattress", "the", "inorganic", "in", "organic", "samples");
+        var pairs = new Dictionary<(string, string), long> { [("a", "new")] = 8108, [("in", "organic")] = 0 };
+        var words = new Dictionary<string, long> { ["anew"] = 14, ["inorganic"] = 20 };
+        var rules = new EditRules(new EditRuleSettings(), s, _ => false)
+        {
+            PairCount = (a, b) => pairs.GetValueOrDefault((a, b)),
+            WordCount = w => words.GetValueOrDefault(w),
+        };
+        string Fix(string a, string b) => Apply(a, rules.Filter(a, b, WordDiff.Compute(a, b)));
+        Assert.Equal("buy a new mattress", Fix("buy anew mattress", "buy a new mattress"));
+        Assert.Equal("the inorganic samples", Fix("the inorganic samples", "the in organic samples"));
+    }
+
+    [Fact]
+    public void R4_5_e_CautiousTurnsOffNonWordLeniency_D36()
+    {
+        const string typed = "we went ovwared to the bus", model = "we went over to the bus";
+        var r = new EditRules(new EditRuleSettings { LenientWithNonWords = false }, Garble, _ => false).Filter(typed, model, WordDiff.Compute(typed, model));
+        Assert.Equal(typed, Apply(typed, r));
+    }
+
     [Fact]
     public void R4_5_b_AcceptsFunctionWordInsertionButNotContentWords()
     {
@@ -163,18 +224,20 @@ public sealed class EditRulesTests
     [Fact]
     public void R4_5_d_RejectsWholeCorrectionWhenMoreThanHalfTheWordsChange()
     {
-        var r = Run("teh cta sta on mat", "the cat sat on mat");   // 3 of 5 words
+        // Real words changed (a rewrite), not misspellings fixed: D36 doesn't count fixes of non-words.
+        var r = Run("I feel happy today", "you see glad me");   // 4 of 4 real words
         Assert.Equal(RejectReason.TooManyChanges, r.WholeRejection);
+        Assert.Equal(RejectReason.None, Run("teh cta sta on mat", "the cat sat on mat").WholeRejection);   // 3 typos of 5
     }
 
     [Fact]
     public void R4_5_e_SettingsAreConfigurable()
     {
-        var strict = new EditRuleSettings { MaxNormalisedDistance = 0.2, MaxChangedWordRatio = 0.9, AcceptLikelyKeyboardSlips = false };
+        var strict = new EditRuleSettings { MaxNormalisedDistance = 0.2, MaxChangedWordRatio = 0.9, AcceptLikelyKeyboardSlips = false, LenientWithNonWords = false };
         Assert.Empty(Run("teh cat", "the cat", strict).Accepted);           // 0.33 > 0.2
         Assert.Single(Run("teh cat", "the cat").Accepted);
         var tight = new EditRuleSettings { MaxChangedWordRatio = 0.1 };
-        Assert.Equal(RejectReason.TooManyChanges, Run("teh cat sat on the mat", "the cat sat on the mat", tight).WholeRejection);
+        Assert.Equal(RejectReason.TooManyChanges, Run("the cat sat on the mat", "the cat sat at the mat", tight).WholeRejection);
     }
 
     [Fact]

@@ -19,6 +19,16 @@ public sealed record EditRuleSettings
     /// <summary>D27: accept one likely keyboard slip even when it fails the distance threshold (short words).</summary>
     public bool AcceptLikelyKeyboardSlips { get; init; } = true;
 
+    /// <summary>
+    /// D36: a word that isn't a word ("ovwared", "kreminderthat", a stray "t") can't be the user's own wording, so a fix
+    /// of it is judged leniently and doesn't count towards 4.5.d's "more than half the words changed". Real words keep
+    /// the strict rules.
+    /// </summary>
+    public bool LenientWithNonWords { get; init; } = true;
+
+    /// <summary>D36: the distance allowed when fixing a non-word whose first letter is kept.</summary>
+    public double MaxNonWordDistance { get; init; } = 0.65;
+
     /// <summary>4.5.b: words that may be inserted or deleted on their own.</summary>
     public IReadOnlyList<string> FunctionWords { get; init; } = DefaultFunctionWords;
 }

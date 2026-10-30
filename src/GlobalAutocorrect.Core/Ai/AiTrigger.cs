@@ -22,6 +22,9 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
     public bool InFlight => _pending is not null;
 
+    /// <summary>D38: fixes obvious misspellings the model's reply left behind. Null turns it off ("Cautious").</summary>
+    public NonWordSweep? Sweep { get; init; }
+
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
         session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs
@@ -103,6 +106,15 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             int s = p.ContextStartInTyped + e.Start, en = p.ContextStartInTyped + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
             writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords));
+        }
+        if (Sweep is not null && rules.Settings.LenientWithNonWords)
+        {
+            foreach (var f in Sweep.Find(p.Context, verdicts.Accepted, verdicts.Verdicts.Where(v => !v.Accepted).Select(v => v.Edit).ToArray()))
+            {
+                int s = p.ContextStartInTyped + f.Start;
+                if (s < 0) continue;   // D5
+                writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, p.ContextStartInTyped + f.End, f.Original, f.Replacement, clock.NowMs, p.KeySeq, [f.Original]));
+            }
         }
         return writes;
     }

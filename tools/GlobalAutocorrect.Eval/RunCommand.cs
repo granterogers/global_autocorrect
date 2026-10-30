@@ -1,3 +1,4 @@
+using GlobalAutocorrect.Core.Prediction;
 using System.Text;
 using System.Text.Json;
 using GlobalAutocorrect.Core.Ai;
@@ -45,8 +46,10 @@ internal static class RunCommand
         await client.CleanAsync("warm up teh cache", CancellationToken.None);
 
         var options = EvalOptions(o);
+        var ngram = NgramModel.FromAssets(Path.Combine(repo, "assets"));
         var runner = new PipelineRunner(HunspellSpellChecker.FromAssets(Path.Combine(repo, "assets")),
-            SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options) { TraceIds = trace };
+            SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options,
+            pairCount: ngram.PairCount, wordCount: ngram.CountOf) { TraceIds = trace };
 
         var results = new List<ItemResult>();
         foreach (var item in items)

@@ -47,7 +47,7 @@ internal sealed record ItemResult(EvalItem Item, string Output, MessageScore Sco
 /// real engine (instant layer, AI layer, edit rules, timing rules). Virtual time stands still while the real model is
 /// working, then the result lands after its real latency, while "typing" carries on, exactly as it would live.
 /// </summary>
-internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester, ILlmClient llm, EngineOptions options, int seed = 20261029)
+internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester, ILlmClient llm, EngineOptions options, int seed = 20261029, Func<string, string, long>? pairCount = null, Func<string, long>? wordCount = null)
 {
     /// <summary>Real model round-trip times for every request made (6.3.d).</summary>
     public List<double> Latencies { get; } = [];
@@ -64,7 +64,7 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
             Rules = new EditRules(options.Rules, speller, _ => false),
         };
         var personal = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, new Counters()));
+        var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, new Counters(), PairCount: pairCount, WordCount: wordCount));
         engine.SetTarget(ed);
         var rng = new Random(HashCode.Combine(seed, item.Id));
 

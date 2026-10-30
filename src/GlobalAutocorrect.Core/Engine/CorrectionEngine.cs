@@ -20,7 +20,9 @@ public sealed record EngineDeps(
     Func<string, bool> AddPersonalWord,
     Counters Counters,
     Action<string>? ObserveWord = null,           // 7.3: prediction history, word counts only
-    Func<string, bool>? NoteUnrecognised = null); // 8.5: auto-learn after 3 uses; true when the word was added
+    Func<string, bool>? NoteUnrecognised = null,  // 8.5: auto-learn after 3 uses; true when the word was added
+    Func<string, string, long>? PairCount = null,  // D37/D38: corpus count of a word pair
+    Func<string, long>? WordCount = null);         // D37: corpus count of a word
 
 /// <summary>
 /// Feature A end to end (0.2): instant layer on each finished word, AI layer on sentence ends and pauses, all writes
@@ -55,7 +57,10 @@ public sealed class CorrectionEngine
         _d = deps;
         _instant = new InstantCorrector(deps.Speller, deps.Suggester, deps.IsPersonalWord);
         if (deps.Llm is not null)
-            _ai = new AiTrigger(_o, deps.Clock, deps.Llm, new EditRules(_o.Rules, deps.Speller, deps.IsPersonalWord), deps.Counters);
+            _ai = new AiTrigger(_o, deps.Clock, deps.Llm, new EditRules(_o.Rules, deps.Speller, deps.IsPersonalWord) { PairCount = deps.PairCount, WordCount = deps.WordCount }, deps.Counters)
+            {
+                Sweep = deps.PairCount is null ? null : new NonWordSweep(deps.Speller, deps.Suggester, deps.IsPersonalWord, deps.PairCount),
+            };
         _gate = new WriteGate(_o, deps.Clock, deps.Keys, Session, deps.Counters);
         _gate.Written += (notice, w, typedAfter) =>
         {

@@ -145,6 +145,18 @@ public sealed class NgramModel
         return i < 0 ? 0 : _counts[i];
     }
 
+    /// <summary>How often <paramref name="w2"/> followed <paramref name="w1"/> in the corpus; 0 if never or unknown (D38).</summary>
+    public long PairCount(string w1, string w2)
+    {
+        int i1 = IndexOf(Normalise(w1)), i2 = IndexOf(Normalise(w2));
+        if (i1 < 0 || i2 < 0) return 0;
+        int b = Array.BinarySearch(_biContext, i1);
+        if (b < 0) return 0;
+        for (int j = _biStart[b]; j < _biStart[b + 1]; j++)
+            if (_biWord[j] == i2) return _biCount[j];
+        return 0;
+    }
+
     /// <summary>
     /// Top <paramref name="k"/> vocabulary words that start with the lower-case <paramref name="prefix"/>, by corpus count.
     /// Binary search on the sorted vocabulary, then a scan of the matching range.

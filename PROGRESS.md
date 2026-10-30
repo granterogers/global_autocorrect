@@ -2,6 +2,14 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-30 (late afternoon) — Long garbled paragraphs, Ctrl+Z removed, suggestion font
+
+- **User reports:** a long, badly typed paragraph in Notepad left obvious misspellings; "inorganic" became "in organic"; the suggestion's text size didn't match the field; Ctrl+Z interception clashes with other apps. (The first Notepad test ran while an E2E run had closed the installed app; that run was stopped and the app restarted.)
+- **New stress set** `data/eval/stress.jsonl` (tuning only): 16 new multi-sentence messages at heavy and severe noise plus clean copies, and the user's paragraph.
+- **Changes:** D34 (Ctrl+Z left to the app; undo is Ctrl+Alt+Z), D36 (non-words fixed leniently and not counted towards 4.5.d), D37 (a real word split only when the pair is 3× as common), D38 (sweep of non-words the model tried to fix), suggestion drawn in the field's own font at its size (UIA font name, 7.6).
+- **Results:** stress set 83.5% → 89.1% fixed (severe 79.6% → 87.6%), false edits unchanged at 0.32%. Tuning set identical message by message (94.4%, 0.20%). Holdout scored once: 92.9% fixed, 0.08% false edits, p50 332 ms (unchanged: mostly single sentences).
+- **Measured, not changed:** llama-server load modes. The model holds about 4 GB of RAM by design (per-layer embeddings); no flag reduces it without reserving more. Idle unload after 15 minutes stays.
+- **Checks:** fast tier green (221 Core, 19 Llm, 58 Windows, 32 App). Deployed to %LOCALAPPDATA%\Programs\GlobalAutocorrect. Not run: the E2E tests for the Ctrl+Z change and the suggestion font (they need the keyboard idle).
 ## 2026-10-30 (afternoon) — Accuracy push after RC1 review
 
 - **User asked to push accuracy higher before accepting RC1.** All tuning on the tuning set only (4.5.e, 6.1.e); the holdout scored once at the end.

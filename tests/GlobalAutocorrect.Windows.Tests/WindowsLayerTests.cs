@@ -216,6 +216,16 @@ public sealed class WindowsLayerTests
         Assert.True(sw.ElapsedMilliseconds < 3000);
     }
 
+    [Theory]
+    [InlineData(19.0, 1.17, 16.24)]   // Consolas (Notepad): line height is 1.17 × the font size
+    [InlineData(20.0, 1.33, 15.04)]   // Segoe UI
+    [InlineData(20.0, 0.0, 15.04)]    // font unknown: Segoe UI's spacing
+    public void R7_6_TheSuggestionUsesTheFieldsFontSize(double caretDips, double lineSpacing, double expected)
+    {
+        // User feedback: the suggestion was a fixed 72% of the caret, so it didn't match the text in Notepad.
+        Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, lineSpacing), 2);
+    }
+
     [Fact]
     public void R7_4_ModifiersDoNotCountAsAKeyInBetween()
     {

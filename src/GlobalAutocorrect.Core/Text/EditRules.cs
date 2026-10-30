@@ -15,6 +15,7 @@ public enum RejectReason
     ReplacesValidWithInvalid,
     NotAFunctionWord,
     StyleCapitalisation,
+    SplitsAValidWord,
 }
 
 public sealed record EditVerdict(TextEdit Edit, bool Accepted, RejectReason Reason);
@@ -35,6 +36,15 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
 
     public EditRuleSettings Settings => settings;
 
+    /// <summary>D37: corpus counts of a word pair and of a word, so a real word is split only when the pair is far more
+    /// common ("anew" → "a new"), never otherwise ("inorganic" → "in organic"). Null: real words are never split.</summary>
+    public Func<string, string, long>? PairCount { get; init; }
+    public Func<string, long>? WordCount { get; init; }
+
+    private bool SplitIsClearlyMeant(TextEdit e) =>
+        PairCount is not null && WordCount is not null && e.OriginalWords.Count == 1 && e.NewWords.Count == 2
+        && PairCount(e.NewWords[0], e.NewWords[1]) >= 3 * Math.Max(1, WordCount(e.OriginalWords[0]));
+
     public RuleResult Filter(string original, string cleaned, IReadOnlyList<TextEdit> edits)
     {
         var origTokens = Tokeniser.Tokenise(original);
@@ -45,7 +55,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
 
         // D19: a word "changes" when its spelling does; case, apostrophe, punctuation and spacing fixes don't count.
         int words = origTokens.Count(t => t.IsWord);
+        // D36: fixing a word that isn't a word isn't a change of wording, so a badly garbled paragraph can still be fixed.
         int changed = edits.Where(e => e.Kind is EditKind.Substitution or EditKind.Insertion or EditKind.Deletion)
+                           .Where(e => !(settings.LenientWithNonWords && e.Kind == EditKind.Substitution && AllNonWords(e.OriginalWords)))
                            .Sum(e => Math.Max(e.OriginalWords.Count, e.NewWords.Count));
         if (changed > settings.MaxChangedWordRatio * Math.Max(1, words))
             return Reject(edits, RejectReason.TooManyChanges);
@@ -71,6 +83,10 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             }
             switch (e.Kind)
             {
+                // D37: a space never splits a real word: "inorganic" → "in organic" keeps every letter but changes the
+                // meaning (user report). Splitting a run-together non-word ("onyour") is still a fix.
+                case EditKind.Spacing when e.NewWords.Count > e.OriginalWords.Count && e.OriginalWords.All(IsKnown) && !SplitIsClearlyMeant(e):
+                    return RejectReason.SplitsAValidWord;
                 case EditKind.Spacing or EditKind.Punctuation or EditKind.Apostrophe:
                     return RejectReason.None;   // 4.5.a
                 case EditKind.Capitalisation:
@@ -129,6 +145,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
     /// </summary>
     private RejectReason JudgeSubstitution(TextEdit e)
     {
+        if (settings.LenientWithNonWords && AllNonWords(e.OriginalWords) && NonWordFixOk(e)) return RejectReason.None;   // D36
         var reason = JudgeSubstitutionAlone(e);
         int extra = e.NewWords.Count - e.OriginalWords.Count;
         if (reason == RejectReason.None || extra <= 0) return reason;
@@ -146,6 +163,54 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         if (head.All(_functionWords.Contains) && IsFix(e.NewWords.Skip(extra)) && JudgeSubstitutionAlone(e with { NewWords = e.NewWords.Skip(extra).ToArray() }) == RejectReason.None)
             return RejectReason.None;
         return reason;
+    }
+
+    /// <summary>
+    /// D36: not a word as typed. Lower-case words the dictionary doesn't know, and stray single letters other than "a"
+    /// and "I". Capitalised unknown words are treated as names and keep the strict rules.
+    /// </summary>
+    private bool IsNonWord(string w)
+    {
+        if (w.Length == 0 || !w.Any(char.IsLetter) || w.Any(char.IsDigit)) return false;
+        if (w.Length == 1) return w is not ("a" or "A" or "i" or "I");
+        return !char.IsUpper(w[0]) && !IsKnown(w);
+    }
+
+    private bool AllNonWords(IReadOnlyList<string> words) => words.Count > 0 && words.All(IsNonWord);
+
+    /// <summary>
+    /// D36: a fix of a non-word. The result must be real words. Small words added at either end are allowed
+    /// ("gorecastsays" → "the forecast says"); what remains must be close in letters: 0.5 apart, or up to
+    /// <see cref="EditRuleSettings.MaxNonWordDistance"/> when the first letter is kept ("ovwared" → "over"). A split must
+    /// still be nearly exact, so a word swap can't hide in it ("stationfor" → "station at", D26). A stray letter may become
+    /// a small word that contains it ("t" → "the").
+    /// </summary>
+    private bool NonWordFixOk(TextEdit e)
+    {
+        if (!e.NewWords.All(w => IsKnown(w) || char.IsUpper(w[0]))) return false;
+        string a = string.Concat(e.OriginalWords.Select(Similarity.Key));
+        if (a.Length == 1)
+            return e.NewWords.Count == 1 && _functionWords.Contains(e.NewWords[0]) && Similarity.Key(e.NewWords[0]).Contains(a[0]);
+        var nw = e.NewWords;
+        for (int head = 0; head < nw.Count; head++)
+        {
+            if (head > 0 && !_functionWords.Contains(nw[head - 1])) break;
+            for (int tail = 0; head + tail < nw.Count; tail++)
+            {
+                if (tail > 0 && !_functionWords.Contains(nw[nw.Count - tail])) break;
+                var rest = nw.Skip(head).Take(nw.Count - head - tail).ToArray();
+                string b = string.Concat(rest.Select(Similarity.Key));
+                if (b.Length == 0) continue;
+                // A dropped small word may only explain added letters, never missing ones: "stationfor" → "station" + "at"
+                // would hide "for" becoming "at".
+                if (head + tail > 0 && a.Length > b.Length + 1) continue;
+                int d = Similarity.DamerauLevenshtein(a, b);
+                if (rest.Length != e.OriginalWords.Count && d > 1 && Instant.TypoChannel.TwoSlipLikelihood(a, b) < Instant.TypoChannel.TwoLikelySlips) continue;
+                double norm = Similarity.NormDist(a, b);
+                if (norm <= settings.MaxNormalisedDistance || (norm <= settings.MaxNonWordDistance && a[0] == b[0])) return true;
+            }
+        }
+        return false;
     }
 
     private RejectReason JudgeSubstitutionAlone(TextEdit e)

@@ -40,6 +40,7 @@ public sealed record AppSettings
                 _ => tuned.Rules.MaxNormalisedDistance,
             },
             AcceptLikelyKeyboardSlips = Boldness != Boldness.Cautious && tuned.Rules.AcceptLikelyKeyboardSlips,
+            LenientWithNonWords = Boldness != Boldness.Cautious && tuned.Rules.LenientWithNonWords,
         },
     };
 }
