@@ -14,7 +14,7 @@ namespace GlobalAutocorrect.Core.Ai;
 /// </summary>
 public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient llm, EditRules rules, Counters counters)
 {
-    private sealed record Pending(Task<LlmResult> Task, long RequestedAtMs, string Context, int ContextStartInTyped, long Generation, long KeySeq);
+    private sealed record Pending(Task<LlmResult> Task, long RequestedAtMs, string Context, int ContextStartInTyped, long Generation, long KeySeq, long KeyAtMs);   // KeyAtMs: D64
 
     private Pending? _pending;
     private int _pendingShift;   // D45: own fixes written earlier in the text since the request went out
@@ -72,7 +72,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             string ctx = typed[ctxStart..e];
             counters.AiRequest();
             _pendingShift = 0;
-            _pending = new Pending(llm.CleanAsync(ctx, CancellationToken.None), clock.NowMs, ctx, ctxStart, session.Generation, session.LastKeySeq);
+            _pending = new Pending(llm.CleanAsync(ctx, CancellationToken.None), clock.NowMs, ctx, ctxStart, session.Generation, session.LastKeySeq,
+                KeyAtMs: -1);   // D64: a look-back, seconds after the last key by design: not a wait the user feels
             return true;
         }
         return false;
@@ -128,7 +129,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             if (session.FieldBehind(win.Before)) { ReadFailed(session); return; }   // the app hasn't drawn the last keys yet
             // D42: the field differs from what was typed (the app's own autocorrect, a paste): carry on from what it shows.
             counters.FieldMismatch();
-            session.Resync(win.Before);
+            if (!session.Resync(win.Before)) { ReadFailed(session); return; }   // D61: the read is behind the keys
         }
         _lastTriggerSeq = session.LastKeySeq;
         // D43: the whole paragraph, not only what was typed since the last click or paste.
@@ -152,7 +153,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         counters.AiRequest();
         _pendingShift = 0;
         _pending = new Pending(llm.CleanAsync(ctx, CancellationToken.None), clock.NowMs, ctx, ctxStart - typedStart,
-            session.Generation, session.LastKeySeq);
+            session.Generation, session.LastKeySeq, session.LastKeyAtMs);
     }
 
     /// <summary>
@@ -176,6 +177,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         _pending = null;
         rerun = TakeRerun();
         LastLatencyMs = result.LatencyMs;
+        counters.Timings.Record("ai.model", result.LatencyMs);   // D64
         _recent.Enqueue(result.LatencyMs);
         if (_recent.Count > 20) _recent.Dequeue();
         if (p.Generation != session.Generation) return [];
@@ -188,7 +190,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         {
             int s = p.ContextStartInTyped + _pendingShift + e.Start, en = p.ContextStartInTyped + _pendingShift + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
-            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords));
+            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords) { KeyAtMs = p.KeyAtMs });
         }
         if (Sweep is not null && rules.Settings.LenientWithNonWords)
         {
@@ -196,7 +198,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             {
                 int s = p.ContextStartInTyped + _pendingShift + f.Start;
                 if (s < 0) continue;   // D5
-                writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, p.ContextStartInTyped + _pendingShift + f.End, f.Original, f.Replacement, clock.NowMs, p.KeySeq, [f.Original]));
+                writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, p.ContextStartInTyped + _pendingShift + f.End, f.Original, f.Replacement, clock.NowMs, p.KeySeq, [f.Original]) { KeyAtMs = p.KeyAtMs });
             }
         }
         return writes;

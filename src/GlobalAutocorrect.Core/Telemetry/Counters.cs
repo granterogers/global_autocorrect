@@ -21,6 +21,9 @@ public sealed class Counters
     public long FieldMismatches => Interlocked.Read(ref _fieldMismatches);
     public long Corrections => InstantCorrections + AiCorrections;
 
+    /// <summary>D64: how long each stage of a correction takes (durations only).</summary>
+    public Timings Timings { get; } = new();
+
     public void Instant() => Interlocked.Increment(ref _instant);
     public void Ai() => Interlocked.Increment(ref _ai);
     public void Undo() => Interlocked.Increment(ref _undos);

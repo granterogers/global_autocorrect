@@ -105,7 +105,7 @@ public sealed class CorrectionEngine
             fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord);   // 4.3
             if (fix is not null)
             {
-                _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq));
+                _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });
                 _gate.TryWrite(Target);   // straight away if nothing else was typed (4.3.a)
             }
         }

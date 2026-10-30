@@ -106,16 +106,27 @@ public sealed class TypingSession
     /// paragraph before the caret (one paragraph: no line breaks whose caret steps could be miscounted). Pending plans
     /// are dropped (new generation), but correcting carries on.
     /// </summary>
-    public void Resync(string fieldBefore)
+    /// <returns>
+    /// False, and nothing changes, when the read is behind the keys (D61): it doesn't end with the last key typed.
+    /// Resyncing from a read that lagged by two keys left the record two short; the next lagging read then agreed with
+    /// it, and a fix landed two characters off (random-typing test). The caller tries again with a later read.
+    /// </returns>
+    public bool Resync(string fieldBefore)
     {
         string f = TextNorm.Normalise(fieldBefore);
+        if (_typed.Length > 0 && !EndsWithLastKey(f, _typed[^1])) return false;
         string para = f[(f.LastIndexOf('\n') + 1)..];
         if (para.Length > MaxLength) para = para[^MaxLength..];
         _typed.Clear().Append(para);
         Generation++;
         LastBreak = SessionBreakReason.Resync;
         Restarted?.Invoke(SessionBreakReason.Resync);
+        return true;
     }
+
+    /// <summary>The field's text ends with the last key typed (a space may read as a non-breaking space, D42).</summary>
+    private static bool EndsWithLastKey(string field, char last) =>
+        field.Length > 0 && (field[^1] == last || (last == ' ' && field[^1] == ' '));
 
     /// <summary>
     /// D43: the user wants every obvious mistake in the paragraph fixed, not only what was typed since the last click.

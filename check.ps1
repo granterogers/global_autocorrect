@@ -73,6 +73,12 @@ try {
         'e2e'   { Invoke-E2E }
         'full'  {
             Invoke-Fast
+            # D61: the random-typing test at length (the fast tier runs 300 sessions).
+            Invoke-Step 'random typing (20,000 sessions)' {
+                $env:GA_FUZZ_SESSIONS = '20000'
+                try { dotnet test --project tests/GlobalAutocorrect.Core.Tests --no-build -- --filter-method "*RandomTypingNeverDamagesTheField*" }
+                finally { $env:GA_FUZZ_SESSIONS = $null }
+            }
             Invoke-Model
             Invoke-Eval
             Invoke-E2E

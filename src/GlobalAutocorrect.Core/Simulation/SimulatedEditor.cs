@@ -5,6 +5,9 @@ using GlobalAutocorrect.Core.Targets;
 
 namespace GlobalAutocorrect.Core.Simulation;
 
+/// <summary>One edit as the field saw it: deleted <see cref="Deleted"/> at <see cref="Start"/> and typed <see cref="Inserted"/>.</summary>
+public sealed record AppliedEdit(string TextBefore, int Start, string Deleted, string Inserted);
+
 /// <summary>
 /// A text field for tests (10.2): models typing, caret moves, paste, foreign injection, host-app autocorrect and races.
 /// It is also the key monitor: <see cref="LatestKeySeq"/> counts keys "the hook has seen", which can run ahead of what
@@ -24,6 +27,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     public Action<SimulatedEditor>? BeforeApply { get; set; }
 
     public int Edits { get; private set; }
+
+    /// <summary>D61: what the last edit did to the field: the text before it, where, what it deleted and typed.</summary>
+    public AppliedEdit? LastEdit { get; private set; }
 
     /// <summary>Left and Right presses our edits have used (D28: none for a word just finished).</summary>
     public int CaretMoves { get; private set; }
@@ -94,6 +100,8 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     public Random? Chance { get; set; }
     public double GhostChance { get; set; }
     public double LagChance { get; set; }
+    /// <summary>How long after a key a read can still lag (D61).</summary>
+    public int LagWindowMs { get; set; } = 150;
 
     private TextWindow Report(string before, string after)
     {
@@ -104,7 +112,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         }
         if (ReportsDoubleSpaceAsNbsp) { before = before.Replace("  ", "  "); after = after.Replace("  ", "  "); }
         if (Chance is not null && GhostAfterCaret.Length > 0 && Chance.NextDouble() < GhostChance) after = GhostAfterCaret + after;
-        if (Chance is not null && Chance.NextDouble() < LagChance && before.Length >= 2) before = before[..^2];
+        // D61: a browser lags only just after a key (tens of milliseconds, D59), never once it has had time to draw.
+        if (Chance is not null && Chance.NextDouble() < LagChance && before.Length >= 2 && clock.NowMs - LastKeyAtMs < LagWindowMs)
+            before = before[..^2];
         return new TextWindow(TargetStatus.Ok, Id, before, after);
     }
 
@@ -129,6 +139,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         for (int i = 0; i < caretDistance && pos > 0; i++) pos -= LastElementLength(Text[..pos]);
         int del = pos;
         for (int i = 0; i < deleteCount && del > 0; i++) del -= LastElementLength(Text[..del]);
+        LastEdit = new AppliedEdit(Text, del, Text[del..pos], replacement);
         Text = Text[..del] + replacement + Text[pos..];
         Caret = del + replacement.Length + (Caret - pos);
         Edits++;
@@ -147,8 +158,8 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         string e = TextNorm.Comparable(expectedBefore);
         string tail = e.Length > 48 ? e[^48..] : e;
         string afterLine = TextNorm.Comparable(expectedAfter).Split('\n')[0];
-        string afterKey = afterLine.Length > 24 ? afterLine[..24] : afterLine;
-        for (int i = 0; i < 3; i++)
+        string afterKey = afterLine.Length > 64 ? afterLine[..64] : afterLine;   // D61: room for a ghost suggestion and the text after it
+        for (int i = 0; i < 30; i++)   // D61: as many reads as the Windows target polls (30 × 35 ms)
         {
             var w = ReadWindow();
             string b = TextNorm.Comparable(w.Before);

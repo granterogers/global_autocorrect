@@ -48,6 +48,37 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_6_a_AQueuedFixIsDroppedWhenTheWordCarriesOn_D61()
+    {
+        // Random-typing test: "teh " queued a fix, then Backspace removed the space and the word carried on before the
+        // fix landed. It must not land on the front of the longer word.
+        var h = new Harness();
+        h.Type("we saw ");
+        foreach (char c in "teh ") { h.Clock.Advance(30); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        h.Clock.Advance(30);
+        h.Engine.OnInput(h.Ed.Backspace());
+        foreach (char c in "ran") { h.Clock.Advance(30); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        h.Wait(400);
+        Assert.Equal("we saw tehran", h.Text);
+        Assert.Equal("no-longer-a-word", h.Engine.LastDropReason);
+    }
+
+    [Fact]
+    public void R4_6_a_AQueuedFixIsDroppedWhenTheWordNowTouchesTheCaret_D61()
+    {
+        // Random-typing test: the separator was deleted, so the word ends at the caret, in front of text from before a
+        // click; Edge's suggestion after the caret hid that text from the check. A word touching the caret is never fixed.
+        var h = new Harness();
+        h.Ed.Text = "ould";
+        h.Ed.Caret = 0;
+        foreach (char c in "teh ") { h.Clock.Advance(30); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        h.Clock.Advance(30);
+        h.Engine.OnInput(h.Ed.Backspace());
+        h.Wait(400);
+        Assert.Equal("tehould", h.Text);
+    }
+
+    [Fact]
     public void R4_3_a_AWordAtTheStartOfTheTypedRecordIsStillFixedAfterASpace_D60()
     {
         // The other side: text before the record that ends in a space is not a fragment.

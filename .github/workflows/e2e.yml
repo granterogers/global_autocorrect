@@ -135,6 +135,17 @@ jobs:
             Get-Content $_
             "`n### Suggestion size: $($_.BaseName)`n``````text`n$(Get-Content $_ -Raw)`n``````" | Add-Content $env:GITHUB_STEP_SUMMARY
           }
+          # D64: how long each stage of a fix took per test (mock model, so this is everything except the AI itself).
+          $rows = Get-ChildItem artifacts/timings -Filter '*.json' -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object {
+            $j = Get-Content $_ -Raw | ConvertFrom-Json
+            $cell = { param($s) if ($j.$s) { "$($j.$s.P50) / $($j.$s.P95)" } else { '-' } }
+            "| $($_.BaseName) | $(& $cell 'instant.keyToFix') | $(& $cell 'ai.keyToFix') | $(& $cell 'read') | $(& $cell 'write') | $(& $cell 'verify') |"
+          }
+          if ($rows) {
+            "`n### Time per stage, ms (typical / slowest 5%)`n| test | instant key→fix | AI key→fix | read | write | verify |`n|---|---|---|---|---|---|" | Add-Content $env:GITHUB_STEP_SUMMARY
+            $rows | Add-Content $env:GITHUB_STEP_SUMMARY
+            $rows | ForEach-Object { Write-Host $_ }
+          }
           if ($code -ne 0) { throw "E2E tests failed (exit code $code)" }
 
       - name: Stop screen recorder
@@ -152,4 +163,5 @@ jobs:
             artifacts/e2e-output.txt
             artifacts/test-results/
             artifacts/screens/
+            artifacts/timings/
           if-no-files-found: warn

@@ -85,7 +85,27 @@ public static class TextNorm
         string actual = actualAfter.Split('\n')[0];
         string key = actual.Length > 24 ? actual[..24] : actual;
         return expectedFirstLine.Length == 0 || actual.Contains(expectedFirstLine, StringComparison.Ordinal)
-               || expectedFirstLine.Contains(key, StringComparison.Ordinal) || expectedFirstLine.EndsWith(key, StringComparison.Ordinal);
+               || expectedFirstLine.Contains(key, StringComparison.Ordinal) || expectedFirstLine.EndsWith(key, StringComparison.Ordinal)
+               || SameAfterAGhost(expectedFirstLine, actual) || SameAfterAGhost(actual, expectedFirstLine);
+    }
+
+    /// <summary>
+    /// D61: <paramref name="withGhost"/> is <paramref name="other"/> with a suggestion in front: the suggestion was there
+    /// when the field was read before the write and Edge cleared it when the text changed. Found by the random-typing
+    /// test: the 24 characters compared then never lined up, so a correct fix counted as a desync.
+    /// </summary>
+    private static bool SameAfterAGhost(string withGhost, string other)
+    {
+        const int MaxGhost = 40, Probe = 8;
+        if (other.Length < Probe) return false;
+        string probe = other[..Probe];
+        for (int i = 1; i <= Math.Min(MaxGhost, withGhost.Length - Probe); i++)
+        {
+            string rest = withGhost[i..];
+            if (rest.StartsWith(probe, StringComparison.Ordinal) && (other.StartsWith(rest, StringComparison.Ordinal) || rest.StartsWith(other, StringComparison.Ordinal)))
+                return true;
+        }
+        return false;
     }
 
     public static int Elements(string s) => s.Length == 0 ? 0 : new System.Globalization.StringInfo(s).LengthInTextElements;

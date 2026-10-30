@@ -74,7 +74,7 @@ public sealed class BrowserTests
     {
         Desk.RequireIdle();
         using var llm = new MockLlm(Model);
-        using var app = new AppUnderTest(llm);
+        using var app = new AppUnderTest(llm, label: $"{channel}-{page}");
         var (browser, p, pw) = await Open(page, channel);
         try
         {

@@ -20,6 +20,15 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     public string Replacement { get; } = replacement;
     public long CreatedAtMs { get; } = createdAtMs;
     public long KeySeqAtDecision { get; } = keySeqAtDecision;
+
+    /// <summary>D64: when the key that led to this fix was typed (the word's or the sentence's last key), for timings.</summary>
+    public long KeyAtMs { get; init; } = createdAtMs;
+
+    /// <summary>
+    /// D61: the write replaces a whole word (the instant layer's word fix), so it only lands while those letters are still
+    /// a whole word. "som " queued to become "some", then Backspace and "ething", must not become "someething".
+    /// </summary>
+    public bool WholeWord { get; init; }
 }
 
 /// <summary>Raised after a verified write: enough to underline the word (4.7). No text.</summary>
@@ -118,7 +127,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             // D42: the field changed in a way we didn't type (the app's own autocorrect, a paste). Start again from
             // what it shows instead of ending the session: this paragraph keeps being corrected.
             counters.FieldMismatch();
-            session.Resync(win.Before);
+            if (!session.Resync(win.Before)) return false;   // D61: the read is behind the keys: next tick
             _queue.Clear();
             return false;
         }
@@ -129,6 +138,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // session that began mid-word ("Lo|oking") saw "oking" as a word and the instant layer made it "king", leaving
         // "Loking" (CI screen tests, CKEditor). The field is the truth: a letter right before means it's a fragment.
         if (w.Start == 0 && StartsMidWord(win.Before, typed)) { Drop(w, "fragment"); return false; }
+        if (w.WholeWord && !IsWholeWord(typed, w.Start, w.End)) { Drop(w, "no-longer-a-word"); return false; }   // D61
 
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
@@ -176,7 +186,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
                 session.Break(SessionBreakReason.Desync);
                 _desynced[win.TargetId] = session.Generation;   // the rest of this session only
             }
-            else session.Resync(fresh.Before);
+            else session.Resync(fresh.Before);   // D61: refused if this read lags; the next check finds the mismatch
             return false;
         }
 
@@ -190,6 +200,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         session.ApplyOwnEdit(w.Start, w.End, w.Replacement);
         if (w.Layer == Layer.Instant) counters.Instant();
         else if (w.Layer == Layer.Ai) counters.Ai();
+        // D64: what the user feels, from the key that finished the word or sentence to the fix being in the field.
+        if (w.Layer is Layer.Instant or Layer.Ai && w.KeyAtMs >= 0)
+            counters.Timings.Record(w.Layer == Layer.Instant ? "instant.keyToFix" : "ai.keyToFix", clock.NowMs - w.KeyAtMs);
 
         var notice = new CorrectionNotice(win.TargetId, w.Layer, caretDistance, TextNorm.Elements(w.Replacement), seqAtWrite, w.Original, w.Replacement, retype);
         Written?.Invoke(notice, w, newTyped);
@@ -198,6 +211,18 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
     /// <summary>A write that was dropped and why (a reason code, never text).</summary>
     public event Action<Layer, string>? WriteDropped;
+
+    /// <summary>
+    /// D61: no letter, digit or apostrophe right before typed[start..end], and the space or punctuation that ended the
+    /// word still after it. A word fix is decided at that separator; if the word now touches the caret, the user deleted
+    /// the separator and is still working on the word (and the field's text after the caret can be hidden behind Edge's
+    /// suggestion, so it can't be trusted to show what follows).
+    /// </summary>
+    private static bool IsWholeWord(string typed, int start, int end)
+    {
+        static bool Joins(char c) => char.IsLetterOrDigit(c) || c is '\'' or '’';
+        return (start == 0 || !Joins(typed[start - 1])) && end < typed.Length && !Joins(typed[end]);
+    }
 
     /// <summary>D60: true when the field shows a letter or digit right before the start of the typed record.</summary>
     private static bool StartsMidWord(string fieldBefore, string typed)

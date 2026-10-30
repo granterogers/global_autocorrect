@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using GlobalAutocorrect.Core.Targets;
+using GlobalAutocorrect.Core.Telemetry;
 using GlobalAutocorrect.Windows.Native;
 using GlobalAutocorrect.Windows.Uia;
 using GlobalAutocorrect.Windows.Write;
@@ -10,7 +12,8 @@ namespace GlobalAutocorrect.Windows.Targets;
 /// Fields that don't expose text and caret, passwords, excluded apps and elevated windows are left alone (4.1.b, 8.3, 8.4, 10.8).
 /// </summary>
 /// <param name="diagnose">Gets one line per failed verify: app, kind of mismatch, unusual characters. Never typed text (8.6).</param>
-public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStatus?>? gate = null, Action<string>? diagnose = null) : ITextTarget
+/// <param name="timings">D64: how long reads, writes and verifies take (durations only).</param>
+public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStatus?>? gate = null, Action<string>? diagnose = null, Timings? timings = null) : ITextTarget
 {
     private int _lastPid;
 
@@ -19,7 +22,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
 
     public TextWindow ReadWindow()
     {
+        long started = Stopwatch.GetTimestamp();
         var s = worker.Invoke(r => r.Read(), UiaSnapshot.Fail(ReadStatus.Failed));
+        timings?.Record("read", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         if (s is null) return TextWindow.Unavailable(TargetStatus.Unavailable);
         string id = $"{s.ProcessId}:{s.RuntimeId}";
         var status = s.Status switch
@@ -43,7 +48,10 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
         if (pid != _lastPid) return false;
         _beforeWrite = LastSnapshot?.Before ?? "";
-        return SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
+        long started = Stopwatch.GetTimestamp();
+        bool sent = SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
+        timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        return sent;
     }
 
     /// <summary>D46: CKEditor 5 (Teams' message box) applies a burst of arrow keys after the edits that follow them.</summary>
@@ -61,9 +69,10 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         // The text after the caret only has to still be there: browsers can show their own suggestion (Edge's text
         // prediction) right after the caret, which used to count as a mismatch.
         string afterLine = ea.Split('\n')[0];
-        string afterKey = afterLine.Length > 24 ? afterLine[..24] : afterLine;
+        string afterKey = afterLine.Length > 64 ? afterLine[..64] : afterLine;   // D61: room for a ghost suggestion and the text after it
         string b = "", a = "";
         bool read = false, beforeOk = false;
+        long started = Stopwatch.GetTimestamp();
         // A heavy web app can take a while to show injected keys (found in Intercom): poll for up to about a second.
         for (int i = 0; i < 30; i++)
         {
@@ -75,7 +84,11 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
                 int at = b.LastIndexOf(tail, StringComparison.Ordinal);
                 // Typing may go on after the fix, Enter included (a fast typist starts the next line straight away).
                 beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify;
-                if (beforeOk && TextNorm.AfterConsistent(afterKey, a)) return true;
+                if (beforeOk && TextNorm.AfterConsistent(afterKey, a))
+                {
+                    timings?.Record("verify", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+                    return true;
+                }
             }
             Thread.Sleep(35);
         }

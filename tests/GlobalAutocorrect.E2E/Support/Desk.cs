@@ -179,8 +179,12 @@ public sealed class AppUnderTest : IDisposable
     /// <summary>The app's process, whose windows include the overlays (7.6).</summary>
     public int ProcessId => _proc.Id;
 
-    public AppUnderTest(MockLlm llm, bool prediction = false)
+    private readonly string _label;
+
+    /// <param name="label">D64: names this test's timings file (defaults to the calling test).</param>
+    public AppUnderTest(MockLlm llm, bool prediction = false, string? label = null, [System.Runtime.CompilerServices.CallerMemberName] string caller = "")
     {
+        _label = label ?? caller;
         Directory.CreateDirectory(DataDir);
         File.WriteAllText(Path.Combine(DataDir, "settings.json"),
             $$"""{ "FirstRunDone": true, "StartWithWindows": false, "PredictionEnabled": {{(prediction ? "true" : "false")}} }""");
@@ -240,6 +244,18 @@ public sealed class AppUnderTest : IDisposable
     public void Dispose()
     {
         try { _proc.Kill(entireProcessTree: true); _proc.WaitForExit(5000); } catch (InvalidOperationException) { }
+        // D64: how long each stage took in this test (durations only), for the run summary.
+        try
+        {
+            string timings = Path.Combine(DataDir, "timings.json");
+            if (File.Exists(timings))
+            {
+                string dir = Path.Combine(Desk.Repo, "artifacts", "timings");
+                Directory.CreateDirectory(dir);
+                File.Copy(timings, Path.Combine(dir, $"{_label}.json"), overwrite: true);
+            }
+        }
+        catch (IOException) { }
         try { Directory.Delete(DataDir, true); } catch (IOException) { }
     }
 }

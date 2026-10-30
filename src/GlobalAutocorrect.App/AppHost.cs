@@ -53,6 +53,16 @@ public sealed class AppHost : IAsyncDisposable
 
     private static readonly Lock DiagnoseLock = new();
 
+    /// <summary>D64: timings.json, typical and slowest-5% duration of each stage since the app started. Durations only.</summary>
+    private void SaveTimings()
+    {
+        var snapshot = _counters.Timings.Snapshot();
+        if (snapshot.Count == 0) return;
+        try { File.WriteAllText(Path.Combine(DataDir, "timings.json"), _counters.Timings.ToJson()); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
     private static string Codes(string s) => string.Join(' ', s.Take(24).Select(c => $"{(int)c:X4}"));
     private NgramModel? _ngram;
     private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
@@ -121,7 +131,7 @@ public sealed class AppHost : IAsyncDisposable
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();
-        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose);
+        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings);
         _hook = new KeyboardHook(untaggedInjectedIsPhysical: Environment.GetEnvironmentVariable("GA_E2E") == "1");
         _hook.Start();
 
@@ -219,7 +229,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             bool exclusionsChanged = !(old.ExcludedApps ?? AppExclusions.Defaults).SequenceEqual(s.ExcludedApps ?? AppExclusions.Defaults);
             if (exclusionsChanged && _uia is not null)
-                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose);
+                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings);
             var options = s.ToEngineOptions(new EngineOptions());
             if (options != _engineOptions) _loop.Replace(BuildEngine());   // BuildEngine records the new options
             if (exclusionsChanged)
@@ -273,6 +283,7 @@ public sealed class AppHost : IAsyncDisposable
             if (_llm is not null) await _llm.MaintainAsync(CancellationToken.None);
             _hook?.CheckAlive();   // 12.6
             _daily.Save(_counters);
+            SaveTimings();
             History.Save();
             if (_llm is not null && _llm.Host.State == ServerState.Ready && _loop is not null)
                 _loop.Post(e => { if (e.TypicalAiLatencyMs > 0) TypicalLatencyMs = e.TypicalAiLatencyMs; });   // median of recent (9.3.a)
