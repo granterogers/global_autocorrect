@@ -39,6 +39,13 @@ public sealed class SymSpellTests
         Assert.Equal("receive", c.TryCorrect("recieve", false));
     }
 
+    [Theory]
+    [InlineData("whenI'm")]   // user-style set: became "when's", and the model's "when I'm" was then refused
+    [InlineData("andI'll")]
+    [InlineData("soI've")]
+    public void R4_3_c_D68_AMissedSpaceBeforeIContractionIsLeftToTheAi(string word) =>
+        Assert.Null(Corrector().TryCorrect(word, false));
+
     [Fact]
     public void R3_4_NoAmericanSuggestions()
     {

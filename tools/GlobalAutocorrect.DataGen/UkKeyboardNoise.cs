@@ -66,6 +66,48 @@ public sealed class UkKeyboardNoise
 
     private static int Round(double v) => (int)Math.Round(v, MidpointRounding.AwayFromZero);
 
+    /// <summary>
+    /// D68: the user's own slips, weighted from their four real texts (stress set u001-u004): spaces shifted one letter
+    /// ("nthe ext"), extra letters ("tstore", "thatn"), dropped and swapped letters, several slips in one word
+    /// ("toncinteu"), words run together, doubled or tripled letters ("seee"), double spaces and a space before a full stop.
+    /// </summary>
+    public static readonly (string Name, int Weight)[] UserProfile =
+    [
+        ("misplace", 15), ("insert", 15), ("drop", 15), ("swap", 10), ("garble", 10), ("merge", 8), ("double", 4),
+        ("triple", 4), ("neighbour", 7), ("doublespace", 8), ("spacepunct", 4),
+    ];
+
+    /// <summary>D68: <paramref name="count"/> slips of one kind (or of the user profile when <paramref name="kind"/> is "mixed").</summary>
+    public NoiseResult ApplyKind(string clean, string kind, int count)
+    {
+        string text = clean;
+        var ops = new List<string>();
+        for (int i = 0; i < count; i++)
+        {
+            for (int tries = 0; tries < 20; tries++)
+            {
+                string name = kind == "mixed" ? PickFrom(UserProfile) : kind;
+                string? result = TryOp(name, text);
+                if (result is null || result == text) continue;
+                text = result;
+                ops.Add(name);
+                break;
+            }
+        }
+        return new NoiseResult(text, ops);
+    }
+
+    private string PickFrom((string Name, int Weight)[] table)
+    {
+        int r = _rng.Next(table.Sum(o => o.Weight));
+        foreach (var (name, weight) in table)
+        {
+            if (r < weight) return name;
+            r -= weight;
+        }
+        return table[0].Name;
+    }
+
     private string PickOp()
     {
         int r = _rng.Next(TotalWeight);
@@ -92,6 +134,11 @@ public sealed class UkKeyboardNoise
             "apostrophe" => Apostrophe(text, tokens),
             "lowercase" => Lowercase(text, tokens),
             "grammar" => Grammar(text, tokens),
+            "insert" => Insert(text, tokens),
+            "triple" => Triple(text, tokens),
+            "garble" => Garble(text, tokens),
+            "doublespace" => DoubleSpace(text, tokens),
+            "spacepunct" => SpacePunct(text, tokens),
             _ => null,
         };
     }
@@ -283,6 +330,63 @@ public sealed class UkKeyboardNoise
         if (options.Count == 0) return null;
         var o = Pick(options);
         return Replace(text, o.Start, o.Length, o.Replacement);
+    }
+
+    // ---- D68: the user's other slips ----
+
+    /// <summary>An extra letter: a key next to the one before or after it ("store" → "tstore", "than" → "thatn").</summary>
+    private string? Insert(string text, IReadOnlyList<Token> tokens)
+    {
+        int? p = PickLetterPosition(text, tokens, t => t.Length >= 2, (s, i) => IsAsciiLetter(s[i]));
+        if (p is null) return null;
+        string near = NeighboursOf(text[p.Value]);
+        if (near.Length == 0) return null;
+        return text.Insert(p.Value + (_rng.Next(2) == 0 ? 0 : 1), near[_rng.Next(near.Length)].ToString());
+    }
+
+    private string? Triple(string text, IReadOnlyList<Token> tokens)
+    {
+        int? p = PickLetterPosition(text, tokens, _ => true, (s, i) => IsAsciiLetter(s[i]));
+        return p is null ? null : text.Insert(p.Value, new string(text[p.Value], 2));
+    }
+
+    /// <summary>Two or three slips in one word of five letters or more ("continue" → "toncinteu").</summary>
+    private string? Garble(string text, IReadOnlyList<Token> tokens)
+    {
+        var words = tokens.Where(t => Editable(t) && t.Length >= 5 && t.Text.All(IsAsciiLetter)).ToList();
+        if (words.Count == 0) return null;
+        var w = Pick(words);
+        string word = w.Text;
+        int n = 2 + _rng.Next(2);
+        for (int k = 0; k < n; k++)
+        {
+            int i = 1 + _rng.Next(word.Length - 2);
+            word = _rng.Next(4) switch
+            {
+                0 => string.Concat(word.AsSpan(0, i), word.AsSpan(i + 1, 1), word.AsSpan(i, 1), word.AsSpan(i + 2)),   // swap
+                1 => word.Remove(i, 1),                                                                                // drop
+                2 => word.Insert(i, NeighboursOf(word[i]) is { Length: > 0 } nb ? nb[_rng.Next(nb.Length)].ToString() : ""),
+                _ => NeighboursOf(word[i]) is { Length: > 0 } nr ? Replace(word, i, 1, nr[_rng.Next(nr.Length)].ToString()) : word,
+            };
+            if (word.Length < 3) return null;
+        }
+        return word == w.Text ? null : Replace(text, w.Start, w.Length, word);
+    }
+
+    private string? DoubleSpace(string text, IReadOnlyList<Token> tokens)
+    {
+        var pairs = WordSpaceWordPairs(tokens);
+        return pairs.Count == 0 ? null : text.Insert(tokens[Pick(pairs) + 1].Start, " ");
+    }
+
+    /// <summary>A space before a full stop, comma or question mark that follows a word ("steps." → "steps .").</summary>
+    private string? SpacePunct(string text, IReadOnlyList<Token> tokens)
+    {
+        var at = new List<int>();
+        for (int i = 1; i < text.Length; i++)
+            if (text[i] is '.' or ',' or '?' or '!' && IsAsciiLetter(text[i - 1]) && (i + 1 == text.Length || !IsAsciiLetter(text[i + 1])))
+                at.Add(i);
+        return at.Count == 0 ? null : text.Insert(Pick(at), " ");
     }
 
     private static IReadOnlyDictionary<char, string> BuildNeighbours()

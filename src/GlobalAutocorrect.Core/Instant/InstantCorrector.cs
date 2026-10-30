@@ -34,7 +34,9 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         string lower = word.ToLowerInvariant();
         // A run-together pair ("ifyou", "thebreakdown") is a missing space, which the AI fixes (4.4.c). Don't
         // "correct" it by deleting letters.
-        if (SplitsIntoTwoWords(lower)) return null;
+        // D68: also as typed, so a missed space before "I'm", "I'll", "I've" is seen ("whenI'm" became "when's"):
+        // the dictionary only has those with a capital I.
+        if (SplitsIntoTwoWords(lower) || SplitsIntoTwoWords(word)) return null;
 
         var candidates = suggester.Lookup(lower, 10);
         if (candidates.Count == 0 || candidates[0].Word == lower) return null;

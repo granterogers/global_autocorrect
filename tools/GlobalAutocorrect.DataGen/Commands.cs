@@ -54,6 +54,34 @@ internal static class Commands
         Console.WriteLine($"freq: kept {counts.Count} valid words, wrote {top.Count} to {output}");
     }
 
+    /// <summary>
+    /// D68: an eval set of the user's own slip kinds, from the tuning set's clean texts only (the holdout is never used).
+    /// Each kind gets <paramref name="perKind"/> items with only that kind of slip, labelled with the kind as its level,
+    /// so the eval reports a fix rate per kind; "mixed" items use the user profile at about one slip in four words.
+    /// </summary>
+    public static void UserStyle(string tuningPath, string output, int seed, int perKind)
+    {
+        var rng = new Random(seed);
+        var noise = new UkKeyboardNoise(rng);
+        var cleans = JsonLines.Read<EvalItem>(tuningPath).Select(i => i.Clean).Where(c => c.Split(' ').Length >= 8).ToList();
+        string[] kinds = ["misplace", "insert", "drop", "swap", "garble", "merge", "double", "triple", "neighbour", "doublespace", "spacepunct", "mixed"];
+        var items = new List<EvalItem>();
+        foreach (var kind in kinds)
+        {
+            for (int k = 0; k < perKind; k++)
+            {
+                string clean = cleans[rng.Next(cleans.Count)];
+                int words = clean.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+                int count = kind == "mixed" ? Math.Max(3, words / 4) : 1 + rng.Next(2);
+                var r = noise.ApplyKind(clean, kind, count);
+                if (r.Ops.Count == 0) continue;
+                items.Add(new EvalItem($"{kind}-{k:D3}", clean, r.Noisy, kind, r.Ops));
+            }
+        }
+        JsonLines.Write(output, items);
+        Console.WriteLine($"userstyle: wrote {items.Count} items to {output}");
+    }
+
     public static void Noise(string input, string output, int seed)
     {
         var rng = new Random(seed);

@@ -171,4 +171,5 @@ jobs:
             artifacts/test-results/
             artifacts/screens/
             artifacts/timings/
+            artifacts/diagnostics/
           if-no-files-found: warn

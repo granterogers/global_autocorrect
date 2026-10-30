@@ -254,6 +254,15 @@ public sealed class AppUnderTest : IDisposable
                 Directory.CreateDirectory(dir);
                 File.Copy(timings, Path.Combine(dir, $"{_label}.json"), overwrite: true);
             }
+            // D69: every test's own reason codes (writes, drops, restarts; code points only, synthetic text), kept even when
+            // it passes, so rare events can be searched across many runs.
+            string diagnostics = Path.Combine(DataDir, "diagnostics.log");
+            if (File.Exists(diagnostics))
+            {
+                string dir = Path.Combine(Desk.Repo, "artifacts", "diagnostics");
+                Directory.CreateDirectory(dir);
+                File.Copy(diagnostics, Path.Combine(dir, $"{_label}.log"), overwrite: true);
+            }
         }
         catch (IOException) { }
         try { Directory.Delete(DataDir, true); } catch (IOException) { }
