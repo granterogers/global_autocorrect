@@ -46,6 +46,7 @@ public sealed class CorrectionEngine
     public double TypicalAiLatencyMs => _ai?.TypicalLatencyMs ?? 0;
     public bool AiInFlight => _ai?.InFlight ?? false;
     public int QueuedWrites => _gate.Count;
+    public string LastDropReason => _gate.LastDropReason;
     public CorrectionRecord? LastCorrection => _undo.Last;
 
     /// <summary>After each verified write: underline it (4.7).</summary>
@@ -67,6 +68,7 @@ public sealed class CorrectionEngine
         _gate.Written += (notice, w, typedAfter) =>
         {
             if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation);
+            _ai?.NoteOwnEdit(w.Start, w.End, w.Replacement.Length);   // D45
             _pendingLearn.RemoveAll(p => w.Words.Contains(p.Word, StringComparer.OrdinalIgnoreCase));   // it was a typo
             Corrected?.Invoke(notice);
         };

@@ -386,6 +386,19 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_4_a_TwoLinesEachFinishedWithEnterAreBothFixed_D45()
+    {
+        string Model(string s) => s.Replace("well, lets", "Well, let's").Replace("enenough", "enough")
+                                    .Replace("if I type a bunches of tpargaea", "If I type a bunch of paragraphs");
+        var h = new Harness(model: Model, latencyMs: 500);
+        h.Type("well, lets see if you are smart enenough to see that\nif I type a bunches of tpargaea that what I meant\n", msPerKey: 90);
+        h.Wait(4000);
+        // Found with the realistic simulator: line 1's fixes landed first and moved the text under line 2's reply.
+        Assert.Equal("Well, let's see if you are smart enough to see that\nIf I type a bunch of paragraphs that what I meant\n", h.Text);
+        Assert.Equal(0, h.Counters.DroppedWrites);
+    }
+
+    [Fact]
     public void R4_6_d_PressingEnterWhileTheFixIsCheckedIsNotADesync_D42()
     {
         // User report (Notepad): a fast typist hit Enter while the app was checking its fix; the check refused any line

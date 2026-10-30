@@ -61,7 +61,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         _queue.RemoveAll(w =>
         {
             bool expired = now - w.CreatedAtMs > options.WriteDeadlineMs;
-            if (expired) counters.Dropped();
+            if (expired) { counters.Dropped(); LastDropReason = "expired"; }
             return expired;
         });
         if (target is null || _queue.Count == 0) return false;
@@ -98,16 +98,16 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     private bool Execute(PendingWrite w, ITextTarget target)
     {
         string typed = session.Typed;
-        if (w.End > typed.Length || typed[w.Start..w.End] != w.Original) { Drop(w); return false; }
+        if (w.End > typed.Length || typed[w.Start..w.End] != w.Original) { Drop(w, "text-moved"); return false; }
         string tail = typed[w.End..];
         // D39 (was D8, "never"): a fix may reach back over a couple of line breaks the user typed in this session
         // ("...the popup." Enter Enter "Apologies"): every editor tested moves over a paragraph break in one Left, and the
         // field is checked against the typed text before writing and verified after. Fast typists start the next
         // paragraph before the AI's fix arrives, and those fixes were all dropped (user report, Intercom).
-        if (tail.Count(c => c == '\n') > options.MaxLineBreaksCrossed) { Drop(w); return false; }
+        if (tail.Count(c => c == '\n') > options.MaxLineBreaksCrossed) { Drop(w, "too-many-lines"); return false; }
 
         var win = target.ReadWindow();
-        if (IsDesynced(win.TargetId)) { Drop(w); return false; }
+        if (IsDesynced(win.TargetId)) { Drop(w, "desynced"); return false; }
         // A busy app sometimes can't be read for a moment: keep the edit and try again next tick; the deadline drops it
         // if the field never comes back (found by E2E: one failed read lost a correction).
         if (!win.CaretKnown) return false;
@@ -122,7 +122,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             return false;
         }
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
-        if (typed[w.Start..w.End] != w.Original) { Drop(w); return false; }
+        if (typed[w.Start..w.End] != w.Original) { Drop(w, "changed-on-read"); return false; }
         if (keys.LatestKeySeq != session.LastKeySeq) return false;   // a key slipped in during the read
 
         int caretDistance = TextNorm.Elements(tail);
@@ -143,7 +143,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (!sent)
         {
             // Nothing was sent (focus had moved to another app): nothing to verify, nothing damaged.
-            Drop(w);
+            Drop(w, "not-sent");
             session.Break(SessionBreakReason.FocusChange);
             return false;
         }
@@ -184,9 +184,13 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         return true;
     }
 
-    private void Drop(PendingWrite w)
+    /// <summary>Why the last write was dropped (a reason code, never text): for tests and the diagnostics log.</summary>
+    public string LastDropReason { get; private set; } = "";
+
+    private void Drop(PendingWrite w, string reason)
     {
         _queue.Remove(w);
         counters.Dropped();
+        LastDropReason = reason;
     }
 }
