@@ -44,7 +44,12 @@ internal static class WpfApp
             app = new App();
             Dispatcher.CurrentDispatcher.Hooks.OperationPosted -= collect;
             foreach (var op in queued) op.Abort();
-            app.Startup += (_, _) => StartupRan = true;
+            // Raised by base.OnStartup, before the mutex, the hook or the model: throwing ends OnStartup there (D62).
+            app.Startup += (_, _) =>
+            {
+                StartupRan = true;
+                throw new InvalidOperationException("The App tests must never run the app's start-up.");
+            };
             app.InitializeComponent();
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             ready.Set();
