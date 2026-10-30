@@ -24,6 +24,8 @@ Every change below was made by looking at the **tuning** set only (260 messages)
 | T9 | D31: a fix next to a dropped function word (`si` → `is the`); a capital after a "?" the reply adds; possessives of valid words | 94.4% | 0.23% | 88% | 375 / 569 ms |
 | T10 | Same, with the built-in prompt now v4; padding guard for `Spare room` → `The spare room` | **94.4%** | **0.20%** | 89% | 371 / 566 ms |
 
+| (8-bit) | Same code with `gemma-4-E4B-it-Q8_0.gguf` (same model, same pinned revision, 7.63 GB). Not adopted: no gain, slower, about 5.4 GB of graphics memory instead of about 3.5 GB | 94.4% | 0.20% | 89% | 420 / 659 ms |
+
 **Tuning frozen again after T10** (prompt v4, rules D19–D31). The holdout is scored once more on this code; the earlier holdout score (92.3%) was seen before this round, which is disclosed with the new number.
 
 **Tuning frozen after T6** (prompt v3, rules D19–D27, instant layer D23). The holdout is scored once, next.

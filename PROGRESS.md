@@ -10,7 +10,8 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **Tuning set:** 90.8% → 94.4% errors fixed, false edits 0.20% (unchanged), exact 83% → 89%. Log: `docs/tuning-log.md` T7–T10.
 - **Holdout (once, on the frozen code; it had also been scored once before this round, disclosed in the README):** 92.3% → **92.9%** errors fixed (95% target still missed), false edits 0.19% → **0.08%**, exact 84% → 87%, p50 361 ms, p95 535 ms. `docs/metrics/holdout-2026-10-30.*`.
 - **Checks:** fast tier green (195 Core, 19 Llm, 55 Windows, 31 App; 9 new rule tests). trace-check 223/223, coverage 0 gaps. RC zip rebuilt with the new metrics. E2E not re-run: the change is in the rules and prompt, which the E2E mock model doesn't exercise.
-- **Next task:** the user's RC1 review. The remaining lever inside the brief is a higher-precision file of the same model (Q8), which needs a large download and the user's OK.
+- **8-bit model (user approved the download):** tuning set 94.4% / 0.20%, identical to 5-bit, slower and about 2 GB more graphics memory. Not adopted (D32); the holdout was not re-scored.
+- **Next task:** the user's RC1 review. Every lever inside the brief (rules, prompt, second pass, model precision) has now been measured.
 ## 2026-10-30 — Release candidate 1 (0.9.0-rc1) ready for review (2.6.e)
 
 - **Audit:** an independent read of the brief against the code found 4 blockers, 7 majors and 12 minors; all blockers and majors and the meaningful minors are fixed with tests (pause 8.2, hotkey thread 8.1, UIA failures 10.6.c, undo with modifiers 4.8.a, auto-learn 8.5, password history 8.3, stale suggestion 7.5–7.6, About numbers 9.3.g, midnight counts 6.5, retry backoff and orphan servers 5.6).
