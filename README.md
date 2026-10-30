@@ -5,6 +5,7 @@
 Global Autocorrect tidies up what you type, as you type, in almost any Windows app. It runs entirely on your laptop, using your NVIDIA GPU. No text ever leaves the machine.
 
 - **Obvious slips are fixed the moment you finish a word.** `teh` becomes `the`, and `bookk` becomes `book`.
+- **Spacing is tidied as you type.** `steps .` becomes `steps.`, two spaces between words become one, `end.Next` becomes `end. Next`, `i` becomes `I`, and a sentence after a full stop starts with a capital. Names with dots (`.NET`, `index.html`), emoticons, ellipses, abbreviations, indentation and code are left alone.
 - **When you pause, it looks back over what you've typed recently** for anything still obviously misspelt, and has another go at that sentence. (Settings › Clean-up › "Look back when you pause".)
 - **Everything else is fixed by a small AI model that reads the surrounding sentence.** That includes run-together or split words, missing apostrophes and capitals, punctuation and grammar slips. It runs when you finish a sentence or pause for a moment.
 - **It fixes mistakes, not your style.** It never swaps your words for synonyms, rephrases you, or changes British spellings to American ones.

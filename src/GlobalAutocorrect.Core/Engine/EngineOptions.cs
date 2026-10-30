@@ -41,6 +41,9 @@ public sealed record EngineOptions
     public int ContextSentences { get; init; } = 3;
 
     public bool InstantEnabled { get; init; } = true;
+
+    /// <summary>D55: spacing and punctuation fixed by the instant layer (space before ".", two spaces, "i", sentence starts).</summary>
+    public bool TidySpacing { get; init; } = true;
     public bool AiEnabled { get; init; } = true;
 
     public EditRuleSettings Rules { get; init; } = new();

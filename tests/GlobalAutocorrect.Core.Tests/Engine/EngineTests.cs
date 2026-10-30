@@ -32,6 +32,32 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_3_a_SpacingIsTidiedAsYouType_D55()
+    {
+        // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".
+        var h = new Harness();
+        h.Type("so i will ask  the team .");
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Wait(200);
+        Assert.Equal("so I will ask the team. ", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_3_a_SpacingFixWaitsWhileTheUserTypesOn_D55()
+    {
+        // Same quiet rule as word fixes (D47): a key right behind the space is never deleted.
+        var h = new Harness();
+        h.Type("the team .");
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Clock.Advance(30);
+        h.Engine.OnInput(h.Ed.TypeChar('T'));
+        h.Type("hen ");
+        h.Wait(300);
+        Assert.Equal("the team. Then ", h.Text);
+    }
+
+    [Fact]
     public void R4_3_a_AKeyRightBehindTheSpaceIsNeverDeletedByTheFix_D47()
     {
         // Found by the CI screen tests: the fix went out the moment the word ended, a key already on its way landed
@@ -264,7 +290,7 @@ public sealed class EngineTests
         var sw = Stopwatch.StartNew();
         h.Type("i went their yesterday. and more words here ");
         sw.Stop();
-        Assert.EndsWith("and more words here ", h.Text);
+        Assert.EndsWith("and more words here ", h.Text, StringComparison.OrdinalIgnoreCase);   // D55 may capitalise "and"
         Assert.True(sw.ElapsedMilliseconds < 2000);
     }
 
@@ -700,8 +726,8 @@ public sealed class EngineTests
     public void R7_3_TypingTeachesTheWordsBeforeEachWord_D40()
     {
         var h = new Harness();
-        h.Type("hi there. how are you doing sir? ");
-        Assert.Equal(["- - hi", "- hi there", "- <s> how", "<s> how are", "how are you", "are you doing", "you doing sir"], h.Phrases);
+        h.Type("hi there. How are you doing sir? ");   // "How" typed as such: D55 would capitalise "how" (history ignores case)
+        Assert.Equal(["- - hi", "- hi there", "- <s> How", "<s> How are", "How are you", "are you doing", "you doing sir"], h.Phrases);
     }
 
     [Fact]

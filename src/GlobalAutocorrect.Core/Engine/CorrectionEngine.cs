@@ -34,6 +34,7 @@ public sealed class CorrectionEngine
     private readonly EngineOptions _o;
     private readonly EngineDeps _d;
     private readonly InstantCorrector _instant;
+    private readonly TidyRules _tidy;
     private readonly AiTrigger? _ai;
     private readonly WriteGate _gate;
     private readonly UndoManager _undo = new();
@@ -58,6 +59,7 @@ public sealed class CorrectionEngine
         _o = options.Validate();
         _d = deps;
         _instant = new InstantCorrector(deps.Speller, deps.Suggester, deps.IsPersonalWord);
+        _tidy = new TidyRules(deps.Speller);
         if (deps.Llm is not null)
             _ai = new AiTrigger(_o, deps.Clock, deps.Llm, new EditRules(_o.Rules, deps.Speller, deps.IsPersonalWord) { PairCount = deps.PairCount, WordCount = deps.WordCount }, deps.Counters)
             {
@@ -103,9 +105,19 @@ public sealed class CorrectionEngine
                 _gate.TryWrite(Target);   // straight away if nothing else was typed (4.3.a)
             }
         }
+        bool aiStartsNow = effect.SentenceEnded && _ai is not null && _o.AiEnabled;
+        // D55: spacing and punctuation, decided at the space or Enter after them (only when no word was fixed on this key).
+        // On a key that sends the sentence to the AI, the AI fixes it instead: an instant edit inside a request's text
+        // would leave that request's positions out of date, and one of the two writes would be dropped.
+        if (fix is null && !aiStartsNow && _o.InstantEnabled && _o.TidySpacing && k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char)
+            && _tidy.Find(Session.Typed) is { } t)
+        {
+            _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, t.Start, t.End, t.Original, t.Replacement, _d.Clock.NowMs, k.Seq));
+            _gate.TryWrite(Target);
+        }
         if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null, learnt.Start, fix);
-        if (effect.SentenceEnded && _ai is not null && _o.AiEnabled)
-            _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
+        if (aiStartsNow)
+            _ai!.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
     }
 
     private bool? _targetOk;
