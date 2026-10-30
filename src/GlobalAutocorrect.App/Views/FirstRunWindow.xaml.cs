@@ -15,6 +15,13 @@ public partial class FirstRunWindow : FluentWindow
         DataContext = viewModel;
         InitializeComponent();
         viewModel.Finished += Close;
+        viewModel.PropertyChanged += OnViewModelChanged;
+    }
+
+    // Each step starts at its top, even if the one before was scrolled (D63).
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FirstRunViewModel.Step)) StepScroller.ScrollToHome();
     }
 
     /// <summary>Closing the window mid-download stops the download; it can be started again next time.</summary>
@@ -27,6 +34,7 @@ public partial class FirstRunWindow : FluentWindow
     protected override void OnClosed(EventArgs e)
     {
         _viewModel.Finished -= Close;
+        _viewModel.PropertyChanged -= OnViewModelChanged;
         base.OnClosed(e);
     }
 }

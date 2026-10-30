@@ -16,9 +16,10 @@ using GlobalAutocorrect.Core.Settings;
 using GlobalAutocorrect.Llm;
 using Wpf.Ui.Appearance;
 
-// Renders every settings page and every first-run step, in light and dark, at 100% and 150% scale, to PNG files (9.5):
-//   artifacts/screens/<page>-<light|dark>-<100|150>.png      (7 pages + 3 steps = 10 shots x 4 = 40 files)
-//   artifacts/screens/extra/...                               (other states, such as a failed download)
+// Renders every settings page and every first-run step, in light and dark, to PNG files (9.5; D62):
+//   artifacts/screens/<page>-<light|dark>-<100|125|150|175|200>.png   default window size    (10 shots x 2 x 5 = 100)
+//   artifacts/screens/<page>-min-<light|dark>-<100|150>.png           smallest window size   (10 shots x 2 x 2 = 40)
+//   artifacts/screens/extra/...                                       other states, such as a failed download (100%)
 // Windows are shown far off screen and drawn with RenderTargetBitmap. Mica doesn't render that way, so the tool puts the
 // SurfaceBase token colour behind each window instead. Nothing here starts the real app, its keyboard hook or its model.
 // Usage: GlobalAutocorrect.Screens [repoRoot]
@@ -36,6 +37,15 @@ internal static class ScreenTool
         ("dictionary", typeof(DictionaryPage)),
         ("about", typeof(AboutPage)),
     ];
+
+    /// <summary>Display scales, in percent, that every window is drawn at (9.5 asks for 100 and 150).</summary>
+    private static readonly int[] Scales = [100, 125, 150, 175, 200];
+
+    /// <summary>Scales for the window at its smallest size.</summary>
+    private static readonly int[] SmallScales = [100, 150];
+
+    // 7 pages + 3 first-run steps, light and dark, at each scale and at the smallest size.
+    private static readonly int Expected = (Pages.Length + 3) * 2 * (Scales.Length + SmallScales.Length);
 
     public static int Run(string[] args)
     {
@@ -61,87 +71,108 @@ internal static class ScreenTool
         Directory.CreateDirectory(work);
         try
         {
-            // App.xaml gives us the same resource dictionaries as the real app; OnStartup is never called, so nothing starts.
-            var app = new GlobalAutocorrect.App.App();
-            app.InitializeComponent();
-            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // App.xaml gives us the same resource dictionaries as the real app, without its start-up (see CreateApp).
+            var app = CreateApp();
             var theme = new ThemeService(app);
             var env = MakeEnvironment(root, work);
 
             int count = 0;
             foreach (var dark in new[] { false, true })
             {
-                ApplyTheme(theme, dark);
+                theme.Apply(dark ? ApplicationTheme.Dark : ApplicationTheme.Light);
                 string mode = dark ? "dark" : "light";
                 string surface = Palette.For(dark).SurfaceBase;
-                foreach (int percent in new[] { 100, 150 })
+
+                // Layout is in device-independent pixels, so each window is laid out once and drawn at every scale.
+                foreach (var (name, page) in Pages)
                 {
-                    double scale = percent / 100.0;
+                    var services = new FakeServices(work);
+                    var window = new SettingsWindow(services, services, env);
+                    Prepare(window);
+                    Show(window, theme, dark);
+                    window.Navigation.Transition = Wpf.Ui.Animations.Transition.None;
+                    window.Navigation.TransitionDuration = 0;
+                    window.Navigation.Navigate(page);
+                    FlushHard(window);
+                    foreach (int percent in Scales)
+                        count += Save(window, Path.Combine(outDir, $"{name}-{mode}-{percent}.png"), percent, surface);
 
-                    foreach (var (name, page) in Pages)
+                    // The smallest size the window allows, to check nothing clips or overlaps.
+                    Shrink(window);
+                    foreach (int percent in SmallScales)
+                        count += Save(window, Path.Combine(outDir, $"{name}-min-{mode}-{percent}.png"), percent, surface);
+                    window.Close();
+                }
+
+                // First-run steps. Step 2 is shown as it first appears; the other states go to extra/ (100% only).
+                (string Name, int Step, Func<FakeInstaller> Installer, Func<FirstRunViewModel, Task>? Drive, bool Extra)[] runs =
+                [
+                    ("firstrun-1", 1, () => new FakeInstaller(), null, false),
+                    ("firstrun-2", 2, () => new FakeInstaller(), null, false),
+                    ("firstrun-3", 3, () => new FakeInstaller { Installed = true }, null, false),
+                    ("firstrun-2-downloading", 2, () => new FakeInstaller(), vm => vm.DownloadCommand.ExecuteAsync(null), true),
+                    ("firstrun-2-failed", 2, () => new FakeInstaller { Fail = true }, vm => vm.DownloadCommand.ExecuteAsync(null), true),
+                    ("firstrun-2-done", 2, () => new FakeInstaller { Installed = true }, null, true),
+                ];
+                foreach (var run in runs)
+                {
+                    var services = new FakeServices(work);
+                    var installer = run.Installer();
+                    var vm = new FirstRunViewModel(services, installer);
+                    var window = new FirstRunWindow(vm);
+                    Prepare(window);
+                    Show(window, theme, dark);
+                    for (int step = 1; step < run.Step; step++) vm.NextCommand.Execute(null);
+                    // Started inside the dispatcher so the command's continuations come back to this thread.
+                    if (run.Drive is not null) Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() => _ = run.Drive(vm)));
+                    FlushHard(window);
+                    if (run.Extra)
                     {
-                        var services = new FakeServices(work);
-                        var window = new SettingsWindow(services, services, env);
-                        Prepare(window);
-                        Show(window, theme, dark);
-                        window.Navigation.Transition = Wpf.Ui.Animations.Transition.None;
-                        window.Navigation.TransitionDuration = 0;
-                        window.Navigation.Navigate(page);
-                        FlushHard(window);
-                        Save(window, Path.Combine(outDir, $"{name}-{mode}-{percent}.png"), scale, surface);
-                        count++;
-
-                        // The smallest size the window allows, to check nothing clips or overlaps (extra/).
-                        if (percent == 100)
-                        {
-                            window.Width = window.MinWidth;
-                            window.Height = window.MinHeight;
-                            FlushHard(window);
-                            Save(window, Path.Combine(extraDir, $"{name}-min-{mode}-100.png"), 1, surface);
-                        }
-                        window.Close();
+                        Save(window, Path.Combine(extraDir, $"{run.Name}-{mode}-100.png"), 100, surface);
                     }
-
-                    // First-run steps. Step 2 is shown as it first appears; the other states go to extra/.
-                    (string Name, int Step, Func<FakeInstaller> Installer, Func<FirstRunViewModel, Task>? Drive, bool Extra)[] runs =
-                    [
-                        ("firstrun-1", 1, () => new FakeInstaller(), null, false),
-                        ("firstrun-2", 2, () => new FakeInstaller(), null, false),
-                        ("firstrun-3", 3, () => new FakeInstaller { Installed = true }, null, false),
-                        ("firstrun-2-downloading", 2, () => new FakeInstaller(), vm => vm.DownloadCommand.ExecuteAsync(null), true),
-                        ("firstrun-2-failed", 2, () => new FakeInstaller { Fail = true }, vm => vm.DownloadCommand.ExecuteAsync(null), true),
-                        ("firstrun-2-done", 2, () => new FakeInstaller { Installed = true }, null, true),
-                    ];
-                    foreach (var run in runs)
+                    else
                     {
-                        if (run.Extra && percent != 100) continue;
-                        var services = new FakeServices(work);
-                        var installer = run.Installer();
-                        var vm = new FirstRunViewModel(services, installer);
-                        var window = new FirstRunWindow(vm);
-                        Prepare(window);
-                        Show(window, theme, dark);
-                        for (int step = 1; step < run.Step; step++) vm.NextCommand.Execute(null);
-                        // Started inside the dispatcher so the command's continuations come back to this thread.
-                        if (run.Drive is not null) Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() => _ = run.Drive(vm)));
-                        FlushHard(window);
-                        string file = run.Extra ? Path.Combine(extraDir, $"{run.Name}-{mode}-{percent}.png") : Path.Combine(outDir, $"{run.Name}-{mode}-{percent}.png");
-                        Save(window, file, scale, surface);
-                        vm.CancelDownload();
-                        window.Close();
-                        if (!run.Extra) count++;
+                        foreach (int percent in Scales)
+                            count += Save(window, Path.Combine(outDir, $"{run.Name}-{mode}-{percent}.png"), percent, surface);
+                        Shrink(window);
+                        foreach (int percent in SmallScales)
+                            count += Save(window, Path.Combine(outDir, $"{run.Name}-min-{mode}-{percent}.png"), percent, surface);
                     }
+                    vm.CancelDownload();
+                    window.Close();
                 }
             }
 
-            Console.WriteLine($"Wrote {count} screenshots to {outDir}");
-            return count == 40 ? 0 : 2;
+            Console.WriteLine($"Wrote {count} screenshots to {outDir} (expected {Expected})");
+            return count == Expected ? 0 : 2;
         }
         finally
         {
             try { Directory.Delete(work, recursive: true); } catch (IOException) { }
             Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\GlobalAutocorrect.Screens", throwOnMissingSubKey: false);
         }
+    }
+
+    /// <summary>
+    /// The real App, with its start-up cancelled (D62). Creating an Application queues its start-up (OnStartup), which runs
+    /// the first time the dispatcher pumps, as Flush() does. With the installed app running it found the single-instance
+    /// mutex taken and shut this one down, after which every pack:// resource load failed ("The URI prefix is not
+    /// recognized"); with no copy running it would have started the real app, keyboard hook and model included. The
+    /// operations the constructor queues are aborted, and if start-up ever runs anyway it stops at its first line.
+    /// </summary>
+    private static GlobalAutocorrect.App.App CreateApp()
+    {
+        var queued = new List<DispatcherOperation>();
+        DispatcherHookEventHandler collect = (_, e) => queued.Add(e.Operation);
+        Dispatcher.CurrentDispatcher.Hooks.OperationPosted += collect;
+        var app = new GlobalAutocorrect.App.App();
+        Dispatcher.CurrentDispatcher.Hooks.OperationPosted -= collect;
+        foreach (var op in queued) op.Abort();
+        // Raised by base.OnStartup, before the mutex, the hook or the model: throwing ends OnStartup there.
+        app.Startup += (_, _) => throw new InvalidOperationException("The screenshot tool must never run the app's start-up.");
+        app.InitializeComponent();
+        app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        return app;
     }
 
     // ---- Windows -------------------------------------------------------------------------------------------------------
@@ -156,27 +187,6 @@ internal static class ScreenTool
     }
 
     /// <summary>
-    /// Applies light or dark. WPF now and then fails to resolve the pack:// theme dictionary on the very first call
-    /// (NotSupportedException "URI prefix is not recognized"); trying again a moment later always works.
-    /// </summary>
-    private static void ApplyTheme(ThemeService theme, bool dark)
-    {
-        for (int attempt = 1; ; attempt++)
-        {
-            try
-            {
-                theme.Apply(dark ? ApplicationTheme.Dark : ApplicationTheme.Light);
-                return;
-            }
-            catch (NotSupportedException) when (attempt < 5)
-            {
-                Thread.Sleep(200);
-                Flush();
-            }
-        }
-    }
-
-    /// <summary>
     /// Shows a window and puts the wanted theme back. WPF-UI's FluentWindow applies the Windows theme itself once it is
     /// loaded; the real app lets ThemeService follow that, but here light and dark must be chosen by the tool.
     /// </summary>
@@ -184,8 +194,16 @@ internal static class ScreenTool
     {
         window.Show();
         Flush();
-        ApplyTheme(theme, dark);
+        theme.Apply(dark ? ApplicationTheme.Dark : ApplicationTheme.Light);
         Flush();
+    }
+
+    /// <summary>Takes a window down to the smallest size it allows.</summary>
+    private static void Shrink(Window window)
+    {
+        window.Width = window.MinWidth;
+        window.Height = window.MinHeight;
+        FlushHard(window);
     }
 
     private static void Flush(DispatcherPriority priority = DispatcherPriority.ContextIdle)
@@ -210,8 +228,10 @@ internal static class ScreenTool
         window.UpdateLayout();
     }
 
-    private static void Save(Window window, string path, double scale, string surfaceHex)
+    /// <summary>Draws the window at a display scale (percent) over its surface colour; returns 1, for counting.</summary>
+    private static int Save(Window window, string path, int percent, string surfaceHex)
     {
+        double scale = percent / 100.0;
         double w = window.ActualWidth, h = window.ActualHeight;
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(w * scale), (int)Math.Ceiling(h * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
 
@@ -226,6 +246,7 @@ internal static class ScreenTool
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path);
         encoder.Save(stream);
+        return 1;
     }
 
     private static string FindRoot()

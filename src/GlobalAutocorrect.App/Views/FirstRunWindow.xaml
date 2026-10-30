@@ -115,169 +115,172 @@
             </ItemsControl.ItemsPanel>
         </ItemsControl>
 
-        <Grid Grid.Row="2" Margin="48,20,48,8">
-            <!-- 1. What it does -->
-            <StackPanel Visibility="{Binding IsStep1, Converter={StaticResource BoolToVisible}}">
-                <TextBlock Style="{StaticResource PageTitle}" Text="What it does" />
-                <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,24" Text="Welcome to Global Autocorrect. Here's how it helps while you type." />
+        <!-- The step scrolls when the window is too short for it (small window, large scale); the buttons stay put (D63). -->
+        <ScrollViewer x:Name="StepScroller" Grid.Row="2" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <Grid Margin="48,20,48,8">
+                <!-- 1. What it does -->
+                <StackPanel Visibility="{Binding IsStep1, Converter={StaticResource BoolToVisible}}">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="What it does" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,24" Text="Welcome to Global Autocorrect. Here's how it helps while you type." />
 
-                <Grid Style="{StaticResource PointRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
-                        <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="22" />
-                    </ContentControl>
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                        <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Fixes typos as you type" />
-                        <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="In almost any app, a moment after you stop typing, slips and misspellings are tidied up for you." />
-                    </StackPanel>
-                </Grid>
-                <Grid Style="{StaticResource PointRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
-                        <ui:SymbolIcon Symbol="ShieldLock24" FontSize="22" />
-                    </ContentControl>
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                        <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Stays on your PC" />
-                        <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="A local AI does the checking here, so nothing you type ever leaves your computer." />
-                    </StackPanel>
-                </Grid>
-                <Grid Style="{StaticResource PointRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
-                        <ui:SymbolIcon Symbol="KeyboardTab24" FontSize="22" />
-                    </ContentControl>
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                        <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Suggests your next word" />
-                        <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="A faint suggestion appears as you type. Press Tab to accept it, or carry on to ignore it." />
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
-
-            <!-- 2. Download the model -->
-            <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BoolToVisible}}">
-                <TextBlock Style="{StaticResource PageTitle}" Text="Download the model" />
-                <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,20"
-                           Text="Global Autocorrect needs to download its AI model, about 6 GB. It's saved on this PC and does its thinking here, so your typing stays private. You only need to do this once." />
-
-                <Border Style="{StaticResource CardBorder}" Padding="20">
-                    <Grid>
-                        <!-- Ready to download -->
-                        <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisible}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ContentControl Style="{StaticResource IconBadge}">
-                                    <ui:SymbolIcon Symbol="ArrowDownload24" FontSize="22" />
-                                </ContentControl>
-                                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource RowTitle}" Text="Ready when you are" />
-                                    <TextBlock Style="{StaticResource RowCaption}" Text="Keep this window open until it finishes." />
-                                </StackPanel>
-                                <ui:Button Grid.Column="2" Appearance="Primary" Icon="{ui:SymbolIcon ArrowDownload24}" Content="Download"
-                                           Command="{Binding DownloadCommand}" VerticalAlignment="Center" />
-                            </Grid>
-                            <TextBlock Style="{StaticResource RowCaption}" Margin="0,12,0,0" Text="{Binding Message}"
-                                       Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisible}}" />
-                        </StackPanel>
-
-                        <!-- Downloading -->
-                        <StackPanel Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisible}}">
-                            <TextBlock Style="{StaticResource RowTitle}" Text="{Binding StepName}" />
-                            <ProgressBar Margin="0,12,0,8" Height="8" Minimum="0" Maximum="100" Value="{Binding Percent}"
-                                         AutomationProperties.Name="Download progress" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding ProgressText}" />
-                                <ui:Button Grid.Column="1" Appearance="Secondary" Content="Cancel" Command="{Binding CancelCommand}" />
-                            </Grid>
-                        </StackPanel>
-
-                        <!-- Done -->
-                        <Grid Visibility="{Binding IsDone, Converter={StaticResource BoolToVisible}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <ContentControl Style="{StaticResource IconBadge}">
-                                <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="24" />
-                            </ContentControl>
-                            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource RowTitle}" Text="The model is on this PC" />
-                                <TextBlock Style="{StaticResource RowCaption}" Text="Everything is downloaded. Choose Next to carry on." />
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Something went wrong -->
-                        <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisible}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ui:SymbolIcon Symbol="ErrorCircle24" FontSize="28" Foreground="{DynamicResource SystemFillColorCriticalBrush}" VerticalAlignment="Top" />
-                                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource RowTitle}" Text="The download didn't finish" />
-                                    <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding Message}" />
-                                </StackPanel>
-                                <ui:Button Grid.Column="2" Appearance="Primary" Icon="{ui:SymbolIcon ArrowClockwise24}" Content="Retry"
-                                           Command="{Binding DownloadCommand}" VerticalAlignment="Center" />
-                            </Grid>
+                    <Grid Style="{StaticResource PointRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
+                            <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="22" />
+                        </ContentControl>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Fixes typos as you type" />
+                            <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="In almost any app, a moment after you stop typing, slips and misspellings are tidied up for you." />
                         </StackPanel>
                     </Grid>
-                </Border>
-                <TextBlock Style="{StaticResource RowCaption}" Margin="2,14,0,0" FontSize="13"
-                           Text="It needs about 6 GB of free space. You can carry on using your PC while it downloads." />
-            </StackPanel>
+                    <Grid Style="{StaticResource PointRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
+                            <ui:SymbolIcon Symbol="ShieldLock24" FontSize="22" />
+                        </ContentControl>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Stays on your PC" />
+                            <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="A local AI does the checking here, so nothing you type ever leaves your computer." />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Style="{StaticResource PointRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ContentControl Style="{StaticResource IconBadge}" VerticalAlignment="Top">
+                            <ui:SymbolIcon Symbol="KeyboardTab24" FontSize="22" />
+                        </ContentControl>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                            <TextBlock Style="{StaticResource RowTitle}" FontSize="16" Text="Suggests your next word" />
+                            <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="A faint suggestion appears as you type. Press Tab to accept it, or carry on to ignore it." />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
 
-            <!-- 3. You're ready -->
-            <StackPanel Visibility="{Binding IsStep3, Converter={StaticResource BoolToVisible}}">
-                <TextBlock Style="{StaticResource PageTitle}" Text="You're ready" />
-                <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,20"
-                           Text="Global Autocorrect now lives in your system tray. These shortcuts are worth knowing." />
+                <!-- 2. Download the model -->
+                <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BoolToVisible}}">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Download the model" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,20"
+                               Text="Global Autocorrect needs to download its AI model, about 6 GB. It's saved on this PC and does its thinking here, so your typing stays private. You only need to do this once." />
 
-                <Border Style="{StaticResource CardBorder}" Padding="20,8">
-                    <ItemsControl ItemsSource="{Binding ShortcutRows}" IsTabStop="False" Focusable="False">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,10">
+                    <Border Style="{StaticResource CardBorder}" Padding="20">
+                        <Grid>
+                            <!-- Ready to download -->
+                            <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisible}}">
+                                <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="180" />
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <ItemsControl ItemsSource="{Binding Keys}" ItemTemplate="{StaticResource KeycapTemplate}"
-                                                  IsTabStop="False" Focusable="False" VerticalAlignment="Center">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding Description}" />
+                                    <ContentControl Style="{StaticResource IconBadge}">
+                                        <ui:SymbolIcon Symbol="ArrowDownload24" FontSize="22" />
+                                    </ContentControl>
+                                    <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="Ready when you are" />
+                                        <TextBlock Style="{StaticResource RowCaption}" Text="Keep this window open until it finishes." />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="2" Appearance="Primary" Icon="{ui:SymbolIcon ArrowDownload24}" Content="Download"
+                                               Command="{Binding DownloadCommand}" VerticalAlignment="Center" />
                                 </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Border>
-                <TextBlock Style="{StaticResource RowCaption}" Margin="2,12,0,0" FontSize="13"
-                           Text="You can change these any time: right-click the tray icon and choose Settings." />
-            </StackPanel>
-        </Grid>
+                                <TextBlock Style="{StaticResource RowCaption}" Margin="0,12,0,0" Text="{Binding Message}"
+                                           Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisible}}" />
+                            </StackPanel>
+
+                            <!-- Downloading -->
+                            <StackPanel Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisible}}">
+                                <TextBlock Style="{StaticResource RowTitle}" Text="{Binding StepName}" />
+                                <ProgressBar Margin="0,12,0,8" Height="8" Minimum="0" Maximum="100" Value="{Binding Percent}"
+                                             AutomationProperties.Name="Download progress" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding ProgressText}" />
+                                    <ui:Button Grid.Column="1" Appearance="Secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Done -->
+                            <Grid Visibility="{Binding IsDone, Converter={StaticResource BoolToVisible}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ContentControl Style="{StaticResource IconBadge}">
+                                    <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="24" />
+                                </ContentControl>
+                                <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource RowTitle}" Text="The model is on this PC" />
+                                    <TextBlock Style="{StaticResource RowCaption}" Text="Everything is downloaded. Choose Next to carry on." />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Something went wrong -->
+                            <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisible}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Symbol="ErrorCircle24" FontSize="28" Foreground="{DynamicResource SystemFillColorCriticalBrush}" VerticalAlignment="Top" />
+                                    <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="The download didn't finish" />
+                                        <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding Message}" />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="2" Appearance="Primary" Icon="{ui:SymbolIcon ArrowClockwise24}" Content="Retry"
+                                               Command="{Binding DownloadCommand}" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <TextBlock Style="{StaticResource RowCaption}" Margin="2,14,0,0" FontSize="13"
+                               Text="It needs about 6 GB of free space. You can carry on using your PC while it downloads." />
+                </StackPanel>
+
+                <!-- 3. You're ready -->
+                <StackPanel Visibility="{Binding IsStep3, Converter={StaticResource BoolToVisible}}">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="You're ready" />
+                    <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,0,0,20"
+                               Text="Global Autocorrect now lives in your system tray. These shortcuts are worth knowing." />
+
+                    <Border Style="{StaticResource CardBorder}" Padding="20,8">
+                        <ItemsControl ItemsSource="{Binding ShortcutRows}" IsTabStop="False" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="180" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ItemsControl ItemsSource="{Binding Keys}" ItemTemplate="{StaticResource KeycapTemplate}"
+                                                      IsTabStop="False" Focusable="False" VerticalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding Description}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                    <TextBlock Style="{StaticResource RowCaption}" Margin="2,12,0,0" FontSize="13"
+                               Text="You can change these any time: right-click the tray icon and choose Settings." />
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
 
         <!-- Buttons -->
         <Grid Grid.Row="3" Margin="48,8,48,24">

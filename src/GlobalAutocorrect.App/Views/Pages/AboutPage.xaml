@@ -10,134 +10,97 @@
             <Setter Property="FontSize" Value="24" />
         </Style>
     </Page.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,16,32,32">
-            <TextBlock Style="{StaticResource PageTitle}" Text="About" />
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="What you are running, and how well it works." />
+    <StackPanel Margin="32,16,32,32">
+        <TextBlock Style="{StaticResource PageTitle}" Text="About" />
+        <TextBlock Style="{StaticResource PageSubtitle}" Text="What you are running, and how well it works." />
 
-            <!-- Name and version -->
-            <Border Style="{StaticResource HeroCard}" Margin="0,0,0,12">
+        <!-- Name and version -->
+        <Border Style="{StaticResource HeroCard}" Margin="0,0,0,12">
+            <Grid>
+                <Border Margin="-24" CornerRadius="11" IsHitTestVisible="False" Background="{StaticResource HeroGlowBrush}" />
                 <Grid>
-                    <Border Margin="-24" CornerRadius="11" IsHitTestVisible="False" Background="{StaticResource HeroGlowBrush}" />
-                    <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ContentControl Style="{StaticResource IconBadgeFilled}">
+                        <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="30" />
+                    </ContentControl>
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource TextTitle}" Text="{Binding AppName}" />
+                        <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding VersionLine}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Update available (D58): installed only when the user clicks -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8"
+                        Icon="{ui:SymbolIcon ArrowCircleDown24}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisible}}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="{Binding UpdateTitle}" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="{Binding UpdateCaption}" />
+                    <TextBlock Margin="0,4,0,0" Text="{Binding UpdateMessage}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource RowTitle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:Button Appearance="Primary" Icon="{ui:SymbolIcon ArrowDownload24}" Content="Install update"
+                       Command="{Binding InstallUpdateCommand}" AutomationProperties.Name="Install update" />
+        </ui:CardControl>
+
+        <!-- Measured accuracy (6.6) -->
+        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="20,16">
+            <StackPanel>
+                <TextBlock Style="{StaticResource RowTitle}" Text="Measured accuracy" />
+                <TextBlock Style="{StaticResource RowCaption}" Text="Checked against a set of test messages with typos added, using the numbers from the last build." />
+
+                <TextBlock Style="{StaticResource TextBody}" Margin="0,14,0,0" Text="{Binding NoMetricsText}"
+                           Visibility="{Binding HasNoMetrics, Converter={StaticResource BoolToVisible}}" />
+
+                <StackPanel Visibility="{Binding HasMetrics, Converter={StaticResource BoolToVisible}}">
+                    <Grid Margin="0,14,0,0" DataContext="{Binding Metrics}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <ContentControl Style="{StaticResource IconBadgeFilled}">
-                            <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="30" />
-                        </ContentControl>
-                        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Style="{StaticResource TextTitle}" Text="{Binding AppName}" />
-                            <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding VersionLine}" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource StatValue}" Text="{Binding ErrorsFixed}" />
+                            <TextBlock Style="{StaticResource RowCaption}" Text="Errors fixed" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource StatValue}" Text="{Binding FalseEdits}" />
+                            <TextBlock Style="{StaticResource RowCaption}" Text="False edits" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource StatValue}" Text="{Binding TypicalTime}" />
+                            <TextBlock Style="{StaticResource RowCaption}" Text="Typical clean-up time" />
                         </StackPanel>
                     </Grid>
-                </Grid>
-            </Border>
-
-            <!-- Update available (D58): installed only when the user clicks -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8"
-                            Icon="{ui:SymbolIcon ArrowCircleDown24}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisible}}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="{Binding UpdateTitle}" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="{Binding UpdateCaption}" />
-                        <TextBlock Margin="0,4,0,0" Text="{Binding UpdateMessage}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource RowTitle}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Setter Property="TextWrapping" Value="Wrap" />
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button Appearance="Primary" Icon="{ui:SymbolIcon ArrowDownload24}" Content="Install update"
-                           Command="{Binding InstallUpdateCommand}" AutomationProperties.Name="Install update" />
-            </ui:CardControl>
-
-            <!-- Measured accuracy (6.6) -->
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="20,16">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource RowTitle}" Text="Measured accuracy" />
-                    <TextBlock Style="{StaticResource RowCaption}" Text="Checked against a set of test messages with typos added, using the numbers from the last build." />
-
-                    <TextBlock Style="{StaticResource TextBody}" Margin="0,14,0,0" Text="{Binding NoMetricsText}"
-                               Visibility="{Binding HasNoMetrics, Converter={StaticResource BoolToVisible}}" />
-
-                    <StackPanel Visibility="{Binding HasMetrics, Converter={StaticResource BoolToVisible}}">
-                        <Grid Margin="0,14,0,0" DataContext="{Binding Metrics}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource StatValue}" Text="{Binding ErrorsFixed}" />
-                                <TextBlock Style="{StaticResource RowCaption}" Text="Errors fixed" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Style="{StaticResource StatValue}" Text="{Binding FalseEdits}" />
-                                <TextBlock Style="{StaticResource RowCaption}" Text="False edits" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Style="{StaticResource StatValue}" Text="{Binding TypicalTime}" />
-                                <TextBlock Style="{StaticResource RowCaption}" Text="Typical clean-up time" />
-                            </StackPanel>
-                        </Grid>
-                        <TextBlock Style="{StaticResource RowCaption}" Margin="0,14,0,0" Text="{Binding Metrics.Caption}" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource RowCaption}" Margin="0,14,0,0" Text="{Binding Metrics.Caption}" />
                 </StackPanel>
-            </Border>
+            </StackPanel>
+        </Border>
 
-            <!-- Start with Windows (8.1) -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Power24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Start with Windows" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Open quietly in the tray each time you sign in." />
-                        <TextBlock Text="{Binding StartupMessage}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource ErrorText}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding StartWithWindows, Mode=TwoWay}" AutomationProperties.Name="Start with Windows" />
-            </ui:CardControl>
-
-            <!-- Check for updates (D58, 9.3) -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon ArrowSync24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Check for updates" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Looks for a newer version on GitHub when the app starts and once a day. Nothing is installed until you choose to." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding CheckForUpdates, Mode=TwoWay}" AutomationProperties.Name="Check for updates" />
-            </ui:CardControl>
-
-            <!-- Credits -->
-            <Border Style="{StaticResource CardBorder}" Padding="20,14">
+        <!-- Start with Windows (8.1) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Power24}">
+            <ui:CardControl.Header>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource RowTitle}" Text="Credits" />
-                    <TextBlock Style="{StaticResource RowCaption}"
-                               Text="Spelling uses the SCOWL word lists. Word frequencies and suggestions use the Leipzig Corpora Collection (CC BY 4.0)." />
-                    <ui:HyperlinkButton Margin="-12,6,0,0" Icon="{ui:SymbolIcon DocumentText24}" Content="Credits and licences"
-                                        Command="{Binding OpenNoticeCommand}" />
-                    <TextBlock Text="{Binding NoticeMessage}">
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Start with Windows" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Open quietly in the tray each time you sign in." />
+                    <TextBlock Text="{Binding StartupMessage}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource ErrorText}">
                                 <Setter Property="Visibility" Value="Visible" />
@@ -150,7 +113,42 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding StartWithWindows, Mode=TwoWay}" AutomationProperties.Name="Start with Windows" />
+        </ui:CardControl>
+
+        <!-- Check for updates (D58, 9.3) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon ArrowSync24}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Check for updates" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Looks for a newer version on GitHub when the app starts and once a day. Nothing is installed until you choose to." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding CheckForUpdates, Mode=TwoWay}" AutomationProperties.Name="Check for updates" />
+        </ui:CardControl>
+
+        <!-- Credits -->
+        <Border Style="{StaticResource CardBorder}" Padding="20,14">
+            <StackPanel>
+                <TextBlock Style="{StaticResource RowTitle}" Text="Credits" />
+                <TextBlock Style="{StaticResource RowCaption}"
+                           Text="Spelling uses the SCOWL word lists. Word frequencies and suggestions use the Leipzig Corpora Collection (CC BY 4.0)." />
+                <ui:HyperlinkButton Margin="-12,6,0,0" Icon="{ui:SymbolIcon DocumentText24}" Content="Credits and licences"
+                                    Command="{Binding OpenNoticeCommand}" />
+                <TextBlock Text="{Binding NoticeMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource ErrorText}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </StackPanel>
 </Page>

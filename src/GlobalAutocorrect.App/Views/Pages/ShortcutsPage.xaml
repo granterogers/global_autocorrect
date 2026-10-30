@@ -39,16 +39,14 @@
             </Border>
         </DataTemplate>
     </Page.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,16,32,32">
-            <TextBlock Style="{StaticResource PageTitle}" Text="Shortcuts" />
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="Click a box, then press the keys you want to use." />
+    <StackPanel Margin="32,16,32,32">
+        <TextBlock Style="{StaticResource PageTitle}" Text="Shortcuts" />
+        <TextBlock Style="{StaticResource PageSubtitle}" Text="Click a box, then press the keys you want to use." />
 
-            <ContentControl Content="{Binding Pause}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
-            <ContentControl Content="{Binding Undo}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
+        <ContentControl Content="{Binding Pause}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
+        <ContentControl Content="{Binding Undo}" ContentTemplate="{StaticResource ShortcutCard}" IsTabStop="False" />
 
-            <TextBlock Style="{StaticResource RowCaption}" Margin="2,8,0,0" FontSize="13"
-                       Text="Shortcuts need Ctrl, Alt or the Windows key, plus a letter, number or function key. Press Esc to cancel." />
-        </StackPanel>
-    </ScrollViewer>
+        <TextBlock Style="{StaticResource RowCaption}" Margin="2,8,0,0" FontSize="13"
+                   Text="Shortcuts need Ctrl, Alt or the Windows key, plus a letter, number or function key. Press Esc to cancel." />
+    </StackPanel>
 </Page>

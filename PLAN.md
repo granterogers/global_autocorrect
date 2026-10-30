@@ -656,7 +656,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 9.3.f | M9 | Check: screenshots |
 | 9.3.g | M9 | Check: screenshots |
 | 9.4 | M9 | Check: screenshots |
-| 9.5 | M9 | Check: `artifacts/screens` + PROGRESS review notes |
+| 9.5 | M9 | Check: `artifacts/screens` + PROGRESS review notes; layout tests `R9_5_*` (D63) |
 | 10.1 | M0 | `R10_1_CoreHasNoWindowsReferences` |
 | 10.2 | M4 | `R10_2_*` |
 | 10.3 | M7 | Check: project layout |
