@@ -2,6 +2,11 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-30 (late, UI checks) — Screenshot tool fixed; layout checks at every size and scale
+
+- **D62 (9.5):** the screenshot tool works again. The App it creates for its resources was running its own start-up as soon as the tool pumped the dispatcher, found the installed app's mutex and shut itself down, after which every pack:// load failed; with no copy running it would have started the real app. Its start-up is now cancelled and can't run. 140 shots: every page and first-run step, light and dark, at 100/125/150/175/200% and at the smallest window size at 100/150%.
+- **D63 (9.5, 9.1, 9.4):** five layout checks as tests over 40 layouts (7 pages + 3 first-run steps, default and smallest size, 100% and 200%), each shown failing on a broken layout. Found and fixed: the mouse wheel didn't scroll settings pages longer than the window (a page's own ScrollViewer swallowed it); the first-run window couldn't scroll and cut off step 1 at its smallest size; every settings card was an empty, unnamed Tab stop; the boldness radio buttons had no accessible name.
+- **Not checked by tests:** contrast and alignment (screenshots), open drop-downs, Windows' "Text size" setting, high contrast.
 ## 2026-10-30 (late) — Spacing, speed, per-app prediction, update check; Intercom report
 
 - **User report (Intercom):** "liaise with  theServicees team to seee what are nthe ext stes ." D54: an article run into a capitalised word is a missed space, not code. The rest was fixed when replayed through the real model; the reply was typed while a deploy restarted the app, so `deploy.ps1` now waits for a 15 s break in typing, and `install.ps1` restarts the installed copy if anything fails after closing it. The sentence is now `u004` in the stress set.

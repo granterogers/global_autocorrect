@@ -3,116 +3,114 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       Title="Home">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,16,32,32">
-            <TextBlock Style="{StaticResource PageTitle}" Text="Home" />
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="See at a glance how Global Autocorrect is getting on." />
+    <StackPanel Margin="32,16,32,32">
+        <TextBlock Style="{StaticResource PageTitle}" Text="Home" />
+        <TextBlock Style="{StaticResource PageSubtitle}" Text="See at a glance how Global Autocorrect is getting on." />
 
-            <!-- Status card (9.3.a) -->
-            <Border Style="{StaticResource HeroCard}" Margin="0,0,0,12">
-                <Grid>
-                    <Border Margin="-24" CornerRadius="11" IsHitTestVisible="False" Background="{StaticResource HeroGlowBrush}" />
+        <!-- Status card (9.3.a) -->
+        <Border Style="{StaticResource HeroCard}" Margin="0,0,0,12">
+            <Grid>
+                <Border Margin="-24" CornerRadius="11" IsHitTestVisible="False" Background="{StaticResource HeroGlowBrush}" />
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ContentControl Grid.Column="0" VerticalAlignment="Center">
+                            <ContentControl.Style>
+                                <Style TargetType="ContentControl" BasedOn="{StaticResource IconBadgeFilled}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsOn}" Value="False">
+                                            <Setter Property="Background" Value="{DynamicResource TextSecondaryBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource SurfaceCardBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ContentControl.Style>
+                            <ui:SymbolIcon FontSize="30">
+                                <ui:SymbolIcon.Style>
+                                    <Style TargetType="ui:SymbolIcon">
+                                        <Setter Property="Symbol" Value="CheckmarkCircle24" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsOn}" Value="False">
+                                                <Setter Property="Symbol" Value="PauseCircle24" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:SymbolIcon.Style>
+                            </ui:SymbolIcon>
+                        </ContentControl>
+                        <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource TextDisplay}" Text="{Binding StatusTitle}" />
+                            <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding StatusCaption}" />
+                        </StackPanel>
+                        <ui:ToggleSwitch Grid.Column="2" VerticalAlignment="Center" IsChecked="{Binding IsOn, Mode=TwoWay}"
+                                         AutomationProperties.Name="Global Autocorrect on or off">
+                            <ui:ToggleSwitch.LayoutTransform>
+                                <ScaleTransform ScaleX="1.4" ScaleY="1.4" />
+                            </ui:ToggleSwitch.LayoutTransform>
+                        </ui:ToggleSwitch>
+                    </Grid>
+
+                    <Border Height="1" Margin="0,20,0,16" Background="{DynamicResource BorderSoftBrush}" />
+
                     <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
+                                <ui:SymbolIcon Symbol="BrainCircuit24" FontSize="18" />
+                            </ContentControl>
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding ModelText}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
+                                <ui:SymbolIcon Symbol="Flash24" FontSize="18" />
+                            </ContentControl>
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding DeviceText}" />
+                        </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <ContentControl Grid.Column="0" VerticalAlignment="Center">
-                                <ContentControl.Style>
-                                    <Style TargetType="ContentControl" BasedOn="{StaticResource IconBadgeFilled}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsOn}" Value="False">
-                                                <Setter Property="Background" Value="{DynamicResource TextSecondaryBrush}" />
-                                                <Setter Property="Foreground" Value="{DynamicResource SurfaceCardBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ContentControl.Style>
-                                <ui:SymbolIcon FontSize="30">
-                                    <ui:SymbolIcon.Style>
-                                        <Style TargetType="ui:SymbolIcon">
-                                            <Setter Property="Symbol" Value="CheckmarkCircle24" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsOn}" Value="False">
-                                                    <Setter Property="Symbol" Value="PauseCircle24" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </ui:SymbolIcon.Style>
-                                </ui:SymbolIcon>
+                            <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
+                                <ui:SymbolIcon Symbol="Timer24" FontSize="18" />
                             </ContentControl>
-                            <StackPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource TextDisplay}" Text="{Binding StatusTitle}" />
-                                <TextBlock Style="{StaticResource RowCaption}" FontSize="14" Text="{Binding StatusCaption}" />
-                            </StackPanel>
-                            <ui:ToggleSwitch Grid.Column="2" VerticalAlignment="Center" IsChecked="{Binding IsOn, Mode=TwoWay}"
-                                             AutomationProperties.Name="Global Autocorrect on or off">
-                                <ui:ToggleSwitch.LayoutTransform>
-                                    <ScaleTransform ScaleX="1.4" ScaleY="1.4" />
-                                </ui:ToggleSwitch.LayoutTransform>
-                            </ui:ToggleSwitch>
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding LatencyText}" />
                         </Grid>
-
-                        <Border Height="1" Margin="0,20,0,16" Background="{DynamicResource BorderSoftBrush}" />
-
-                        <StackPanel>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
-                                    <ui:SymbolIcon Symbol="BrainCircuit24" FontSize="18" />
-                                </ContentControl>
-                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding ModelText}" />
-                            </Grid>
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
-                                    <ui:SymbolIcon Symbol="Flash24" FontSize="18" />
-                                </ContentControl>
-                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding DeviceText}" />
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
-                                    <ui:SymbolIcon Symbol="Timer24" FontSize="18" />
-                                </ContentControl>
-                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding LatencyText}" />
-                            </Grid>
-                        </StackPanel>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-            <!-- Corrections today (9.3.a) -->
-            <Border Style="{StaticResource CardBorder}" Padding="20,16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ContentControl Style="{StaticResource IconBadge}">
-                        <ui:SymbolIcon Symbol="TextGrammarCheckmark24" FontSize="22" />
-                    </ContentControl>
-                    <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Corrections today" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Typos and slips tidied up since midnight." />
-                    </StackPanel>
-                    <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource TextDisplay}"
-                               Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Text="{Binding CorrectionsText}"
-                               AutomationProperties.Name="Corrections today" />
-                </Grid>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+        <!-- Corrections today (9.3.a) -->
+        <Border Style="{StaticResource CardBorder}" Padding="20,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ContentControl Style="{StaticResource IconBadge}">
+                    <ui:SymbolIcon Symbol="TextGrammarCheckmark24" FontSize="22" />
+                </ContentControl>
+                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Corrections today" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Typos and slips tidied up since midnight." />
+                </StackPanel>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource TextDisplay}"
+                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Text="{Binding CorrectionsText}"
+                           AutomationProperties.Name="Corrections today" />
+            </Grid>
+        </Border>
+    </StackPanel>
 </Page>

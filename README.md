@@ -284,7 +284,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 9.3.f | Tested | 1 test(s), e.g. `R9_3_f_DictionaryAddRemoveViaViewModel` |
 | 9.3.g | Tested | 4 test(s), e.g. `R9_3_g_AboutReadsMetricsJson` |
 | 9.4 | Tested | 6 test(s), e.g. `R9_4_FirstRunMarksDoneOnFinish` |
-| 9.5 | Recorded check | `artifacts/screens` + PROGRESS review notes |
+| 9.5 | Tested | 14 test(s), e.g. `R9_5_EveryPageScrollsToItsLastRow`; plus `artifacts/screens` (D62, D63) |
 | 10.1 | Tested | 1 test(s), e.g. `R10_1_CoreHasNoWindowsReferences` |
 | 10.2 | Tested | 2 test(s), e.g. `R10_2_HostAutoCapitalisationIsAdoptedNotABreak` |
 | 10.3 | Tested | 11 test(s), e.g. `R10_3_a_HookInstallsAndRemovesWithoutBlocking` |

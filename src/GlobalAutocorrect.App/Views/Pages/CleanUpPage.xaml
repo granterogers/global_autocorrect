@@ -3,124 +3,122 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       Title="Clean-up">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,16,32,32">
-            <TextBlock Style="{StaticResource PageTitle}" Text="Clean-up" />
-            <TextBlock Style="{StaticResource PageSubtitle}" Text="Choose when and how your typing is tidied up. Changes save as you make them." />
+    <StackPanel Margin="32,16,32,32">
+        <TextBlock Style="{StaticResource PageTitle}" Text="Clean-up" />
+        <TextBlock Style="{StaticResource PageSubtitle}" Text="Choose when and how your typing is tidied up. Changes save as you make them." />
 
-            <!-- Pause length -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Timer24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Wait after you stop typing" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="How long to pause before your text is checked." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
-                    <Slider x:Name="PauseSlider" Width="160" VerticalAlignment="Center"
-                            Minimum="300" Maximum="2000" TickFrequency="100" SmallChange="100" LargeChange="100"
-                            IsSnapToTickEnabled="True" TickPlacement="None"
-                            Value="{Binding PauseMs, Mode=TwoWay, Delay=300}"
-                            AutomationProperties.Name="Wait after you stop typing" />
-                    <TextBlock Width="80" Margin="12,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
-                               Style="{StaticResource TextBody}" FontWeight="SemiBold"
-                               Text="{Binding Value, ElementName=PauseSlider, Converter={StaticResource MsToSeconds}}" />
-                </StackPanel>
-            </ui:CardControl>
-
-            <!-- Boldness -->
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="16,14,16,10">
+        <!-- Pause length -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Timer24}">
+            <ui:CardControl.Header>
                 <StackPanel>
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="20" Margin="0,0,16,0" VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Style="{StaticResource RowTitle}" Text="How bold corrections are" />
-                            <TextBlock Style="{StaticResource RowCaption}" Text="How different a corrected word may be from what you typed." />
-                        </StackPanel>
-                    </Grid>
-                    <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsCautious, Mode=TwoWay}">
-                        <StackPanel Margin="0,0,0,4">
-                            <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Cautious" />
-                            <TextBlock Style="{StaticResource RowCaption}" Text="Only fixes the obvious slips. Best if you use lots of unusual names or words." />
-                        </StackPanel>
-                    </RadioButton>
-                    <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsStandard, Mode=TwoWay}">
-                        <StackPanel Margin="0,0,0,4">
-                            <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Standard" />
-                            <TextBlock Style="{StaticResource RowCaption}" Text="Fixes typos and clear mistakes and leaves your wording alone. Recommended." />
-                        </StackPanel>
-                    </RadioButton>
-                    <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsBold, Mode=TwoWay}">
-                        <StackPanel Margin="0,0,0,4">
-                            <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Bold" />
-                            <TextBlock Style="{StaticResource RowCaption}" Text="Fixes more, even badly tangled words. Great for fast, messy typing." />
-                        </StackPanel>
-                    </RadioButton>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Wait after you stop typing" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="How long to pause before your text is checked." />
                 </StackPanel>
-            </Border>
+            </ui:CardControl.Header>
+            <StackPanel Orientation="Horizontal">
+                <Slider x:Name="PauseSlider" Width="160" VerticalAlignment="Center"
+                        Minimum="300" Maximum="2000" TickFrequency="100" SmallChange="100" LargeChange="100"
+                        IsSnapToTickEnabled="True" TickPlacement="None"
+                        Value="{Binding PauseMs, Mode=TwoWay, Delay=300}"
+                        AutomationProperties.Name="Wait after you stop typing" />
+                <TextBlock Width="80" Margin="12,0,0,0" VerticalAlignment="Center" TextAlignment="Right"
+                           Style="{StaticResource TextBody}" FontWeight="SemiBold"
+                           Text="{Binding Value, ElementName=PauseSlider, Converter={StaticResource MsToSeconds}}" />
+            </StackPanel>
+        </ui:CardControl>
 
-            <!-- Whole paragraph (D43, D52) -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextParagraph24}"
-                            IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Fix the whole paragraph" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Also corrects text you pasted or typed earlier in the paragraph you're typing in." />
+        <!-- Boldness -->
+        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="16,14,16,10">
+            <StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ui:SymbolIcon Symbol="TextGrammarWand24" FontSize="20" Margin="0,0,16,0" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource RowTitle}" Text="How bold corrections are" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="How different a corrected word may be from what you typed." />
                     </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding FixWholeParagraph, Mode=TwoWay}" AutomationProperties.Name="Fix the whole paragraph" />
-            </ui:CardControl>
+                </Grid>
+                <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsCautious, Mode=TwoWay}" AutomationProperties.Name="Cautious">
+                    <StackPanel Margin="0,0,0,4">
+                        <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Cautious" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Only fixes the obvious slips. Best if you use lots of unusual names or words." />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsStandard, Mode=TwoWay}" AutomationProperties.Name="Standard">
+                    <StackPanel Margin="0,0,0,4">
+                        <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Standard" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Fixes typos and clear mistakes and leaves your wording alone. Recommended." />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton GroupName="Boldness" Margin="36,0,0,0" IsChecked="{Binding IsBold, Mode=TwoWay}" AutomationProperties.Name="Bold">
+                    <StackPanel Margin="0,0,0,4">
+                        <TextBlock Style="{StaticResource TextBody}" FontWeight="SemiBold" Text="Bold" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Fixes more, even badly tangled words. Great for fast, messy typing." />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+        </Border>
 
-            <!-- Look back (D49, D52) -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon History24}"
-                            IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Look back when you pause" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Has another go at any recent sentence that still has an obvious misspelling." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding LookBackWhenPaused, Mode=TwoWay}" AutomationProperties.Name="Look back when you pause" />
-            </ui:CardControl>
+        <!-- Whole paragraph (D43, D52) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextParagraph24}"
+                        IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Fix the whole paragraph" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Also corrects text you pasted or typed earlier in the paragraph you're typing in." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding FixWholeParagraph, Mode=TwoWay}" AutomationProperties.Name="Fix the whole paragraph" />
+        </ui:CardControl>
 
-            <!-- Underline -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextUnderline24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Briefly underline corrected words" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="A thin blue line shows what was changed, then fades away." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding UnderlineEnabled, Mode=TwoWay}" AutomationProperties.Name="Briefly underline corrected words" />
-            </ui:CardControl>
+        <!-- Look back (D49, D52) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon History24}"
+                        IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Look back when you pause" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Has another go at any recent sentence that still has an obvious misspelling." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding LookBackWhenPaused, Mode=TwoWay}" AutomationProperties.Name="Look back when you pause" />
+        </ui:CardControl>
 
-            <!-- Model -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon BrainCircuit24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="AI model" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="Changing the model takes effect after you restart Global Autocorrect." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ComboBox MinWidth="300" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
-                          DisplayMemberPath="Display" AutomationProperties.Name="AI model" />
-            </ui:CardControl>
+        <!-- Underline -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextUnderline24}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Briefly underline corrected words" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="A thin blue line shows what was changed, then fades away." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding UnderlineEnabled, Mode=TwoWay}" AutomationProperties.Name="Briefly underline corrected words" />
+        </ui:CardControl>
 
-            <!-- Idle unload (D52) -->
-            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Sleep24}">
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource RowTitle}" Text="Free the AI's memory after" />
-                        <TextBlock Style="{StaticResource RowCaption}" Text="When you stop typing, the AI gives back about 4 GB of memory and 4.5 GB of graphics memory after this long. It reloads in about 3 seconds." />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ComboBox MinWidth="140" ItemsSource="{Binding IdleUnloadChoices}" SelectedItem="{Binding IdleUnloadMinutes, Mode=TwoWay}"
-                          ItemStringFormat="{}{0} minutes" AutomationProperties.Name="Free the AI's memory after" />
-            </ui:CardControl>
-        </StackPanel>
-    </ScrollViewer>
+        <!-- Model -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon BrainCircuit24}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="AI model" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Changing the model takes effect after you restart Global Autocorrect." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ComboBox MinWidth="300" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
+                      DisplayMemberPath="Display" AutomationProperties.Name="AI model" />
+        </ui:CardControl>
+
+        <!-- Idle unload (D52) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Sleep24}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Free the AI's memory after" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="When you stop typing, the AI gives back about 4 GB of memory and 4.5 GB of graphics memory after this long. It reloads in about 3 seconds." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ComboBox MinWidth="140" ItemsSource="{Binding IdleUnloadChoices}" SelectedItem="{Binding IdleUnloadMinutes, Mode=TwoWay}"
+                      ItemStringFormat="{}{0} minutes" AutomationProperties.Name="Free the AI's memory after" />
+        </ui:CardControl>
+    </StackPanel>
 </Page>

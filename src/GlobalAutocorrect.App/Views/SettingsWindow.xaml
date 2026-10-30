@@ -21,6 +21,8 @@
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
+        <!-- The NavigationView scrolls each page itself, so pages have no ScrollViewer of their own: one inside would be
+             given the page's full height, never scroll, and still swallow the mouse wheel (D63). -->
         <ui:NavigationView x:Name="RootNavigation" Grid.Row="1"
                            PaneDisplayMode="Left" OpenPaneLength="220"
                            IsBackButtonVisible="Collapsed" IsPaneToggleVisible="False"

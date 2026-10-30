@@ -109,6 +109,15 @@
         <GradientStop Color="#001F6FEB" Offset="0.7" />
     </LinearGradientBrush>
 
+    <!--
+        Settings cards. WPF-UI's CardControl is a button, so each card was a Tab stop with no name that did nothing; the
+        switch, list or slider inside it is the control (D63).
+    -->
+    <Style TargetType="ui:CardControl" BasedOn="{StaticResource {x:Type ui:CardControl}}">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+    </Style>
+
     <!-- Pill with a remove button, for the excluded apps and the dictionary. -->
     <Style x:Key="ChipBorder" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SurfaceBaseBrush}" />
@@ -126,7 +135,7 @@
                            Foreground="{DynamicResource TextPrimaryBrush}" />
                 <ui:Button Margin="6,0,0,0" Padding="6" MinWidth="0" MinHeight="0" BorderThickness="0" CornerRadius="14" Appearance="Transparent"
                            Icon="{ui:SymbolIcon Dismiss12}" ToolTip="Remove"
-                           AutomationProperties.Name="Remove"
+                           AutomationProperties.Name="{Binding StringFormat='Remove {0}'}"
                            Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                            CommandParameter="{Binding}" />
             </StackPanel>
