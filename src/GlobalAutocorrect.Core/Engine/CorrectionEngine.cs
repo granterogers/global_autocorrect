@@ -21,6 +21,7 @@ public sealed record EngineDeps(
     Counters Counters,
     Action<string>? ObserveWord = null,           // 7.3: prediction history, word counts only
     Func<string, bool>? NoteUnrecognised = null,  // 8.5: auto-learn after 3 uses; true when the word was added
+    Action<string?, string?, string>? ObservePhrase = null,  // D40: (two back, one back, word) within a sentence
     Func<string, string, long>? PairCount = null,  // D37/D38: corpus count of a word pair
     Func<string, long>? WordCount = null);         // D37: corpus count of a word
 
@@ -96,7 +97,7 @@ public sealed class CorrectionEngine
                 _gate.TryWrite(Target);   // straight away if nothing else was typed (4.3.a)
             }
         }
-        if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null);
+        if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null, learnt.Start, fix);
         if (effect.SentenceEnded && _ai is not null && _o.AiEnabled)
             _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
     }
@@ -108,13 +109,45 @@ public sealed class CorrectionEngine
     /// field, an excluded app or an elevated window (8.3, 8.4, 10.8), and never while paused. The field is checked once
     /// per focus, not per word.
     /// </summary>
-    private void Learn(string word, bool corrected)
+    private (long Generation, int Start) _lastLearnt = (-1, -1);
+
+    private void Learn(string word, bool corrected, int start, string? fix)
     {
-        if (_d.ObserveWord is null && _d.NoteUnrecognised is null) return;
+        if (_d.ObserveWord is null && _d.NoteUnrecognised is null && _d.ObservePhrase is null) return;
+        // A word is finished by its punctuation and again by the space after it ("sir? "): learn it once.
+        if (_lastLearnt == (Session.Generation, start)) return;
+        _lastLearnt = (Session.Generation, start);
         _targetOk ??= Target!.ReadWindow().CaretKnown;
         if (_targetOk != true) return;
-        if (_d.Speller.IsValid(word) || _d.IsPersonalWord(word)) _d.ObserveWord?.Invoke(word.ToLowerInvariant());
+        string meant = fix ?? word;   // learn what the user meant: the instant fix if there was one
+        if (_d.Speller.IsValid(meant) || _d.IsPersonalWord(meant))
+        {
+            _d.ObserveWord?.Invoke(meant.ToLowerInvariant());
+            if (_d.ObservePhrase is not null)
+            {
+                var (w1, w2) = WordsBefore(start);
+                _d.ObservePhrase(w1, w2, meant);
+            }
+        }
         else if (!corrected && _d.NoteUnrecognised is not null) _pendingLearn.Add((word, _d.Clock.NowMs));
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex WordOrStop =
+        new(@"\p{L}+(?:['’]\p{L}+)*|[.!?\n]", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// D40: the two words before <paramref name="start"/> in the same sentence of what was typed; a sentence start is
+    /// <c>"&lt;s&gt;"</c>. Before what this session typed, nothing is known, so the context is shorter rather than guessed.
+    /// </summary>
+    private (string? W1, string? W2) WordsBefore(int start)
+    {
+        var tokens = WordOrStop.Matches(Session.Typed[..Math.Min(start, Session.Typed.Length)]).Select(m => m.Value).ToList();
+        static bool Stop(string t) => t is "." or "!" or "?" or "\n";
+        const string S = Prediction.UserHistory.SentenceStart;
+        if (tokens.Count == 0) return (null, null);                     // start of what this session saw: unknown
+        if (Stop(tokens[^1])) return (null, S);                         // first word of a sentence
+        string? w1 = tokens.Count < 2 ? null : Stop(tokens[^2]) ? S : tokens[^2];
+        return (w1, tokens[^1]);
     }
 
     /// <summary>

@@ -10,7 +10,8 @@ public sealed record Suggestion(string Completion, string Word, bool IsNextWord)
 
 /// <summary>
 /// Word prediction (7.1): completes the partial word being typed, or after a space predicts the next word.
-/// Candidates come from the corpus n-gram model, boosted by the user's own word counts (7.3).
+/// Candidates come from the corpus n-gram model, boosted by the user's own word counts (7.3) and, more strongly, by the
+/// short phrases the user has typed before (D40), so their own way of putting things is what gets suggested.
 /// </summary>
 public sealed class Predictor(NgramModel model, UserHistory history)
 {
@@ -112,6 +113,14 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             }
         }
 
+        // D40: words the user has typed after these same words before come first ("how are you do" → "doing").
+        var (c1, c2) = ContextBefore(line[..start]);
+        foreach (var (word, count) in history.NextAfter(c1, c2))
+        {
+            if (word.StartsWith(lower, StringComparison.Ordinal))
+                candidates[word] = candidates.GetValueOrDefault(word, Score(Math.Max(1, model.CountOf(word)), history.Count(word))) * (1 + 10.0 * count);
+        }
+
         string? best = null;
         double bestScore = 0, runnerUp = 0;
         foreach (var (word, score) in candidates)
@@ -195,16 +204,28 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         }
 
         var next = model.Next(w1, w2, NextCandidates);
-        if (next.Count == 0)
+        var mine = history.NextAfter(w1, w2 ?? NgramModel.SentenceStart);
+        if (next.Count == 0 && mine.Count == 0)
         {
             return null;
         }
 
+        // D40: a share of the corpus continuations and a share of the user's own, weighted by how often the user has
+        // typed this context: once is already half the say, so a phrase typed once is suggested the next time.
+        var scores = new Dictionary<string, double>(StringComparer.Ordinal);
+        double corpusTotal = next.Sum(n => Score(n.Count, history.Count(n.Word)));
+        foreach (var (word, count) in next)
+            scores[word] = Score(count, history.Count(word)) / corpusTotal;
+        long mineTotal = mine.Sum(m => m.Count);
+        double weight = mineTotal / (mineTotal + 1.0);
+        foreach (var k in scores.Keys.ToList()) scores[k] *= 1 - weight;
+        foreach (var (word, count) in mine)
+            scores[word] = scores.GetValueOrDefault(word) + weight * count / mineTotal;
+
         string? best = null;
         double bestScore = 0, total = 0;
-        foreach (var (word, count) in next)
+        foreach (var (word, score) in scores)
         {
-            double score = Score(count, history.Count(word));
             total += score;
             if (score > bestScore)
             {
@@ -220,6 +241,17 @@ public sealed class Predictor(NgramModel model, UserHistory history)
 
         var completion = sentenceStart ? char.ToUpperInvariant(best[0]) + best[1..] : best;
         return new Suggestion(completion, best, IsNextWord: true);
+    }
+
+    /// <summary>The two words before a point in the line, for the user's phrases (D40); a sentence start is "&lt;s&gt;".</summary>
+    private static (string? W1, string? W2) ContextBefore(string text)
+    {
+        var m = ContextToken.Matches(text.Length > ContextWindow ? text[^ContextWindow..] : text);
+        static string W(Match x) => x.Value is "." or "!" or "?" ? NgramModel.SentenceStart : x.Value.Replace('’', '\'').ToLowerInvariant();
+        if (m.Count == 0) return (null, NgramModel.SentenceStart);
+        string w2 = W(m[^1]);
+        if (w2 == NgramModel.SentenceStart) return (null, w2);
+        return (m.Count >= 2 ? W(m[^2]) : NgramModel.SentenceStart, w2);
     }
 
     private static double Score(long corpusCount, long historyCount) =>

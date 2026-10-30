@@ -29,6 +29,25 @@ public sealed class AppHost : IAsyncDisposable
     public static string CacheDir { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlobalAutocorrect", "cache");
     public static string AssetsDir { get; } = Path.Combine(AppContext.BaseDirectory, "assets");
 
+    /// <summary>
+    /// One line per problem worth explaining later (a failed verify): app name, kind, character codes. Never typed text
+    /// (8.6). Kept small: the file is cut in half past 256 KB.
+    /// </summary>
+    public static void Diagnose(string line)
+    {
+        try
+        {
+            string path = Path.Combine(DataDir, "diagnostics.log");
+            if (File.Exists(path) && new FileInfo(path).Length > 256 * 1024)
+            {
+                var keep = File.ReadAllLines(path);
+                File.WriteAllLines(path, keep[(keep.Length / 2)..]);
+            }
+            File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {line}{Environment.NewLine}");
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
     private NgramModel? _ngram;
     private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
     private readonly Counters _counters = new();
@@ -92,7 +111,7 @@ public sealed class AppHost : IAsyncDisposable
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();
-        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)));
+        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose);
         _hook = new KeyboardHook(untaggedInjectedIsPhysical: Environment.GetEnvironmentVariable("GA_E2E") == "1");
         _hook.Start();
 
@@ -146,6 +165,7 @@ public sealed class AppHost : IAsyncDisposable
             Dictionary.Contains, Dictionary.Add, _counters,
             ObserveWord: History.Observe,                      // 7.3, gated in the engine (8.3)
             NoteUnrecognised: Dictionary.NoteUnrecognised,     // 8.5
+            ObservePhrase: History.ObservePhrase,               // D40
             PairCount: _ngram is null ? null : _ngram.PairCount,    // D37, D38
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused };
@@ -178,7 +198,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             bool exclusionsChanged = !(old.ExcludedApps ?? AppExclusions.Defaults).SequenceEqual(s.ExcludedApps ?? AppExclusions.Defaults);
             if (exclusionsChanged && _uia is not null)
-                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)));
+                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose);
             var options = s.ToEngineOptions(new EngineOptions());
             if (options != _engineOptions) _loop.Replace(BuildEngine());   // BuildEngine records the new options
             if (exclusionsChanged)

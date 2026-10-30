@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using GlobalAutocorrect.Core.Instant;
 using GlobalAutocorrect.Core.Prediction;
@@ -159,6 +159,45 @@ public sealed class PredictionTests : IDisposable
         Assert.False(File.Exists(HistoryPath + ".tmp"));
         var bytes = File.ReadAllBytes(HistoryPath);
         Assert.False(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF);
+    }
+
+    private static void Learn(UserHistory h, string sentence)
+    {
+        // What the engine reports as each word is finished (D40): two words back, one back, the word.
+        string? w1 = null, w2 = UserHistory.SentenceStart;
+        foreach (var w in sentence.Split(' '))
+        {
+            h.Observe(w);
+            h.ObservePhrase(w1, w2, w);
+            (w1, w2) = (w2, w.ToLowerInvariant());
+        }
+    }
+
+    [Fact]
+    public void R7_3_TheUsersOwnPhrasesArePredicted_D40()
+    {
+        // User report: typing "How are you doing, sir?" nothing was predicted. After typing it once, it is.
+        var predictor = NewPredictor(out var history);
+        Learn(history, "how are you doing sir");
+        Assert.Equal("doing", predictor.Suggest("How are you ")?.Word);
+        Assert.Equal("sir", predictor.Suggest("How are you doing ")?.Word);
+        var partial = predictor.Suggest("How are you do");
+        Assert.Equal("doing", partial?.Word);
+        Assert.Equal("ing", partial?.Completion);
+    }
+
+    [Fact]
+    public void R7_3_PhrasesSurviveARestartAndHoldOnlyWords_D40()
+    {
+        var history = new UserHistory(HistoryPath);
+        Learn(history, "how are you doing sir");
+        history.ObservePhrase("call", "me", "07700900123");          // numbers are never kept
+        history.ObservePhrase("email", "me", "grant@example.com");   // nor emails
+        history.Save();
+        foreach (var line in File.ReadAllLines(HistoryPath))
+            Assert.Matches(new Regex(@"^(<s> )?[a-z']+( [a-z']+){0,2}\t\d+$"), line);   // at most three words, never a sentence
+        var reloaded = new UserHistory(HistoryPath);
+        Assert.Equal("doing", new Predictor(Model.Value, reloaded).Suggest("How are you ")?.Word);
     }
 
     [Fact]

@@ -64,7 +64,8 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
             Rules = new EditRules(options.Rules, speller, _ => false),
         };
         var personal = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, new Counters(), PairCount: pairCount, WordCount: wordCount));
+        var counters = new Counters();
+        var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, counters, PairCount: pairCount, WordCount: wordCount));
         engine.SetTarget(ed);
         var rng = new Random(HashCode.Combine(seed, item.Id));
 
@@ -82,6 +83,7 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
             clock.Advance(25);
             engine.Tick();
         }
+        if (TraceIds.Contains(item.Id)) Console.WriteLine($"  counters: {counters.ToJson()} lastBreak={engine.Session.LastBreak}");
         return new ItemResult(item, ed.Text, Scorer.Score(item.Clean, item.Noisy, ed.Text));
     }
 

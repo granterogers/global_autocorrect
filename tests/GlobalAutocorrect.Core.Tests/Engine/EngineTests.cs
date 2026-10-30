@@ -267,6 +267,44 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_6_a_AFixStillLandsAfterTheUserStartsANewParagraph_D39()
+    {
+        // User report (Intercom): the AI's fix arrived after Enter Enter, and every such fix was dropped.
+        var h = new Harness(model: FixTheir, latencyMs: 600);
+        h.Type("i went their yesterday.\n\nNext bit");
+        h.Wait(3000);
+        Assert.True(h.Text == "I went there yesterday.\n\nNext bit",
+            $"{h.Text} | ai {h.Counters.AiRequests} dropped {h.Counters.DroppedWrites} rejected {h.Counters.RejectedEdits} mismatch {h.Counters.FieldMismatches} break {h.Engine.Session.LastBreak}");
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_6_a_AFixDoesNotReachBackOverManyLineBreaks_D39()
+    {
+        var h = new Harness(model: FixTheir, latencyMs: 600, options: new EngineOptions { MaxLineBreaksCrossed = 2 });
+        h.Type("i went their yesterday.\n\n\nNext bit");
+        h.Wait(3000);
+        Assert.StartsWith("i went their", h.Text);   // three breaks with a limit of two: too far back, left alone
+    }
+
+    [Fact]
+    public void R4_6_d_ADesyncLastsOnlyForTheRestOfTheSession()
+    {
+        // User report: one desync in an Intercom reply box silenced every later reply until the app restarted. 4.6.d says
+        // "for the rest of the session": after a caret move or click, the field is corrected again.
+        var h = new Harness();
+        h.Ed.BeforeApply = ed => { ed.Text = ed.Text.Insert(ed.Caret, "x"); ed.Caret++; };
+        h.Type("we saw teh ");
+        Assert.Equal(1, h.Counters.Desyncs);
+        h.Ed.BeforeApply = null;
+        h.Type("and teh ");
+        Assert.EndsWith("and teh ", h.Text);        // same session: left alone
+        h.Engine.OnInput(h.Ed.MoveCaret(0));        // the user moves the caret: a new session
+        h.Type("then teh ");
+        Assert.EndsWith("then the ", h.Text);       // corrected again
+    }
+
+    [Fact]
     public void R4_6_d_TypingDuringVerificationIsNotADesync()
     {
         // Found by E2E: the user keeps typing while the app shows our edit; that must not count as a desync.
@@ -474,6 +512,29 @@ public sealed class EngineTests
         h.Wait(6000);
         Assert.Equal("cheers for that. ", h.Text);
         Assert.DoesNotContain("ofr", h.Noted);
+    }
+
+    [Fact]
+    public void R4_6_a_AFastTypistsMultiParagraphReplyIsFixed_D39()
+    {
+        const string bad = "I'mafraid the controlling the software remoitely n teh this fashion is nto suproteed so for thet ime being tehey will need o jstu closet eh popup .";
+        const string good = "I'm afraid controlling the software remotely in this fashion is not supported, so for the time being they will need to just close the popup.";
+        var h = new Harness(model: s => System.Text.RegularExpressions.Regex.Replace(s, @"I'mafraid.*popup \.", good), latencyMs: 500);
+        // Typed straight through to the next two paragraphs: the fixes for the first land afterwards, four breaks back.
+        h.Type("Thanks for the update.  " + bad + "\n\nAploges for any invoenvenee.\n\nBest wishes,", msPerKey: 90);
+        h.Wait(4000);
+        Assert.Contains("I'm afraid controlling the software remotely", h.Text);
+        Assert.Contains("is not supported, so for the time being they will need to just close the popup.", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+        Assert.Equal(0, h.Counters.DroppedWrites);
+    }
+
+    [Fact]
+    public void R7_3_TypingTeachesTheWordsBeforeEachWord_D40()
+    {
+        var h = new Harness();
+        h.Type("hi there. how are you doing sir? ");
+        Assert.Equal(["- - hi", "- hi there", "- <s> how", "<s> how are", "how are you", "are you doing", "you doing sir"], h.Phrases);
     }
 
     [Fact]

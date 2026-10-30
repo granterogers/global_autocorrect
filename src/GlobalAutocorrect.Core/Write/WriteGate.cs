@@ -31,13 +31,16 @@ public sealed record CorrectionNotice(string TargetId, Layer Layer, int CaretDis
 public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor keys, TypingSession session, Counters counters)
 {
     private readonly List<PendingWrite> _queue = [];
-    private readonly HashSet<string> _desynced = new(StringComparer.Ordinal);
+    // 4.6.d: a field that desynced is left alone "for the rest of the session": until the next session break (a click,
+    // focus change, arrow key...). The value is the session generation it applies to. It used to be for the life of the
+    // app, so one desync in Edge silenced every later Intercom reply until a restart (user report).
+    private readonly Dictionary<string, long> _desynced = new(StringComparer.Ordinal);
 
     public event Action<CorrectionNotice, PendingWrite, string>? Written;   // notice, write, typed text before it (for undo context)
     public event Action<string>? Desynced;
 
     public int Count => _queue.Count;
-    public bool IsDesynced(string targetId) => _desynced.Contains(targetId);
+    public bool IsDesynced(string targetId) => _desynced.TryGetValue(targetId, out long g) && g == session.Generation;
 
     public void Enqueue(PendingWrite w) => _queue.Add(w);
     public void Clear() => _queue.Clear();
@@ -89,10 +92,14 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         string typed = session.Typed;
         if (w.End > typed.Length || typed[w.Start..w.End] != w.Original) { Drop(w); return false; }
         string tail = typed[w.End..];
-        if (tail.Contains('\n')) { Drop(w); return false; }   // D8: never move across a line break
+        // D39 (was D8, "never"): a fix may reach back over a couple of line breaks the user typed in this session
+        // ("...the popup." Enter Enter "Apologies"): every editor tested moves over a paragraph break in one Left, and the
+        // field is checked against the typed text before writing and verified after. Fast typists start the next
+        // paragraph before the AI's fix arrives, and those fixes were all dropped (user report, Intercom).
+        if (tail.Count(c => c == '\n') > options.MaxLineBreaksCrossed) { Drop(w); return false; }
 
         var win = target.ReadWindow();
-        if (_desynced.Contains(win.TargetId)) { Drop(w); return false; }
+        if (IsDesynced(win.TargetId)) { Drop(w); return false; }
         // A busy app sometimes can't be read for a moment: keep the edit and try again next tick; the deadline drops it
         // if the field never comes back (found by E2E: one failed read lost a correction).
         if (!win.CaretKnown) return false;
@@ -122,11 +129,18 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         string before = TextNorm.Normalise(win.Before);
         string newTyped = typed[..w.Start] + w.Replacement + tail;
         string expectedBefore = before[..^TextNorm.Normalise(typed).Length] + TextNorm.Normalise(newTyped);
-        if (!sent || !target.Verify(expectedBefore, win.After))   // 4.6.d
+        if (!sent)
         {
-            _desynced.Add(win.TargetId);
+            // Nothing was sent (focus had moved to another app): nothing to verify, nothing damaged.
+            Drop(w);
+            session.Break(SessionBreakReason.FocusChange);
+            return false;
+        }
+        if (!target.Verify(expectedBefore, win.After))   // 4.6.d
+        {
             counters.Desync();
             session.Break(SessionBreakReason.Desync);
+            _desynced[win.TargetId] = session.Generation;   // the rest of this session only
             _queue.Clear();
             Desynced?.Invoke(win.TargetId);
             return false;

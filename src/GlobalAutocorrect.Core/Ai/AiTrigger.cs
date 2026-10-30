@@ -61,8 +61,12 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
         string before = TextNorm.Normalise(win.Before);
         int typedStart = before.Length - TextNorm.Normalise(session.Typed).Length;
-        int paraStart = before.LastIndexOf('\n') + 1;   // D8: current paragraph only
-        int ctxStart = paraStart + SentenceSplitter.StartOfLastSentences(before[paraStart..], options.ContextSentences);   // 4.4.b
+        // D8: one paragraph only. If the caret is just after Enter, that's the paragraph that has just ended: it used to
+        // be the empty new one, so a paragraph finished with Enter never reached the AI at all (user report, Intercom).
+        int end = before.Length;
+        while (end > 0 && before[end - 1] == '\n' && end > typedStart) end--;
+        int paraStart = end == 0 ? 0 : before.LastIndexOf('\n', end - 1) + 1;
+        int ctxStart = paraStart + SentenceSplitter.StartOfLastSentences(before[paraStart..end], options.ContextSentences);   // 4.4.b
         ctxStart = Math.Max(ctxStart, paraStart);
         string ctx = before[ctxStart..];
         if (ctx.Trim().Length == 0 || before.Length <= Math.Max(ctxStart, typedStart)) return;

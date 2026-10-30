@@ -9,7 +9,8 @@ namespace GlobalAutocorrect.Windows.Targets;
 /// Whatever text field currently has focus, read through UIA (10.6) and written with tagged SendInput (10.7).
 /// Fields that don't expose text and caret, passwords, excluded apps and elevated windows are left alone (4.1.b, 8.3, 8.4, 10.8).
 /// </summary>
-public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStatus?>? gate = null) : ITextTarget
+/// <param name="diagnose">Gets one line per failed verify: app, kind of mismatch, unusual characters. Never typed text (8.6).</param>
+public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStatus?>? gate = null, Action<string>? diagnose = null) : ITextTarget
 {
     private int _lastPid;
 
@@ -41,6 +42,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         // SendInput goes to whatever has focus now; make sure it's still the app we read (12.2).
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
         if (pid != _lastPid) return false;
+        _beforeWrite = LastSnapshot?.Before ?? "";
         return SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
     }
 
@@ -53,19 +55,43 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         // keeps typing meanwhile (4.6.e), so the expected text may be followed by a few new characters on the same line.
         string e = TextNorm.Normalise(expectedBefore), ea = TextNorm.Normalise(expectedAfter);
         string tail = e.Length > 48 ? e[^48..] : e;
-        for (int i = 0; i < 12; i++)
+        // The text after the caret only has to still be there: browsers can show their own suggestion (Edge's text
+        // prediction) right after the caret, which used to count as a mismatch.
+        string afterLine = ea.Split('\n')[0];
+        string afterKey = afterLine.Length > 24 ? afterLine[..24] : afterLine;
+        string b = "", a = "";
+        bool read = false, beforeOk = false;
+        // A heavy web app can take a while to show injected keys (found in Intercom): poll for up to about a second.
+        for (int i = 0; i < 30; i++)
         {
             var w = ReadWindow();
             if (w.CaretKnown)
             {
-                string b = TextNorm.Normalise(w.Before), a = TextNorm.Normalise(w.After);
+                read = true;
+                b = TextNorm.Normalise(w.Before); a = TextNorm.Normalise(w.After);
                 int at = b.LastIndexOf(tail, StringComparison.Ordinal);
-                bool beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify && !b.AsSpan(at + tail.Length).Contains('\n');
-                int m = Math.Min(a.Length, ea.Length);
-                if (beforeOk && a[..m] == ea[..m]) return true;
+                beforeOk = at >= 0 && b.Length - (at + tail.Length) <= MaxTypedDuringVerify && !b.AsSpan(at + tail.Length).Contains('\n');
+                if (beforeOk && (afterKey.Length == 0 || a.Contains(afterKey, StringComparison.Ordinal))) return true;
             }
             Thread.Sleep(35);
         }
+        diagnose?.Invoke(Describe(read, beforeOk, b, a, e));
         return false;
+    }
+
+    private string _beforeWrite = "";
+
+    /// <summary>What kind of mismatch, for the diagnostics log: never the text itself (8.6).</summary>
+    private string Describe(bool read, bool beforeOk, string b, string a, string expected)
+    {
+        string app = LastSnapshot?.ProcessName ?? "?";
+        string kind = !read ? "unreadable"
+            : beforeOk ? "after-caret-changed"
+            : b.EndsWith(TextNorm.Normalise(_beforeWrite) is { Length: > 24 } pre ? pre[^24..] : TextNorm.Normalise(_beforeWrite), StringComparison.Ordinal) ? "edit-not-shown"
+            : "before-caret-differs";
+        static string Odd(string s) => string.Join(' ', s.Where(c => !char.IsLetterOrDigit(c) && c != ' ' && !(c < 128 && char.IsPunctuation(c)))
+                                                       .Distinct().Select(c => $"U+{(int)c:X4}"));
+        return $"verify failed: app={app} kind={kind} source={LastSnapshot?.Source} lengthDelta={b.Length - expected.Length} " +
+               $"oddBefore=[{Odd(b.Length > 80 ? b[^80..] : b)}] oddAfter=[{Odd(a.Length > 40 ? a[..40] : a)}]";
     }
 }

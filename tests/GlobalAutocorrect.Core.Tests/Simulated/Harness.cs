@@ -49,13 +49,15 @@ public sealed class Harness
     public Counters Counters { get; } = new();
     public List<string> Observed { get; } = [];   // prediction history (7.3)
     public List<string> Noted { get; } = [];      // auto-learn counts (8.5)
+    public List<string> Phrases { get; } = [];    // D40: "w1 w2 word"
 
     public Harness(Func<string, string>? model = null, double latencyMs = 300, EngineOptions? options = null)
     {
         Ed = new SimulatedEditor(Clock);
         if (model is not null) Llm = new FakeLlm(model, latencyMs);
         var deps = new EngineDeps(Clock, Ed, HunspellTests.Shared, FakeSuggester.Default(), Llm,
-            Personal.Contains, Personal.Add, Counters, Observed.Add, w => { Noted.Add(w); return false; });
+            Personal.Contains, Personal.Add, Counters, Observed.Add, w => { Noted.Add(w); return false; },
+            ObservePhrase: (a, b, w) => Phrases.Add($"{a ?? "-"} {b ?? "-"} {w}"));
         Engine = new CorrectionEngine(options ?? new EngineOptions(), deps);
         Engine.SetTarget(Ed);
     }

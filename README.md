@@ -14,6 +14,7 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 - It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
 - It never corrects pasted or dictated text, or text inserted by other tools. It only corrects what you type yourself.
 - It keeps no history or list of corrections. Only counts are kept, such as "corrections today".
+- **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
 - English (UK) only, on a UK keyboard layout.
 
 ## Shortcuts
@@ -117,7 +118,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 0.2.b | Tested (incl. E2E) | 9 test(s), e.g. `R11_3_a_NotepadAiFix_R0_2_b` |
 | 0.2.c | Tested | 1 test(s), e.g. `R0_2_c_AppliesEveryAcceptedEdit` |
 | 0.2.d | Tested | 34 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
-| 0.3 | Tested (incl. E2E) | 21 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
+| 0.3 | Tested (incl. E2E) | 24 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 0.4 | Tested | 1 test(s), e.g. `R3_4_InterfaceTextIsBritishAndSpeltCorrectly_R0_4` |
 | 0.5 | Recorded check | milestone order in PROGRESS |
 | 0.6 | Recorded check | DECISIONS.md raised items |
@@ -195,11 +196,11 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 4.5.c | Tested | 1 test(s), e.g. `R4_5_c_RejectsOneEditButKeepsTheRest` |
 | 4.5.d | Tested | 5 test(s), e.g. `R4_5_d_ABadlyGarbledSentenceIsFixedNotRejectedWhole_D36` |
 | 4.5.e | Tested | 3 test(s), e.g. `R4_5_e_CautiousTurnsOffNonWordLeniency_D36` |
-| 4.6 | Tested | 7 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
-| 4.6.a | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
+| 4.6 | Tested | 11 test(s), e.g. `R4_6_a_AFastTypistsMultiParagraphReplyIsFixed_D39` |
+| 4.6.a | Tested | 4 test(s), e.g. `R4_6_a_AFastTypistsMultiParagraphReplyIsFixed_D39` |
 | 4.6.b | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
 | 4.6.c | Tested | 3 test(s), e.g. `R4_6_c_AFieldThatReallyChangedStillDropsTheSession` |
-| 4.6.d | Tested | 2 test(s), e.g. `R4_6_d_DesyncStopsCorrectingThatField` |
+| 4.6.d | Tested | 3 test(s), e.g. `R4_6_d_ADesyncLastsOnlyForTheRestOfTheSession` |
 | 4.6.e | Tested | 1 test(s), e.g. `R4_6_e_WriteWaitsButTypingDoesNot` |
 | 4.7 | Tested | 12 test(s), e.g. `R9_3_a_CorrectionsTodayResetsAtMidnightWhileRunning_R6_5` |
 | 4.8 | Tested (incl. E2E) | 12 test(s), e.g. `R4_8_a_AKeyHeldForeverDoesNotBlockTheUndo` |
@@ -250,7 +251,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 6.6 | Recorded check | About page + README numbers |
 | 7.1 | Tested (incl. E2E) | 7 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 7.2 | Tested | 3 test(s), e.g. `R7_2_AnswersUnder10ms` |
-| 7.3 | Tested | 5 test(s), e.g. `R7_3_HistoryBoostsTheUsersOwnWords` |
+| 7.3 | Tested | 8 test(s), e.g. `R7_3_HistoryBoostsTheUsersOwnWords` |
 | 7.4 | Tested (incl. E2E) | 5 test(s), e.g. `R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey` |
 | 7.5 | Tested | 1 test(s), e.g. `R7_5_NoSuggestionAfterNonMatchingText` |
 | 7.6 | Tested (incl. E2E) | 3 test(s), e.g. `R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6` |

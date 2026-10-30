@@ -14,8 +14,15 @@ public sealed record EngineOptions
     /// <summary>4.6.c: an AI write needs this long without a key.</summary>
     public int WriteGapMs { get; init; } = 150;
 
-    /// <summary>A queued write that can't go out within this time is dropped.</summary>
-    public int WriteDeadlineMs { get; init; } = 6000;
+    /// <summary>
+    /// A queued write that can't go out within this time is dropped. D41: was 6 s, so a fast typist's fixes for a long
+    /// reply expired before the next 150 ms gap (user report, Intercom). Staleness is caught anyway: the write is
+    /// re-checked against the field and typed text just before it goes out (4.6.c) and verified after (4.6.d).
+    /// </summary>
+    public int WriteDeadlineMs { get; init; } = 60_000;
+
+    /// <summary>D39: how many line breaks typed since a word a fix may still cross to reach it.</summary>
+    public int MaxLineBreaksCrossed { get; init; } = 8;
 
     /// <summary>4.4.b: current sentence plus up to two before it.</summary>
     public int ContextSentences { get; init; } = 3;
