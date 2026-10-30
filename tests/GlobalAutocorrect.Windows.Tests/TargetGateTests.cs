@@ -65,6 +65,23 @@ public class TargetGateTests
     }
 
     [Fact]
+    public void R8_3_R8_4_R10_8_D67_OnlyFieldsTheAppCorrectsCanStartTheModelLoading()
+    {
+        var gate = TargetGate.Create(new AppExclusions(AppExclusions.Defaults), isElevated: pid => pid == 99, foregroundIsFullScreen: () => false);
+        const int own = 4242;
+        Assert.True(UiaTextTarget.Correctable(Snap("notepad"), gate, own));
+        Assert.True(UiaTextTarget.Correctable(Snap("notepad"), null, own));
+        Assert.False(UiaTextTarget.Correctable(UiaSnapshot.Fail(ReadStatus.Password, 1234, "msedge"), gate, own));   // 8.3
+        Assert.False(UiaTextTarget.Correctable(UiaSnapshot.Fail(ReadStatus.NoTextPattern, 1234, "explorer"), gate, own));
+        Assert.False(UiaTextTarget.Correctable(UiaSnapshot.Fail(ReadStatus.CaretUnknown, 1234, "notepad"), gate, own));
+        Assert.False(UiaTextTarget.Correctable(null, gate, own));
+        Assert.False(UiaTextTarget.Correctable(Snap("WindowsTerminal"), gate, own));   // 8.4
+        Assert.False(UiaTextTarget.Correctable(Snap("EXCEL", "data item"), gate, own));
+        Assert.False(UiaTextTarget.Correctable(Snap("notepad", pid: 99), gate, own));   // 10.8
+        Assert.False(UiaTextTarget.Correctable(Snap("GlobalAutocorrect", pid: own), gate, own));   // the app's own windows
+    }
+
+    [Fact]
     public void R8_3_GateAllowsNormalApps()
     {
         var gate = TargetGate.Create(new AppExclusions(AppExclusions.Defaults), isElevated: _ => false, foregroundIsFullScreen: () => false);

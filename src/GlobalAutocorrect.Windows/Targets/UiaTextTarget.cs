@@ -42,6 +42,27 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         return new TextWindow(TargetStatus.Ok, id, s.Before, s.After);
     }
 
+    /// <summary>
+    /// D67: whether the focused field is one the app would correct, so the model can start loading before the first key.
+    /// Changes nothing here (no <see cref="LastSnapshot"/>, no timings), so it may run off the engine thread.
+    /// </summary>
+    public bool FocusIsCorrectable() =>
+        Correctable(worker.Invoke(r => r.Read(beforeChars: 1, afterChars: 0), UiaSnapshot.Fail(ReadStatus.Failed)), gate, Environment.ProcessId);
+
+    /// <summary>
+    /// D67: a field the app would correct: it reads with a known caret (not a password, 8.3), the gate lets it through
+    /// (not excluded or full screen, 8.4; not elevated, 10.8), and it isn't one of the app's own windows.
+    /// </summary>
+    public static bool Correctable(UiaSnapshot? s, Func<UiaSnapshot, TargetStatus?>? gate, int ownProcessId) =>
+        s is { Status: ReadStatus.Ok } && s.ProcessId != ownProcessId && gate?.Invoke(s) is null;
+
+    /// <summary>D67: the foreground window is one of the app's own (settings, first run, tray menu).</summary>
+    public static bool OwnWindowInForeground()
+    {
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
+        return pid == (uint)Environment.ProcessId;
+    }
+
     public bool ApplyEdit(int caretDistance, int deleteCount, string replacement)
     {
         // SendInput goes to whatever has focus now; make sure it's still the app we read (12.2).

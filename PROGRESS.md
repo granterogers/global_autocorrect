@@ -2,6 +2,10 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-30 (night, early reload) — The model reloads before the first key after an idle unload
+
+- **D67 (5.6.b, 12.3, 12.1, 8.2):** after the idle unload the reload starts when focus moves into a field the app would correct (not a password, excluded, elevated or own window), or on the first key; never while paused. Focus only starts a load, never restarts one, and isn't activity while the model is loaded, so the idle unload still comes after the full idle time. New timings model.load, model.reloadWait, model.reloadKeyToFix. 13 unit tests, each shown failing with its guard removed. Fast tier green. Not measured with the real model (no GPU room beside the user's running copy).
+
 ## 2026-10-30 (late, UI checks) — Screenshot tool fixed; layout checks at every size and scale
 
 - **D62 (9.5):** the screenshot tool works again. The App it creates for its resources was running its own start-up as soon as the tool pumped the dispatcher, found the installed app's mutex and shut itself down, after which every pack:// load failed; with no copy running it would have started the real app. Its start-up is now cancelled and can't run. 140 shots: every page and first-run step, light and dark, at 100/125/150/175/200% and at the smallest window size at 100/150%.
