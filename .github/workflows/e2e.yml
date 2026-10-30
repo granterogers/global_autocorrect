@@ -75,6 +75,7 @@ jobs:
           $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
           $bmp.Save("$PWD/artifacts/screens/ci-desktop-before.png")
           $g.Dispose(); $bmp.Dispose()
+          $global:LASTEXITCODE = 0   # `query user` exits 1 even when it lists the session
 
       # A screenshot every 3 s while the tests run, to see focus and windows when a test fails.
       - name: Start screen recorder
@@ -119,7 +120,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-results
           path: |
