@@ -15,4 +15,20 @@ public static class SingleInstance
         m.Dispose();
         return null;
     }
+
+    public const string ExitName = @"Local\GlobalAutocorrect.Exit";
+
+    /// <summary>
+    /// The running copy waits on this; setting it is the same as choosing Exit in the tray, so the installer can
+    /// replace the files without killing the app and losing what it hasn't saved yet.
+    /// </summary>
+    public static EventWaitHandle CreateExitSignal(string name = ExitName) => new(false, EventResetMode.AutoReset, name);
+
+    /// <summary>Asks the running copy to exit. False when none is running.</summary>
+    public static bool SignalExit(string name = ExitName)
+    {
+        if (!EventWaitHandle.TryOpenExisting(name, out var h)) return false;
+        using (h) h.Set();
+        return true;
+    }
 }

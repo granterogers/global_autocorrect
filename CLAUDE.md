@@ -14,10 +14,22 @@ pwsh ./check.ps1 e2e     # desktop + browser E2E; takes over keyboard/screen
 pwsh ./check.ps1 full    # everything + packaging. Release candidate only.
 ```
 
+Install / update the app on this PC (build, fast tests, package, close the running copy cleanly, replace, restart):
+
+```
+pwsh ./scripts/deploy.ps1
+```
+
+The unzipped package is `dist\GlobalAutocorrect` (git-ignored); its `install.ps1` is the user's one-command install.
+The app installs to `%LOCALAPPDATA%\Programs\GlobalAutocorrect`; user data stays in `%APPDATA%\GlobalAutocorrect`.
+
 Plain build: `dotnet build GlobalAutocorrect.slnx -c Debug`
 Core tests only: `dotnet test tests/GlobalAutocorrect.Core.Tests`
 
 ## Rules
+- **After every change the user asks for, run `pwsh ./scripts/deploy.ps1`** so the installed app is the latest build.
+  The user gives feedback and expects to find it fixed in the running app without doing anything. If deploy fails, say
+  so and leave the previous install running.
 - Requirement IDs (e.g. `4.5.a`) go in test names (`R4_5_a_...`), commit messages and PROGRESS.md.
 - Never log or persist typed text (8.6). Counts and error types only.
 - Models and llama.cpp zips are cached outside the repo in `%LOCALAPPDATA%\GlobalAutocorrect\cache` (11.4).

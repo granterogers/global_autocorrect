@@ -29,18 +29,21 @@ Undoing a correction also adds that word to your personal dictionary, so it won'
 
 ## Install
 
-1. Install the .NET 10 runtime (already on this PC).
-2. Unzip `GlobalAutocorrect-<version>.zip` somewhere permanent, for example `C:\Apps\GlobalAutocorrect`.
-3. Run `app\GlobalAutocorrect.exe`. The first-run window explains what it does and downloads the model, about 6 GB, with a progress bar. You can also download it from a terminal:
-   ```
-   pwsh scripts/setup.ps1
-   ```
-4. Check it's using the GPU:
-   ```
-   pwsh scripts/verify.ps1
-   ```
-   Every check prints OK, or explains the fix in plain language.
+One command, from the unzipped package (`dist\GlobalAutocorrect` in the project folder, or wherever you unzipped `GlobalAutocorrect-<version>.zip`):
 
+```
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+It downloads the model and llama.cpp the first time (about 5.5 GB, each file checked against its published fingerprint), installs the app to `%LOCALAPPDATA%\Programs\GlobalAutocorrect` and starts it. Run it again to update: it closes the running copy cleanly, replaces it and starts the new one. Your settings, dictionary and history in `%APPDATA%\GlobalAutocorrect` are never touched.
+
+To check it's using the GPU:
+
+```
+pwsh "$env:LOCALAPPDATA\Programs\GlobalAutocorrect\scripts\verify.ps1"
+```
+
+Every check prints OK, or explains the fix in plain language.
 It starts with Windows (you can turn that off in Settings) and lives in the system tray.
 
 ## Windows Defender
