@@ -49,9 +49,22 @@ if ($running) {
     Start-Sleep -Milliseconds 500
 }
 
-# 3. Copy. robocopy /MIR makes the folder exactly the new build; exit codes below 8 mean success.
+# From here on the user's copy is closed: whatever fails, start whichever copy is installed before giving up, so the
+# user is never left without the app (a deploy once failed here and left it closed).
+$exe = Join-Path $InstallDir 'GlobalAutocorrect.exe'
+trap {
+    Write-Host "  install failed: $_" -ForegroundColor Red
+    if (-not $NoStart -and -not (Get-Process GlobalAutocorrect -ErrorAction SilentlyContinue) -and (Test-Path $exe)) {
+        Write-Host '  starting the copy that is installed'
+        Start-Process $exe -WorkingDirectory $InstallDir
+    }
+    break
+}
+
+# 3. Copy. robocopy /MIR makes the folder exactly the new build; exit codes below 8 mean success. A file the closing
+# copy still holds for a moment is retried for up to 20 seconds.
 New-Item -ItemType Directory -Force $InstallDir | Out-Null
-robocopy (Join-Path $src 'app') $InstallDir /MIR /NFL /NDL /NJH /NJS /NP /R:3 /W:1 | Out-Null
+robocopy (Join-Path $src 'app') $InstallDir /MIR /NFL /NDL /NJH /NJS /NP /R:20 /W:1 | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "copying the app failed (robocopy exit $LASTEXITCODE)" }
 New-Item -ItemType Directory -Force (Join-Path $InstallDir 'scripts') | Out-Null
 Copy-Item (Join-Path $src 'scripts\*') (Join-Path $InstallDir 'scripts') -Force

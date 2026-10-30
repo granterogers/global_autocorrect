@@ -58,7 +58,9 @@ public sealed class Harness
         var deps = new EngineDeps(Clock, Ed, HunspellTests.Shared, FakeSuggester.Default(), Llm,
             Personal.Contains, Personal.Add, Counters, Observed.Add, w => { Noted.Add(w); return false; },
             ObservePhrase: (a, b, w) => Phrases.Add($"{a ?? "-"} {b ?? "-"} {w}"));
-        Engine = new CorrectionEngine(options ?? new EngineOptions(), deps);
+        // D55's spacing rules are off unless a test asks for them: many tests type "i went their" for a scripted model
+        // that matches that exact text, and "i" → "I" would change it under them. The D55 tests turn them on.
+        Engine = new CorrectionEngine(options ?? new EngineOptions { TidySpacing = false }, deps);
         Engine.SetTarget(Ed);
     }
 

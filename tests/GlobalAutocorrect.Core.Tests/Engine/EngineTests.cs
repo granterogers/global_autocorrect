@@ -35,7 +35,7 @@ public sealed class EngineTests
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {
         // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".
-        var h = new Harness();
+        var h = new Harness(options: new EngineOptions());   // spacing rules on, as in the app
         h.Type("so i will ask  the team .");
         h.Engine.OnInput(h.Ed.TypeChar(' '));
         h.Wait(200);
@@ -47,7 +47,7 @@ public sealed class EngineTests
     public void R4_3_a_SpacingFixWaitsWhileTheUserTypesOn_D55()
     {
         // Same quiet rule as word fixes (D47): a key right behind the space is never deleted.
-        var h = new Harness();
+        var h = new Harness(options: new EngineOptions());
         h.Type("the team .");
         h.Engine.OnInput(h.Ed.TypeChar(' '));
         h.Clock.Advance(30);
@@ -385,7 +385,7 @@ public sealed class EngineTests
     [Fact]
     public void R4_6_a_AFixDoesNotReachBackOverManyLineBreaks_D39()
     {
-        var h = new Harness(model: FixTheir, latencyMs: 600, options: new EngineOptions { MaxLineBreaksCrossed = 2 });
+        var h = new Harness(model: FixTheir, latencyMs: 600, options: new EngineOptions { MaxLineBreaksCrossed = 2, TidySpacing = false });
         h.Type("i went their yesterday.\n\n\nNext bit");
         h.Wait(3000);
         Assert.StartsWith("i went their", h.Text);   // three breaks with a limit of two: too far back, left alone
@@ -712,7 +712,7 @@ public sealed class EngineTests
     {
         const string bad = "I'mafraid the controlling the software remoitely n teh this fashion is nto suproteed so for thet ime being tehey will need o jstu closet eh popup .";
         const string good = "I'm afraid controlling the software remotely in this fashion is not supported, so for the time being they will need to just close the popup.";
-        var h = new Harness(model: s => System.Text.RegularExpressions.Regex.Replace(s, @"I'mafraid.*popup \.", good), latencyMs: 500);
+        var h = new Harness(model: s => System.Text.RegularExpressions.Regex.Replace(s, @"I'mafraid.*popup \.", good), latencyMs: 500, options: new EngineOptions());   // D55 rules on: they must not drop the AI's writes
         // Typed straight through to the next two paragraphs: the fixes for the first land afterwards, four breaks back.
         h.Type("Thanks for the update.  " + bad + "\n\nAploges for any invoenvenee.\n\nBest wishes,", msPerKey: 90);
         h.Wait(4000);
