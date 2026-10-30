@@ -29,7 +29,7 @@ Undoing a correction also adds that word to your personal dictionary, so it won'
 
 ## Install
 
-One command, from the unzipped package (`dist\GlobalAutocorrect` in the project folder, or wherever you unzipped `GlobalAutocorrect-<version>.zip`):
+Download `GlobalAutocorrect-<version>.zip` from the project's Releases page on GitHub (`https://github.com/granterogers/global_autocorrect/releases`) and unzip it, or build it yourself (`dist\GlobalAutocorrect` in the project folder). Then one command, from the unzipped folder:
 
 ```
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1

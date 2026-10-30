@@ -1,0 +1,118 @@
+# Builds GlobalAutocorrect-<version>.zip and publishes it as a GitHub Release (13.1, D34).
+# Runs the fast tier's unit tests only: the Model and E2E categories need the GPU, the model cache and the keyboard (11.1).
+# Trigger: by hand, or a pushed release-candidate tag (v*-rc*). The push hook's own tags are plain vX.Y.0 and never
+# match, so an ordinary push never publishes a release (D1, D34).
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      final:
+        description: 'Allow a version without a pre-release suffix. Only once the user has confirmed it works on their PC (13.3).'
+        type: boolean
+        default: false
+  push:
+    tags: ['v*-rc*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
+
+      - name: Version and tag
+        id: version
+        run: |
+          $proj = 'src/GlobalAutocorrect.App/GlobalAutocorrect.App.csproj'
+          $version = ([xml](Get-Content $proj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $tag = "v$version"
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $tag) {
+            throw "tag $env:GITHUB_REF_NAME does not match the app version $version in $proj"
+          }
+          $pre = $version -match '-'
+          if (-not $pre -and '${{ inputs.final }}' -ne 'true') {
+            throw "version $version has no pre-release suffix: run by hand with 'final' ticked, and only after the user has confirmed it (13.3)"
+          }
+          # The push hook already owns v0.N.0; a release must never move one of its tags to another commit.
+          $remote = git ls-remote --tags origin "refs/tags/$tag"
+          if ($remote -and -not $remote.StartsWith($env:GITHUB_SHA)) {
+            throw "tag $tag already exists on another commit: bump <Version> in $proj"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "prerelease=$($pre.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Trace check
+        run: pwsh -NoProfile -File scripts/trace-check.ps1
+
+      - name: Restore
+        run: dotnet restore GlobalAutocorrect.slnx
+
+      - name: Build
+        run: dotnet build GlobalAutocorrect.slnx -c Release --no-restore -v q
+
+      - name: Test (Core, Llm, Windows, App)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runs = @(
+            @('tests/GlobalAutocorrect.Core.Tests', '--filter-not-trait', 'Category=Model', '--filter-not-trait', 'Category=E2E'),
+            @('tests/GlobalAutocorrect.Llm.Tests', '--filter-not-trait', 'Category=Model'),
+            @('tests/GlobalAutocorrect.Windows.Tests', '--filter-not-trait', 'Category=E2E'),
+            @('tests/GlobalAutocorrect.App.Tests')
+          )
+          foreach ($r in $runs) {
+            $project, $filters = $r
+            dotnet test --project $project -c Release --no-build -- @filters
+            if ($LASTEXITCODE -ne 0) { throw "tests failed: $project" }
+          }
+
+      # package.ps1 ships the measured accuracy (6.6, 9.3.g). The eval needs the GPU, so CI uses the newest committed
+      # holdout result instead of running it.
+      - name: Measured accuracy
+        run: |
+          $json = Get-ChildItem docs/metrics/holdout-*.json | Sort-Object Name | Select-Object -Last 1
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item $json artifacts/metrics.json
+          Copy-Item ($json.FullName -replace '\.json$', '.md') artifacts/eval-report.md
+          Write-Host "metrics: $($json.Name)"
+
+      - name: Package
+        run: pwsh -NoProfile -File scripts/package.ps1
+
+      - name: Publish release
+        run: |
+          $tag = '${{ steps.version.outputs.tag }}'
+          $zip = "artifacts/GlobalAutocorrect-${{ steps.version.outputs.version }}.zip"
+          $notes = @"
+          Build: $(Get-Content artifacts/package/GlobalAutocorrect/build.txt)
+
+          Unzip, then run ``pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1``. The first install downloads the model and llama.cpp (about 5.5 GB, each file checked against its fingerprint). See README "Install".
+          "@
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zip --clobber
+          } else {
+            $flags = @('--title', "Global Autocorrect $tag", '--notes', $notes, '--target', $env:GITHUB_SHA)
+            if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' }
+            gh release create $tag $zip @flags
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'publishing the release failed' }
+          $global:LASTEXITCODE = 0
