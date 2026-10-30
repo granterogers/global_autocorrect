@@ -33,9 +33,14 @@ public static class Desk
 
     private static volatile bool _userBusy;
 
+    /// <summary>Running on a CI runner (GitHub Actions sets CI=true), not the user's PC.</summary>
+    public static bool IsCi { get; } = string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>2.8: only take over the keyboard once the user has been away for a while; otherwise skip.</summary>
     public static void RequireIdle(TimeSpan? idle = null, TimeSpan? wait = null)
     {
+        // On a CI runner (GitHub sets CI=true) there is no user to wait for: the desktop is the test's alone.
+        if (IsCi) return;
         // One wait per run: once the user has been seen at the keyboard for a whole wait, the rest skip straight away
         // (otherwise a run of 12 tests could sit for two hours while they work).
         if (_userBusy) Assert.Skip("The user was at the keyboard earlier in this run (2.8).");

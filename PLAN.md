@@ -77,7 +77,7 @@ tools/SpikeB/                    # 2.4.b text-access spike console
 tests/GlobalAutocorrect.Core.Tests/       # xUnit v3; includes Simulated/SimulatedEditor.cs (10.2)
 tests/GlobalAutocorrect.Llm.Tests/        # model tier (11.1.b); trait Category=Model
 tests/GlobalAutocorrect.E2E/              # FlaUI + Playwright host (11.3); trait Category=E2E
-tests/pages/                              # textarea, contenteditable, password, ProseMirror, Lexical (esbuild bundles)
+tests/pages/                              # textarea, contenteditable, password, ProseMirror, Lexical, CKEditor 5 (esbuild bundles)
 data/eval/                                # messages.jsonl, garbled.jsonl, tuning.jsonl, holdout.jsonl
 assets/                                   # en_GB-ise.dic/.aff, freq_en_GB.txt, ngram.bin, icons
 artifacts/                                # (git-ignored) metrics.json, eval-report.md, screenshots, package zip
@@ -128,6 +128,7 @@ Looked up 2026-10-29. **Do not upgrade during the build.**
 | Microsoft.Playwright (.NET, tests only, channel `msedge`) | 1.64.1 | NuGet |
 | esbuild / prosemirror-state / -view / -model / -schema-basic / -example-setup | 0.28.2 / 1.4.4 / 1.42.8 / 1.25.12 / 1.2.5 / 1.2.3 | npm (test pages) |
 | lexical / @lexical/rich-text | 0.53.0 / 0.53.0 | npm (test pages) |
+| ckeditor5 (Teams' editor; GPL licence key) | 49.0.0 | npm (test pages), added 2026-10-30 for the CI E2E run |
 | llama.cpp | build **b11960** (= release v0.8.0) | `llama-b11960-bin-win-cuda-13.4-x64.zip` sha256 `31c75ea62b80f0816c855ea783ef68757bc2d48028edaa57d904e4982bddea4a` |
 | cudart | 13.4 | `cudart-llama-bin-win-cuda-13.4-x64.zip` sha256 `738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668` |
 | llama.cpp CPU fallback (5.1.c) | b11960 | `llama-b11960-bin-win-cpu-x64.zip` sha256 `73f962f82850d244db47eaacb9d913637027b82399124324298576d58c5f4287` |

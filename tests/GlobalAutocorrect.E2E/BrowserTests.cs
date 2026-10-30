@@ -22,9 +22,12 @@ public sealed class BrowserTests
         var browser = await pw.Chromium.LaunchAsync(new() { Channel = "msedge", Headless = false, Args = ["--no-first-run", "--disable-features=msEdgeSidebarV2"] });
         var p = await browser.NewPageAsync();
         await p.GotoAsync(new Uri(Path.Combine(Desk.Repo, "tests", "pages", page + ".html")).AbsoluteUri);
+        await p.WaitForFunctionAsync("typeof window.getText === 'function'");   // CKEditor 5 starts asynchronously
         await p.BringToFrontAsync();
-        // Click the element that actually takes typing: ProseMirror renders its own editable inside #ed.
-        await p.ClickAsync(page == "prosemirror" ? ".ProseMirror" : "#ed");   // a click is a session break, before any typing
+        // Click the element that actually takes typing: ProseMirror renders its own editable inside #ed, and CKEditor 5
+        // replaces #ed with its own editor UI.
+        string target = page switch { "prosemirror" => ".ProseMirror", "ckeditor" => ".ck-editor__editable", _ => "#ed" };
+        await p.ClickAsync(target);   // a click is a session break, before any typing
         await Task.Delay(1500);      // Chromium turns on full accessibility once UIA connects (10.6.d)
         return (browser, p, pw);
     }
@@ -36,6 +39,7 @@ public sealed class BrowserTests
     [InlineData("contenteditable")]
     [InlineData("prosemirror")]
     [InlineData("lexical")]
+    [InlineData("ckeditor")]   // CKEditor 5: Microsoft Teams' message box
     public async Task R11_3_b_InstantAndAiFixesInBrowserEditors(string page)
     {
         Desk.RequireIdle();

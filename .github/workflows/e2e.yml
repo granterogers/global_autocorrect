@@ -1,0 +1,129 @@
+# Runs the E2E (screen) tests on a GitHub-hosted Windows runner, so the user never has to leave their PC for them
+# (11.3). The tests start the real app with the mock model (GA_E2E_LLM_URL), type with SendInput and read back with UIA
+# or Playwright (headed Edge), so no GPU or model cache is needed. Desk.RequireIdle does not wait when CI=true.
+# Category=RealApp drives the user's own signed-in apps (Teams) and never runs here.
+# Trigger: by hand, or a push to the ci-e2e branch.
+name: E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci-e2e]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tests/pages/package-lock.json
+
+      - name: Build test pages
+        working-directory: tests/pages
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+          npm run build
+          if ($LASTEXITCODE -ne 0) { throw 'test page build failed' }
+
+      - name: Restore
+        run: dotnet restore GlobalAutocorrect.slnx
+
+      - name: Build
+        run: dotnet build GlobalAutocorrect.slnx -c Debug --no-restore -v q
+
+      # What the tests will drive: the session, the screen, Notepad and Edge. A screenshot that is all black or fails
+      # means there is no interactive desktop for SendInput and UIA.
+      - name: Desktop diagnostics
+        run: |
+          New-Item -ItemType Directory -Force artifacts/screens | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "OS: $($os.Caption) $($os.Version)"
+          Write-Host "user: $env:USERNAME; interactive: $([Environment]::UserInteractive); session: $((Get-Process -Id $PID).SessionId)"
+          Write-Host "screen: $([System.Windows.Forms.Screen]::PrimaryScreen.Bounds)"
+          query user 2>&1 | Write-Host
+          Write-Host "notepad: $((Get-Command notepad.exe).Source)"
+          Get-AppxPackage Microsoft.WindowsNotepad -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Store Notepad: $($_.Version)" }
+          $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+          if (Test-Path $edge) { Write-Host "Edge: $((Get-Item $edge).VersionInfo.ProductVersion)" } else { Write-Host 'Edge: not found' }
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = [System.Drawing.Bitmap]::new($b.Width, $b.Height)
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD/artifacts/screens/ci-desktop-before.png")
+          $g.Dispose(); $bmp.Dispose()
+
+      # A screenshot every 3 s while the tests run, to see focus and windows when a test fails.
+      - name: Start screen recorder
+        run: |
+          New-Item -ItemType Directory -Force artifacts/screens/run | Out-Null
+          $script = @'
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $i = 0
+          while ($true) {
+            try {
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $bmp = [System.Drawing.Bitmap]::new($b.Width, $b.Height)
+              $g = [System.Drawing.Graphics]::FromImage($bmp)
+              $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+              $bmp.Save(('{0}\{1:D4}-{2:HHmmss}.png' -f $args[0], $i++, (Get-Date)), [System.Drawing.Imaging.ImageFormat]::Png)
+              $g.Dispose(); $bmp.Dispose()
+            } catch { }
+            Start-Sleep -Seconds 3
+          }
+          '@
+          Set-Content -Path "$env:RUNNER_TEMP/recorder.ps1" -Value $script
+          $p = Start-Process pwsh -ArgumentList '-NoProfile', '-File', "$env:RUNNER_TEMP/recorder.ps1", "$PWD\artifacts\screens\run" -WindowStyle Hidden -PassThru
+          "RECORDER_PID=$($p.Id)" >> $env:GITHUB_ENV
+
+      - name: Test (E2E)
+        env:
+          GA_E2E: '1'
+        run: |
+          New-Item -ItemType Directory -Force artifacts/test-results | Out-Null
+          dotnet test --project tests/GlobalAutocorrect.E2E --no-build --results-directory "$PWD/artifacts/test-results" --output Detailed `
+            -- --filter-not-trait "Category=RealApp" --report-xunit-trx --report-xunit-markdown --report-xunit-html `
+            2>&1 | Tee-Object -FilePath artifacts/e2e-output.txt
+          $code = $LASTEXITCODE
+          Get-ChildItem artifacts/test-results -Filter *.md -Recurse | ForEach-Object { Get-Content $_ | Add-Content $env:GITHUB_STEP_SUMMARY }
+          if ($code -ne 0) { throw "E2E tests failed (exit code $code)" }
+
+      - name: Stop screen recorder
+        if: always()
+        run: |
+          if ($env:RECORDER_PID) { Stop-Process -Id $env:RECORDER_PID -ErrorAction SilentlyContinue }
+          $global:LASTEXITCODE = 0
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            artifacts/e2e-output.txt
+            artifacts/test-results/
+            artifacts/screens/
+          if-no-files-found: warn

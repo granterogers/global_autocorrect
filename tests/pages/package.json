@@ -6,13 +6,14 @@
     "build": "node build.mjs"
   },
   "devDependencies": {
+    "@lexical/rich-text": "0.53.0",
+    "ckeditor5": "49.0.0",
     "esbuild": "0.28.2",
-    "prosemirror-state": "1.4.4",
-    "prosemirror-view": "1.42.8",
+    "lexical": "0.53.0",
+    "prosemirror-example-setup": "1.2.3",
     "prosemirror-model": "1.25.12",
     "prosemirror-schema-basic": "1.2.5",
-    "prosemirror-example-setup": "1.2.3",
-    "lexical": "0.53.0",
-    "@lexical/rich-text": "0.53.0"
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.8"
   }
 }

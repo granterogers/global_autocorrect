@@ -34,6 +34,12 @@ public sealed class DesktopTests
             catch (ArgumentException) { return false; }
         }, 10_000), "Notepad did not come to the front");
         Thread.Sleep(800);
+        // Classic (Win32) Notepad, as on Windows Server CI runners: one document per window, no tabs, no autosave, and
+        // closing an edited document asks to save. Store Notepad runs from WindowsApps.
+        GetWindowThreadProcessId(GetForegroundWindow(), out uint fgPid);
+        bool classic;
+        try { classic = Process.GetProcessById((int)fgPid).MainModule?.FileName.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase) != true; }
+        catch (Exception e) when (e is ArgumentException or System.ComponentModel.Win32Exception) { classic = false; }
         Window? win = null;
         Desk.Keys(VK_CONTROL, (ushort)'N');   // a new, empty tab even if Notepad restored others
         Thread.Sleep(800);
@@ -42,6 +48,14 @@ public sealed class DesktopTests
                   ?? throw new InvalidOperationException("Notepad editor not focused");
         void Close()
         {
+            if (classic)
+            {
+                // Nothing is autosaved, so the test's own window can just go; closing it normally would stop at the
+                // "save changes?" prompt and leave it in front of the next test.
+                foreach (var p in Process.GetProcessesByName("Notepad").Where(p => !before.Contains(p.Id))) { p.Kill(); p.WaitForExit(3000); }
+                Thread.Sleep(300);
+                return;
+            }
             doc.Focus();
             Desk.Keys(VK_CONTROL, (ushort)'A');
             Desk.Keys(VK_DELETE);
