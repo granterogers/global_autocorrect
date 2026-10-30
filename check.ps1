@@ -79,6 +79,12 @@ try {
                 try { dotnet test --project tests/GlobalAutocorrect.Core.Tests --no-build -- --filter-method "*RandomTypingNeverDamagesTheField*" }
                 finally { $env:GA_FUZZ_SESSIONS = $null }
             }
+            # D70: the layout checks at 200% as well as 100% (the fast tier checks 100% only).
+            Invoke-Step 'layout checks at 100% and 200%' {
+                $env:GA_LAYOUT_SCALES = '100,200'
+                try { dotnet test --project tests/GlobalAutocorrect.App.Tests --no-build -- --filter-class "*LayoutTests" }
+                finally { $env:GA_LAYOUT_SCALES = $null }
+            }
             Invoke-Model
             Invoke-Eval
             Invoke-E2E

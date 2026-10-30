@@ -36,7 +36,7 @@ public class LayoutTests
     [Fact]
     public void R9_5_AllFortyLayoutsWereCheckedWithTheirFullestContent()
     {
-        Assert.Equal(40, Results.Value.Count);
+        Assert.Equal(20 * Scales.Length, Results.Value.Count);
         // The longest version of each page: an update on offer, words in the dictionary, the download step.
         foreach (var r in Results.Value)
         {
@@ -62,12 +62,19 @@ public class LayoutTests
 
     private sealed record Result(Case Case, Dictionary<string, List<string>> Problems, HashSet<string> Texts);
 
+    /// <summary>
+    /// D70: 100% in the fast tier (its 30 s budget, 11.1.a); GA_LAYOUT_SCALES="100,200" in check.ps1 full adds 200%,
+    /// which doubles the layouts built.
+    /// </summary>
+    private static readonly int[] Scales = (System.Environment.GetEnvironmentVariable("GA_LAYOUT_SCALES") ?? "100")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToArray();
+
     private static readonly Lazy<List<Result>> Results = new(() =>
     {
         var results = new List<Result>();
         WpfApp.Run(_ =>
         {
-            foreach (int percent in new[] { 100, 200 })
+            foreach (int percent in Scales)
             {
                 foreach (var (sizeName, size) in Sizes(920, 640, 760, 520, percent)) results.AddRange(SettingsPages(sizeName, size, percent));
                 foreach (var (sizeName, size) in Sizes(640, 520, 560, 480, percent)) results.AddRange(FirstRunSteps(sizeName, size, percent));

@@ -12,7 +12,7 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
         """
         You fix typing mistakes in short messages written in British English.
         Fix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example "in the main hall" or "for the interview".
-        Keep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Use British spelling (colour, organise, travelling).
+        Keep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).
         If the text has no mistakes, return it unchanged.
         Reply with the corrected text only: no quotes, no notes.
         """,
