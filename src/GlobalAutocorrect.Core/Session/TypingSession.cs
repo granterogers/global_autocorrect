@@ -70,6 +70,19 @@ public sealed class TypingSession
     /// D5 check against the field. Returns true if the field's text before the caret ends with the buffer. Host
     /// autocorrect that only changed case or quote style (same length) is adopted into the buffer instead of breaking.
     /// </summary>
+    /// <summary>
+    /// True when the field simply hasn't caught up with the last few keys yet: it ends with the buffer minus its last
+    /// 1-8 characters. Browsers update their accessibility text a moment after the key, so a read straight after a
+    /// sentence end can lag (found by E2E in Edge). That is "try again shortly", not a session break.
+    /// </summary>
+    public bool FieldBehind(string fieldBefore)
+    {
+        string f = TextNorm.Normalise(fieldBefore), t = TextNorm.Normalise(Typed);
+        for (int k = 1; k <= Math.Min(8, t.Length - 1); k++)
+            if (f.EndsWith(t[..^k], StringComparison.Ordinal)) return true;
+        return false;
+    }
+
     public bool MatchesField(string fieldBefore)
     {
         string f = TextNorm.Normalise(fieldBefore), t = TextNorm.Normalise(Typed);

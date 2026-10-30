@@ -45,9 +45,16 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         if (_pending is not null) { _rerun = true; return; }
         var win = target.ReadWindow();
         if (!win.CaretKnown) { ReadFailed(session); return; }   // 4.1.b, 10.6.c (retried shortly)
+        if (isDesynced(win.TargetId)) { _lastTriggerSeq = session.LastKeySeq; return; }
+        if (!session.MatchesField(win.Before))
+        {
+            if (session.FieldBehind(win.Before)) { ReadFailed(session); return; }   // the app hasn't drawn the last keys yet
+            _lastTriggerSeq = session.LastKeySeq;
+            counters.FieldMismatch();
+            session.Break(SessionBreakReason.FieldMismatch);
+            return;
+        }
         _lastTriggerSeq = session.LastKeySeq;
-        if (isDesynced(win.TargetId)) return;
-        if (!session.MatchesField(win.Before)) { session.Break(SessionBreakReason.FieldMismatch); return; }
 
         string before = TextNorm.Normalise(win.Before);
         int typedStart = before.Length - TextNorm.Normalise(session.Typed).Length;

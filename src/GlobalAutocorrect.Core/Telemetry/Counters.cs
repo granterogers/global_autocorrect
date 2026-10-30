@@ -7,7 +7,7 @@ namespace GlobalAutocorrect.Core.Telemetry;
 /// </summary>
 public sealed class Counters
 {
-    private long _instant, _ai, _undos, _desyncs, _aiRequests, _aiFailures, _rejectedEdits, _droppedWrites;
+    private long _instant, _ai, _undos, _desyncs, _aiRequests, _aiFailures, _rejectedEdits, _droppedWrites, _fieldMismatches;
 
     public long InstantCorrections => Interlocked.Read(ref _instant);
     public long AiCorrections => Interlocked.Read(ref _ai);
@@ -17,6 +17,8 @@ public sealed class Counters
     public long AiFailures => Interlocked.Read(ref _aiFailures);
     public long RejectedEdits => Interlocked.Read(ref _rejectedEdits);
     public long DroppedWrites => Interlocked.Read(ref _droppedWrites);
+    /// <summary>The field's text didn't match what was typed, so the session was dropped (diagnostics).</summary>
+    public long FieldMismatches => Interlocked.Read(ref _fieldMismatches);
     public long Corrections => InstantCorrections + AiCorrections;
 
     public void Instant() => Interlocked.Increment(ref _instant);
@@ -27,12 +29,13 @@ public sealed class Counters
     public void AiFailure() => Interlocked.Increment(ref _aiFailures);
     public void Rejected(int n) => Interlocked.Add(ref _rejectedEdits, n);
     public void Dropped() => Interlocked.Increment(ref _droppedWrites);
+    public void FieldMismatch() => Interlocked.Increment(ref _fieldMismatches);
 
     public Dictionary<string, long> Snapshot() => new()
     {
         ["instantCorrections"] = InstantCorrections, ["aiCorrections"] = AiCorrections, ["undos"] = Undos,
         ["desyncs"] = Desyncs, ["aiRequests"] = AiRequests, ["aiFailures"] = AiFailures,
-        ["rejectedEdits"] = RejectedEdits, ["droppedWrites"] = DroppedWrites,
+        ["rejectedEdits"] = RejectedEdits, ["droppedWrites"] = DroppedWrites, ["fieldMismatches"] = FieldMismatches,
     };
 
     public string ToJson() => JsonSerializer.Serialize(Snapshot());

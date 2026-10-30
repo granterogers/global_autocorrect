@@ -71,10 +71,18 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>The next N reads fail, as a busy app's UIA sometimes does for a moment.</summary>
     public int FailNextReads { get; set; }
 
+    /// <summary>The next N reads miss the last two characters, as a browser that hasn't drawn the last keys yet.</summary>
+    public int LagNextReads { get; set; }
+
     public TextWindow ReadWindow()
     {
         if (FailNextReads > 0) { FailNextReads--; return TextWindow.Unavailable(TargetStatus.Unavailable, Id); }
         if (!CaretKnown) return TextWindow.Unavailable(TargetStatus.CaretUnknown, Id);
+        if (LagNextReads > 0 && Caret >= 2)
+        {
+            LagNextReads--;
+            return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..(Caret - 2)], "");
+        }
         return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..Caret], Text[Caret..Math.Min(Text.Length, Caret + 80)]);
     }
 

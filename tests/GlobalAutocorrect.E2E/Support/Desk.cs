@@ -31,9 +31,14 @@ public static class Desk
         throw new InvalidOperationException("Run the E2E tests from inside the repository.");
     }
 
+    private static volatile bool _userBusy;
+
     /// <summary>2.8: only take over the keyboard once the user has been away for a while; otherwise skip.</summary>
     public static void RequireIdle(TimeSpan? idle = null, TimeSpan? wait = null)
     {
+        // One wait per run: once the user has been seen at the keyboard for a whole wait, the rest skip straight away
+        // (otherwise a run of 12 tests could sit for two hours while they work).
+        if (_userBusy) Assert.Skip("The user was at the keyboard earlier in this run (2.8).");
         var need = idle ?? TimeSpan.FromMinutes(2);
         var sw = Stopwatch.StartNew();
         while (sw.Elapsed < (wait ?? TimeSpan.FromMinutes(10)))
@@ -43,6 +48,7 @@ public static class Desk
             if (unchecked((uint)Environment.TickCount - info.dwTime) >= need.TotalMilliseconds) return;
             Thread.Sleep(2000);
         }
+        _userBusy = true;
         Assert.Skip("The user is at the keyboard; E2E tests wait until they've been away for 2 minutes (2.8).");
     }
 
@@ -84,6 +90,25 @@ public static class Desk
             Thread.Sleep(200);
         }
     }
+
+    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(nint hwnd, out RECT r);
+    [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
+
+    /// <summary>
+    /// A real left click in the middle of a window: the one way a background test process can reliably give a window
+    /// keyboard focus (SetForegroundWindow is refused unless the caller already owns the foreground).
+    /// </summary>
+    public static void ClickCentre(nint hwnd)
+    {
+        GetWindowRect(hwnd, out var r);   // same DPI view as SetCursorPos for this process
+        SetCursorPos((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2);
+        Thread.Sleep(50);
+        SendInputWriter.Send([Mouse(0x0002), Mouse(0x0004)]);   // MOUSEEVENTF_LEFTDOWN, LEFTUP
+        Thread.Sleep(300);
+    }
+
+    private static INPUT Mouse(uint flags) => new() { type = 0, U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flags } } };
 
     public static bool WaitUntil(Func<bool> condition, int ms = 4000)
     {

@@ -305,6 +305,33 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain()
+    {
+        // Found by E2E in Edge: the read straight after ". " didn't have the full stop yet, the session was dropped as
+        // "changed under us" and the AI never ran.
+        var h = new Harness(model: FixTheir, latencyMs: 100);
+        h.Type("i went their yesterday");
+        h.Ed.LagNextReads = 2;
+        h.Type(". ");
+        h.Wait(2500);
+        Assert.Equal("I went there yesterday. ", h.Text);
+        Assert.Equal(0, h.Counters.FieldMismatches);
+    }
+
+    [Fact]
+    public void R4_6_c_AFieldThatReallyChangedStillDropsTheSession()
+    {
+        // The lag allowance must not hide a real change: text that isn't a shorter copy of what was typed still breaks.
+        var h = new Harness(model: FixTheir, latencyMs: 100);
+        h.Type("i went their yesterday");
+        h.Ed.Text = h.Ed.Text.Replace("yesterday", "today"); h.Ed.Caret = h.Ed.Text.Length;
+        h.Type(". ");
+        h.Wait(2500);
+        Assert.DoesNotContain("there", h.Text);
+        Assert.True(h.Counters.FieldMismatches >= 1);
+    }
+
+    [Fact]
     public void R4_6_c_AMomentaryReadFailureBeforeAWriteDoesNotLoseTheEdit()
     {
         // Found by E2E in Notepad: a failed read just before writing dropped "their" -> "there".

@@ -98,6 +98,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (!win.CaretKnown) return false;
         if (!session.MatchesField(win.Before))
         {
+            if (session.FieldBehind(win.Before)) return false;   // the app hasn't drawn the last keys yet: next tick
+            counters.FieldMismatch();
             session.Break(SessionBreakReason.FieldMismatch);
             _queue.Clear();
             return false;

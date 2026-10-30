@@ -14,9 +14,9 @@ namespace GlobalAutocorrect.E2E;
 [Collection("screen")]   // one at a time: they share the keyboard
 public sealed class DesktopTests
 {
-    private static string Model(string s) => s
-        .Replace("i went their yesterday", "I went there yesterday")
-        .Replace("i went their", "I went there");
+    // Inputs avoid what Notepad's own autocorrect fixes ("teh", a lone "i"): when both fix the same word the app
+    // correctly sees the text change under it and backs off (11.3.d), which says nothing about our fix.
+    private static string Model(string s) => s.Replace("We went their", "We went there");
 
     /// <summary>
     /// Opens a fresh Notepad tab and, at the end, empties and closes it, so Notepad's session restore never keeps
@@ -64,7 +64,10 @@ public sealed class DesktopTests
         var (_, doc, close) = OpenNotepad(uia);
         try
         {
-            Desk.Type("we saw teh bookk ");
+            // Notepad's own autocorrect (when on) often fixes a misspelling first; then the app reads the corrected
+            // field and leaves it alone. Either way the text must end right with no desync. Our own instant fix is
+            // proved in the WPF box and the browser editors, which have no autocorrect.
+            Desk.Type("we saw the bookk ");
             Desk.WaitUntil(() => Text(doc) == "we saw the book ", 1500);
             // 4.7 recorded check: the fading accent underline, captured while it is still visible.
             Directory.CreateDirectory(Path.Combine(Desk.Repo, "artifacts", "screens"));
@@ -85,31 +88,11 @@ public sealed class DesktopTests
         var (_, doc, close) = OpenNotepad(uia);
         try
         {
-            Desk.Type("i went their yesterday. ");
-            Desk.WaitUntil(() => Text(doc).StartsWith("I went there", StringComparison.Ordinal), 5000);
+            Desk.Type("We went their yesterday. ");
+            Desk.WaitUntil(() => Text(doc).StartsWith("We went there", StringComparison.Ordinal), 5000);
             Assert.Equal(0, app.Desyncs);
-            Assert.True(Text(doc) == "I went there yesterday. ", $"got \"{Text(doc)}\"; {app.Diagnostics()}");
+            Assert.True(Text(doc) == "We went there yesterday. ", $"got \"{Text(doc)}\"; {app.Diagnostics()}");
             Assert.True(llm.Requests >= 1);
-        }
-        finally { close(); }
-    }
-
-    [Fact]
-    public void R4_8_a_CtrlZRevertsTheCorrection_R4_8_c()
-    {
-        Desk.RequireIdle();
-        using var llm = new MockLlm(Model);
-        using var app = new AppUnderTest(llm);
-        using var uia = new UIA3Automation();
-        var (_, doc, close) = OpenNotepad(uia);
-        try
-        {
-            Desk.Type("we saw teh ");
-            Assert.True(Desk.WaitUntil(() => Text(doc) == "we saw the "));
-            Desk.Keys(VK_CONTROL, (ushort)'Z');
-            Assert.True(Desk.WaitUntil(() => Text(doc) == "we saw teh "), $"got \"{Text(doc)}\"; {app.Diagnostics()}");
-            Assert.Equal(0, app.Desyncs);
-            Assert.True(File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh"), $"the app's own undo didn't run (Notepad's did); {app.Diagnostics()}");
         }
         finally { close(); }
     }
@@ -174,41 +157,70 @@ public sealed class DesktopTests
         Assert.Empty(OurServers().Except(before));
     }
 
+    /// <summary>
+    /// A plain WPF TextBox in a window of the test process: a desktop field with no autocorrect of its own, so what it
+    /// shows is only what the user typed and what the app changed.
+    /// </summary>
+    private sealed class WpfBox : IDisposable
+    {
+        private readonly System.Windows.Window _window;
+        private readonly System.Windows.Controls.TextBox _box;
+
+        public WpfBox()
+        {
+            System.Windows.Window? window = null;
+            System.Windows.Controls.TextBox? box = null;
+            using var ready = new ManualResetEventSlim();
+            var ui = new Thread(() =>
+            {
+                box = new System.Windows.Controls.TextBox { FontSize = 16, AcceptsReturn = true };
+                window = new System.Windows.Window { Title = "GA E2E WPF", Width = 600, Height = 200, Content = box, Topmost = true };
+                window.Loaded += (_, _) => ready.Set();
+                window.Show();
+                System.Windows.Threading.Dispatcher.Run();
+            });
+            ui.SetApartmentState(ApartmentState.STA);
+            ui.Start();
+            Assert.True(ready.Wait(10_000, TestContext.Current.CancellationToken), "the WPF window did not open");
+            (_window, _box) = (window!, box!);
+            nint hwnd = _window.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(_window).Handle);
+            Desk.ClickCentre(hwnd);   // a real click: focus, and a session break before any typing
+            Assert.True(Desk.WaitUntil(() => _window.Dispatcher.Invoke(() => _box.IsKeyboardFocused), 3000), "the WPF box did not get focus");
+            Thread.Sleep(500);
+        }
+
+        public string Text => _box.Dispatcher.Invoke(() => _box.Text);
+
+        public void Dispose() => _window.Dispatcher.Invoke(() => { _window.Close(); System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown(); });
+    }
+
     [Fact]
     public void R11_3_a_WpfTextBox()
     {
         Desk.RequireIdle();
         using var llm = new MockLlm(Model);
         using var app = new AppUnderTest(llm);
-        string text = "";
-        using var ready = new ManualResetEventSlim();
-        System.Windows.Window? window = null;
-        System.Windows.Controls.TextBox? box = null;
-        var ui = new Thread(() =>
-        {
-            box = new System.Windows.Controls.TextBox { FontSize = 16, AcceptsReturn = true };
-            window = new System.Windows.Window { Title = "GA E2E WPF", Width = 600, Height = 200, Content = box };
-            window.Loaded += (_, _) => { window.Activate(); box.Focus(); ready.Set(); };
-            window.Show();
-            System.Windows.Threading.Dispatcher.Run();
-        });
-        ui.SetApartmentState(ApartmentState.STA);
-        ui.Start();
-        ready.Wait(10_000, TestContext.Current.CancellationToken);
-        try
-        {
-            nint hwnd = window!.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(window).Handle);
-            Desk.BringToFront(hwnd);
-            window.Dispatcher.Invoke(() => box!.Focus());
-            Thread.Sleep(800);
-            Desk.Type("we saw teh cat ");
-            Desk.WaitUntil(() => { box!.Dispatcher.Invoke(() => text = box.Text); return text == "we saw the cat "; });
-            Assert.Equal(0, app.Desyncs);
-            Assert.True(text == "we saw the cat ", $"got \"{text}\"; {app.Diagnostics()}");
-        }
-        finally
-        {
-            window?.Dispatcher.Invoke(() => { window.Close(); System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown(); });
-        }
+        using var box = new WpfBox();
+        Desk.Type("we saw teh cat ");
+        Desk.WaitUntil(() => box.Text == "we saw the cat ");
+        Assert.Equal(0, app.Desyncs);
+        Assert.True(box.Text == "we saw the cat ", $"got \"{box.Text}\"; {app.Diagnostics()}");
+    }
+
+    [Fact]
+    public void R4_8_a_CtrlZRevertsTheCorrection_R4_8_c()
+    {
+        // In a WPF box rather than Notepad: Notepad autocorrects misspellings itself, so its own Ctrl+Z would answer.
+        Desk.RequireIdle();
+        using var llm = new MockLlm(Model);
+        using var app = new AppUnderTest(llm);
+        using var box = new WpfBox();
+        Desk.Type("we saw teh ");
+        Assert.True(Desk.WaitUntil(() => box.Text == "we saw the "), $"got \"{box.Text}\"; {app.Diagnostics()}");
+        Desk.Keys(VK_CONTROL, (ushort)'Z');
+        Assert.True(Desk.WaitUntil(() => box.Text == "we saw teh "), $"got \"{box.Text}\"; {app.Diagnostics()}");
+        Assert.Equal(0, app.Desyncs);
+        Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh")),
+            $"4.8.c: the undone word was not added to the dictionary; {app.Diagnostics()}");
     }
 }
