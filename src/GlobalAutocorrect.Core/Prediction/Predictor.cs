@@ -15,11 +15,15 @@ public sealed record Suggestion(string Completion, string Word, bool IsNextWord)
 /// </summary>
 public sealed class Predictor(NgramModel model, UserHistory history)
 {
-    private const int MinPartialLength = 2;
+    /// <summary>Letters typed before a completion is offered (D51).</summary>
+    public int MinPartialLength { get; init; } = 2;
     private const int CompleteCandidates = 8;
     private const int NextCandidates = 5;
-    private const double RunnerUpRatio = 1.5;
-    private const double MinNextShare = 0.4;
+    /// <summary>A completion is shown only when it scores this many times the runner-up (D51: tuned with `eval predict`).</summary>
+    public double RunnerUpRatio { get; init; } = 2.5;
+
+    /// <summary>A next word is shown only when it has at least this share of the candidates' score (D51).</summary>
+    public double MinNextShare { get; init; } = 0.6;
     private const int ContextWindow = 400;
 
     private static readonly Regex ContextToken = new(
@@ -115,17 +119,22 @@ public sealed class Predictor(NgramModel model, UserHistory history)
 
         // D40: words the user has typed after these same words before come first ("how are you do" → "doing").
         var (c1, c2) = ContextBefore(line[..start]);
-        foreach (var (word, count) in history.NextAfter(c1, c2))
+        foreach (var (word, count) in history.NextAfter(c1, c2, out bool sameTwo))
         {
             if (word.StartsWith(lower, StringComparison.Ordinal))
-                candidates[word] = candidates.GetValueOrDefault(word, Score(Math.Max(1, model.CountOf(word)), history.Count(word))) * (1 + 10.0 * count);
+                candidates[word] = candidates.GetValueOrDefault(word, Score(Math.Max(1, model.CountOf(word)), history.Count(word))) * (1 + (sameTwo ? 40.0 : 10.0) * count);
         }
+
+        // D51: the word as typed competes. "before" was completed to "beforehand", "Leeds" to "Leeds's": when the typed
+        // letters are already a word, ending it there is usually what happens, so a longer word must clearly beat it.
+        long asTypedCount = model.CountOf(lower);
+        double asTyped = asTypedCount > 0 ? Score(asTypedCount, history.Count(lower)) : 0;
 
         string? best = null;
         double bestScore = 0, runnerUp = 0;
         foreach (var (word, score) in candidates)
         {
-            if (word.Length <= lower.Length + 1)
+            if (word.Length <= lower.Length + 1 || word == lower + "'s")   // too short to help, or a bare possessive
             {
                 continue;
             }
@@ -142,7 +151,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             }
         }
 
-        if (best is null || (runnerUp > 0 && bestScore < RunnerUpRatio * runnerUp))
+        if (best is null || (runnerUp > 0 && bestScore < RunnerUpRatio * runnerUp) || bestScore < RunnerUpRatio * asTyped)
         {
             return null;
         }
@@ -204,20 +213,21 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         }
 
         var next = model.Next(w1, w2, NextCandidates);
-        var mine = history.NextAfter(w1, w2 ?? NgramModel.SentenceStart);
+        var mine = history.NextAfter(w1, w2 ?? NgramModel.SentenceStart, out bool twoWords);
         if (next.Count == 0 && mine.Count == 0)
         {
             return null;
         }
 
         // D40: a share of the corpus continuations and a share of the user's own, weighted by how often the user has
-        // typed this context: once is already half the say, so a phrase typed once is suggested the next time.
+        // typed this context: once is already two thirds of the say, so a phrase typed once is suggested the next time.
         var scores = new Dictionary<string, double>(StringComparer.Ordinal);
         double corpusTotal = next.Sum(n => Score(n.Count, history.Count(n.Word)));
         foreach (var (word, count) in next)
             scores[word] = Score(count, history.Count(word)) / corpusTotal;
         long mineTotal = mine.Sum(m => m.Count);
-        double weight = mineTotal / (mineTotal + 1.0);
+        // D51: after the same two words, once is two thirds of the say (clears MinNextShare); after one word, half.
+        double weight = mineTotal / (mineTotal + (twoWords ? 0.5 : 1.0));
         foreach (var k in scores.Keys.ToList()) scores[k] *= 1 - weight;
         foreach (var (word, count) in mine)
             scores[word] = scores.GetValueOrDefault(word) + weight * count / mineTotal;

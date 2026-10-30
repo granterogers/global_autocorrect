@@ -69,14 +69,18 @@ public sealed class UserHistory
     /// D40: the user's own continuations after (<paramref name="w1"/>, <paramref name="w2"/>): the two-word context if
     /// the user has typed it, else the one-word context, else nothing.
     /// </summary>
-    public IReadOnlyList<(string Word, long Count)> NextAfter(string? w1, string? w2)
+    public IReadOnlyList<(string Word, long Count)> NextAfter(string? w1, string? w2) => NextAfter(w1, w2, out _);
+
+    /// <param name="fromTwoWords">True when the continuations come from the two-word context, the more specific one.</param>
+    public IReadOnlyList<(string Word, long Count)> NextAfter(string? w1, string? w2, out bool fromTwoWords)
     {
+        fromTwoWords = false;
         var b = Context(w2);
         if (b is null) return [];
         var a = w1 is null ? null : Context(w1);
         lock (_gate)
         {
-            if (a is not null && _next.TryGetValue(a + " " + b, out var tri)) return tri.Select(kv => (kv.Key, kv.Value)).ToArray();
+            if (a is not null && _next.TryGetValue(a + " " + b, out var tri)) { fromTwoWords = true; return tri.Select(kv => (kv.Key, kv.Value)).ToArray(); }
             return _next.TryGetValue(b, out var bi) ? bi.Select(kv => (kv.Key, kv.Value)).ToArray() : [];
         }
     }

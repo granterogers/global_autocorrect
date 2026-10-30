@@ -26,15 +26,25 @@ public sealed class NonWordSweep(ISpellChecker speller, ISuggester suggester, Fu
         var tokens = Tokeniser.Tokenise(text);
         var words = tokens.Where(t => t.IsWord).ToArray();
         var fixes = new List<SweepFix>();
+        var used = new HashSet<int>();
         for (int i = 0; i < words.Length; i++)
         {
             var t = words[i];
+            if (used.Contains(i)) continue;
             // Whole-word spans: a spacing fix ("remem ber" → "remember") covers only the space as its minimal range, and
             // the sweep then "fixed" the "ber" half into "rememher" (found on the tuning set).
             if (t.IsProtected || t.End == text.Length || accepted.Any(e => e.SpanStart < t.End && e.SpanEnd > t.Start)) continue;   // never the word still being typed
             if (!rejected.Any(e => e.SpanStart < t.End && e.SpanEnd > t.Start)) continue;
             string w = t.Text;
             if (!IsNonWord(w)) continue;
+            // D50: a word split into pieces ("ne arly", "the ir"): if joining this piece with its neighbour(s) makes a
+            // dictionary word, join them. The commonest such word wins.
+            if (Join(text, words, i, accepted) is { } join)
+            {
+                fixes.Add(join.Fix);
+                foreach (int k in join.Covers) used.Add(k);
+                continue;
+            }
             // Neighbours count only if only spaces separate them, and only if they are words themselves.
             string? prev = i > 0 && IsGap(text, words[i - 1].End, t.Start) && Known(words[i - 1].Text) ? words[i - 1].Text : null;
             string? next = i + 1 < words.Length && IsGap(text, t.End, words[i + 1].Start) && Known(words[i + 1].Text) ? words[i + 1].Text : null;
@@ -42,6 +52,30 @@ public sealed class NonWordSweep(ISpellChecker speller, ISuggester suggester, Fu
                 fixes.Add(new SweepFix(t.Start, t.End, w, InstantCorrector.MatchCase(w, pick)));
         }
         return fixes;
+    }
+
+    private (SweepFix Fix, int[] Covers)? Join(string text, Token[] words, int i, IReadOnlyList<TextEdit> accepted)
+    {
+        bool Free(int k) => k >= 0 && k < words.Length && !words[k].IsProtected && words[k].End < text.Length
+                            && !accepted.Any(e => e.SpanStart < words[k].End && e.SpanEnd > words[k].Start)
+                            && words[k].Text.All(char.IsLetter) && !char.IsUpper(words[k].Text[0]);
+        bool OneSpace(int a, int b) => text.AsSpan(words[a].End, words[b].Start - words[a].End) is " ";
+        (SweepFix, int[])? best = null; long bestFreq = 0;
+        foreach (var (from, to) in new[] { (i - 1, i), (i, i + 1), (i - 1, i + 1), (i, i + 2) })
+        {
+            if (!Free(from) || !Free(to)) continue;
+            bool joined = true;
+            for (int k = from; k < to; k++) joined &= Free(k) && OneSpace(k, k + 1);
+            if (!joined) continue;
+            string word = string.Concat(Enumerable.Range(from, to - from + 1).Select(k => words[k].Text));
+            if (word.Length < 3 || !speller.IsValid(word)) continue;
+            long freq = suggester.Lookup(word.ToLowerInvariant(), 1) is [{ Distance: 0 } c] ? c.Frequency : 1;
+            if (freq <= bestFreq) continue;
+            bestFreq = freq;
+            best = (new SweepFix(words[from].Start, words[to].End, text[words[from].Start..words[to].End], word),
+                    Enumerable.Range(from, to - from + 1).ToArray());
+        }
+        return best;
     }
 
     private bool IsNonWord(string w) =>

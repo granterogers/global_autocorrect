@@ -17,6 +17,7 @@ internal static class Program
         {
             "bench" => await Bench(opts),
             "run" => await RunCommand.Run(opts, RepoRoot()),
+            "predict" => PredictCommand.Run(opts, RepoRoot()),
             _ => Usage(),
         };
     }

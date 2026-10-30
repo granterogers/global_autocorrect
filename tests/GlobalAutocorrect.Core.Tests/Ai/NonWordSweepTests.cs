@@ -45,6 +45,22 @@ public sealed class NonWordSweepTests
     public void R4_4_d_TheSweepLeavesRealWordsNamesAndUnfinishedWordsAlone_D38(string text) =>
         Assert.Equal(text, Apply(text));
 
+    [Theory]
+    [InlineData("we stayed there for ne arly two hours ", "we stayed there for nearly two hours ")]   // both pieces non-words
+    [InlineData("we ended up staying the ir for an hour ", "we ended up staying their for an hour ")]  // a word and a piece
+    [InlineData("bread a nd milk please ", "bread and milk please ")]
+    [InlineData("the runn ing club meets later ", "the running club meets later ")]
+    public void R4_4_a_AWordSplitIntoPiecesIsJoined_D50(string text, string expected) =>
+        Assert.Equal(expected, Apply(text));
+
+    [Theory]
+    [InlineData("we went in to the shop ")]          // two real words: never merged
+    [InlineData("we met ne Arly at noon ")]           // a capitalised piece may be a name
+    [InlineData("the xq zv thing broke ")]            // joined, still not a word
+    [InlineData("see you at ne arly")]                // the word still being typed
+    public void R4_4_d_PiecesAreJoinedOnlyWhenTheJoinIsAWord_D50(string text) =>
+        Assert.Equal(text, Apply(text));
+
     [Fact]
     public void R4_4_a_HalfOfAWordTheModelRespacedIsNotTouched_D38()
     {
