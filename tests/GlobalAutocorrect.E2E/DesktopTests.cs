@@ -208,9 +208,26 @@ public sealed class DesktopTests
     }
 
     [Fact]
-    public void R4_8_a_CtrlZRevertsTheCorrection_R4_8_c()
+    public void R4_8_b_TheUndoShortcutRevertsTheCorrection_R4_8_c()
     {
-        // In a WPF box rather than Notepad: Notepad autocorrects misspellings itself, so its own Ctrl+Z would answer.
+        // In a WPF box rather than Notepad: Notepad autocorrects misspellings itself, so there'd be nothing of ours to undo.
+        Desk.RequireIdle();
+        using var llm = new MockLlm(Model);
+        using var app = new AppUnderTest(llm);
+        using var box = new WpfBox();
+        Desk.Type("we saw teh ");
+        Assert.True(Desk.WaitUntil(() => box.Text == "we saw the "), $"got \"{box.Text}\"; {app.Diagnostics()}");
+        Desk.Keys(VK_CONTROL, VK_MENU, (ushort)'Z');
+        Assert.True(Desk.WaitUntil(() => box.Text == "we saw teh "), $"got \"{box.Text}\"; {app.Diagnostics()}");
+        Assert.Equal(0, app.Desyncs);
+        Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh")),
+            $"4.8.c: the undone word was not added to the dictionary; {app.Diagnostics()}");
+    }
+
+    [Fact]
+    public void R4_8_a_CtrlZIsLeftToTheApp_D36()
+    {
+        // D36: the user's apps keep their own Ctrl+Z. Ours never takes it, so nothing is learnt and no undo is counted.
         Desk.RequireIdle();
         using var llm = new MockLlm(Model);
         using var app = new AppUnderTest(llm);
@@ -218,9 +235,9 @@ public sealed class DesktopTests
         Desk.Type("we saw teh ");
         Assert.True(Desk.WaitUntil(() => box.Text == "we saw the "), $"got \"{box.Text}\"; {app.Diagnostics()}");
         Desk.Keys(VK_CONTROL, (ushort)'Z');
-        Assert.True(Desk.WaitUntil(() => box.Text == "we saw teh "), $"got \"{box.Text}\"; {app.Diagnostics()}");
-        Assert.Equal(0, app.Desyncs);
-        Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh")),
-            $"4.8.c: the undone word was not added to the dictionary; {app.Diagnostics()}");
+        Thread.Sleep(1500);
+        Assert.False(File.Exists(Path.Combine(app.DataDir, "dictionary.txt")) && File.ReadAllText(Path.Combine(app.DataDir, "dictionary.txt")).Contains("teh"),
+            $"Ctrl+Z was taken by Global Autocorrect; {app.Diagnostics()}");
+        Assert.Contains("\"undos\":0", File.ReadAllText(Path.Combine(app.DataDir, "counters.json")));
     }
 }

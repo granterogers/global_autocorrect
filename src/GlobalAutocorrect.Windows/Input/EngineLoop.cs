@@ -28,8 +28,6 @@ public sealed class EngineLoop : IDisposable
         _engine = engine;
         _hook = hook;
         _undo = new DeferredUndo(() => hook.ModifiersDown, () => Environment.TickCount64);
-        // 4.8.a: Ctrl+Z may take back a correction only if nothing happens between the write and the key.
-        engine.Corrected += n => hook.UndoArm.ArmAt(n.KeySeqAtWrite);
         _thread = new Thread(Run) { IsBackground = true, Name = "GA engine" };
     }
 
@@ -38,7 +36,6 @@ public sealed class EngineLoop : IDisposable
     /// <summary>Swaps in an engine built from new settings; runs on the engine thread, so no call is ever split.</summary>
     public void Replace(CorrectionEngine engine) => Post(_ =>
     {
-        engine.Corrected += n => _hook.UndoArm.ArmAt(n.KeySeqAtWrite);
         engine.SetTarget(_engine.Target);   // the new engine's paused state comes from the settings it was built with
         _engine = engine;
     });
@@ -104,9 +101,7 @@ public sealed class EngineLoop : IDisposable
                 _engine.OnInput(click);
                 KeyProcessed?.Invoke(click);   // e.g. the suggestion overlay hides on a click (7.5)
                 break;
-            case RawKind.UndoLocal:
-                _undo.Request(global: false);   // runs once Ctrl is up
-                break;
+
             case RawKind.AcceptSuggestion:
                 SuggestionAccepted?.Invoke();
                 break;

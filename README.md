@@ -21,11 +21,10 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 | What | Default | Change it in |
 |---|---|---|
 | Pause or resume | **Ctrl+Alt+P**, or one click on the tray icon | Settings › Shortcuts |
-| Undo the last correction, straight after it | **Ctrl+Z** | — |
 | Undo the last correction, from anywhere in that field | **Ctrl+Alt+Z** | Settings › Shortcuts |
 | Take the suggestion | **Tab**, only while it's showing | Settings › Prediction (on or off) |
 
-Undoing a correction also adds that word to your personal dictionary, so it won't be corrected again.
+Undoing a correction also adds that word to your personal dictionary, so it won't be corrected again. **Ctrl+Z is left alone:** it always does whatever your app normally does.
 
 ## Install
 
@@ -84,9 +83,9 @@ It prefers leaving a mistake to changing something you meant. That's why wrong c
 | Edge: rich text box | Spike B; end-to-end tests | ✅ (see note) |
 | Edge: ProseMirror editor | Spike B; end-to-end tests | ✅ (see note) |
 | Edge: Lexical editor | Spike B; end-to-end tests | ✅ (see note) |
-| WPF text box | End-to-end tests: instant fix, Ctrl+Z undo and learning the word | ✅ (see note) |
+| WPF text box | End-to-end tests: instant fix, Ctrl+Alt+Z undo and learning the word, Ctrl+Z left to the app | ✅ (see note) |
 | Password boxes | End-to-end test | ✅ never touched |
-| Intercom, Claude.ai, ChatGPT in Edge | Not automated: they need your signed-in accounts. Their message boxes are rich web editors like the ones above | ⚠️ Please try: a typo, a "their/there" sentence, Ctrl+Z straight after a fix, Tab on a suggestion |
+| Intercom, Claude.ai, ChatGPT in Edge | Not automated: they need your signed-in accounts. Their message boxes are rich web editors like the ones above | ⚠️ Please try: a typo, a "their/there" sentence, Ctrl+Alt+Z after a fix, Tab on a suggestion |
 | Outlook (classic) | Spike B could not put the cursor in the message body automatically | ⚠️ Not verified. Its message body is the same editor as Word, which passes |
 
 Note: the end-to-end results for this release candidate are in `e2e-results.txt` in this folder.
@@ -116,18 +115,18 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 0.2.a | Tested (incl. E2E) | 3 test(s), e.g. `R0_2_a_RealDictionariesFixTehAndBookk` |
 | 0.2.b | Tested (incl. E2E) | 9 test(s), e.g. `R11_3_a_NotepadAiFix_R0_2_b` |
 | 0.2.c | Tested | 1 test(s), e.g. `R0_2_c_AppliesEveryAcceptedEdit` |
-| 0.2.d | Tested | 18 test(s), e.g. `R4_4_d_NoFullStopAddedToAnUnfinishedSentence` |
-| 0.3 | Tested (incl. E2E) | 19 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
+| 0.2.d | Tested | 25 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
+| 0.3 | Tested (incl. E2E) | 20 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 0.4 | Tested | 1 test(s), e.g. `R3_4_InterfaceTextIsBritishAndSpeltCorrectly_R0_4` |
 | 0.5 | Recorded check | milestone order in PROGRESS |
 | 0.6 | Recorded check | DECISIONS.md raised items |
 | 1.1 | Recorded check | `Directory.Build.props` net10.0 |
 | 1.2 | Recorded check | package refs WPF-UI 4.3.0 / Tray |
 | 1.3 | Tested | 3 test(s), e.g. `R5_1_b_BindsToLoopbackWithApiKeyAndNoSlots` |
-| 1.4 | Recorded check | Â§4.1 spike table |
+| 1.4 | Recorded check | §4.1 spike table |
 | 1.5 | Tested | 3 test(s), e.g. `R1_5_FreqDictLoads` |
 | 1.6 | Tested | 3 test(s), e.g. `R7_2_AnswersUnder10ms` |
-| 1.7 | Tested (incl. E2E) | 8 test(s), e.g. `R10_7_a_ArrowKeysAreSentAsTheNavigationCluster` |
+| 1.7 | Tested (incl. E2E) | 10 test(s), e.g. `R10_7_a_ALongerTailIsStillSteppedOverNotRetyped_D28` |
 | 1.8 | Recorded check | test project refs |
 | 1.9 | Tested | 7 test(s), e.g. `R3_3_LoopbackOnly` |
 | 1.10 | Recorded check | no CI files in repo |
@@ -140,13 +139,13 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 2.3.a | Recorded check | PROGRESS prerequisites entry |
 | 2.3.b | Recorded check | this file |
 | 2.3.c | Recorded check | `scripts/trace-check.ps1` runs in the fast tier |
-| 2.3.d | Recorded check | Â§4 |
+| 2.3.d | Recorded check | §4 |
 | 2.3.e | Recorded check | DECISIONS.md |
 | 2.3.f | Recorded check | commit of PLAN.md |
-| 2.4 | Recorded check | Â§4.1 |
-| 2.4.a | Recorded check | Â§4.1 Spike A table + `artifacts/spikeA-*.json` |
-| 2.4.b | Recorded check | Â§4.1 Spike B table |
-| 2.4.c | Recorded check | Â§4 pinned + Â§4.1 |
+| 2.4 | Recorded check | §4.1 |
+| 2.4.a | Recorded check | §4.1 Spike A table + `artifacts/spikeA-*.json` |
+| 2.4.b | Recorded check | §4.1 Spike B table |
+| 2.4.c | Recorded check | §4 pinned + §4.1 |
 | 2.5 | Recorded check | PROGRESS |
 | 2.5.a | Recorded check | PROGRESS records fast green per milestone |
 | 2.5.b | Recorded check | PROGRESS |
@@ -164,9 +163,9 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 2.11 | Recorded check | README coverage table |
 | 2.12 | Recorded check | process |
 | 2.12.a | Recorded check | `.claude/agents/implementer.md` |
-| 2.12.b | Recorded check | owner column in Â§8 |
+| 2.12.b | Recorded check | owner column in §8 |
 | 2.12.c | Recorded check | PROGRESS delegation log |
-| 2.12.d | Recorded check | this file Â§6, Â§8 |
+| 2.12.d | Recorded check | this file §6, §8 |
 | 2.12.e | Recorded check | PROGRESS review notes |
 | 3.1 | Recorded check | spike hardware notes |
 | 3.2 | Recorded check | no installer/signing |
@@ -174,38 +173,38 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 3.4 | Tested | 6 test(s), e.g. `R3_4_AmericanSpellingsAndTyposAreInvalid` |
 | 3.5 | Recorded check | PROGRESS prerequisites entry |
 | 3.6 | Recorded check | CLAUDE.md, .claude/settings.json |
-| 4.1 | Tested | 2 test(s), e.g. `R4_1_a_NoAppIsSpecialCasedOutsideTheExclusionList` |
+| 4.1 | Tested | 3 test(s), e.g. `R4_1_a_NoAppIsSpecialCasedOutsideTheExclusionList` |
 | 4.1.a | Tested | 1 test(s), e.g. `R4_1_a_NoAppIsSpecialCasedOutsideTheExclusionList` |
-| 4.1.b | Tested | 1 test(s), e.g. `R4_1_b_CaretUnknownMeansNothingIsWritten` |
+| 4.1.b | Tested | 2 test(s), e.g. `R4_1_b_APasswordFieldIsNotPolledForever` |
 | 4.2 | Tested | 4 test(s), e.g. `R4_2_ForeignInsertedTextBreaksTheSessionAndIsNotCorrected` |
 | 4.3 | Tested | 15 test(s), e.g. `R4_3_a_FixesTheFinishedWordWithoutWaiting` |
 | 4.3.a | Tested | 2 test(s), e.g. `R4_3_a_FixesTheFinishedWordWithoutWaiting` |
 | 4.3.b | Tested | 1 test(s), e.g. `R4_3_b_InstantLayerNeverCallsTheModel` |
 | 4.3.c | Tested | 8 test(s), e.g. `R4_3_c_AdjacentSwapIsAnObviousFix` |
 | 4.3.d | Tested | 4 test(s), e.g. `R4_3_d_CloseCandidatesAreLeftForTheAi` |
-| 4.4 | Tested | 26 test(s), e.g. `R4_4_a_DetectsSentenceEnd` |
-| 4.4.a | Tested | 4 test(s), e.g. `R4_4_a_DetectsSentenceEnd` |
+| 4.4 | Tested | 30 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
+| 4.4.a | Tested | 6 test(s), e.g. `R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain` |
 | 4.4.b | Tested | 2 test(s), e.g. `R4_4_b_SendsCurrentSentencePlusTwoBefore` |
 | 4.4.c | Tested | 8 test(s), e.g. `R4_4_c_ClassifiesApostropheCapitalisationPunctuation` |
-| 4.4.d | Tested | 4 test(s), e.g. `R4_4_d_NoFullStopAddedToAnUnfinishedSentence` |
+| 4.4.d | Tested | 6 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
 | 4.4.e | Tested | 8 test(s), e.g. `R4_4_e_HeavyGarbleStillDiffsWordByWord` |
-| 4.5 | Tested | 14 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
-| 4.5.a | Tested | 7 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
-| 4.5.b | Tested | 1 test(s), e.g. `R4_5_b_AcceptsFunctionWordInsertionButNotContentWords` |
+| 4.5 | Tested | 19 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
+| 4.5.a | Tested | 10 test(s), e.g. `R4_5_a_AcceptsCharacterSimilarWord` |
+| 4.5.b | Tested | 2 test(s), e.g. `R4_5_b_AcceptsFunctionWordInsertionButNotContentWords` |
 | 4.5.c | Tested | 1 test(s), e.g. `R4_5_c_RejectsOneEditButKeepsTheRest` |
 | 4.5.d | Tested | 4 test(s), e.g. `R4_5_d_NeverRespacesNumbers` |
-| 4.5.e | Tested | 1 test(s), e.g. `R4_5_e_SettingsAreConfigurable` |
-| 4.6 | Tested | 5 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
+| 4.5.e | Tested | 2 test(s), e.g. `R4_5_e_CautiousTurnsOffTwoSlips_D30` |
+| 4.6 | Tested | 7 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
 | 4.6.a | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
 | 4.6.b | Tested | 1 test(s), e.g. `R4_6_b_LastTwoWordsWaitForA1500msPause_R4_6_a` |
-| 4.6.c | Tested | 1 test(s), e.g. `R4_6_c_NoAiWriteWhileKeysKeepComing_ThenRebasesAfterAGap` |
+| 4.6.c | Tested | 3 test(s), e.g. `R4_6_c_AFieldThatReallyChangedStillDropsTheSession` |
 | 4.6.d | Tested | 2 test(s), e.g. `R4_6_d_DesyncStopsCorrectingThatField` |
 | 4.6.e | Tested | 1 test(s), e.g. `R4_6_e_WriteWaitsButTypingDoesNot` |
 | 4.7 | Tested | 12 test(s), e.g. `R9_3_a_CorrectionsTodayResetsAtMidnightWhileRunning_R6_5` |
-| 4.8 | Tested (incl. E2E) | 10 test(s), e.g. `R4_8_a_CtrlZRevertsTheCorrection_R4_8_c` |
-| 4.8.a | Tested (incl. E2E) | 5 test(s), e.g. `R4_8_a_CtrlZRevertsTheCorrection_R4_8_c` |
-| 4.8.b | Tested | 5 test(s), e.g. `R4_8_a_HeldModifiersAreReleasedForTheBatchAndRestoredAfter_R4_8_b` |
-| 4.8.c | Tested (incl. E2E) | 2 test(s), e.g. `R4_8_a_CtrlZRevertsTheCorrection_R4_8_c` |
+| 4.8 | Tested (incl. E2E) | 12 test(s), e.g. `R4_8_a_AKeyHeldForeverDoesNotBlockTheUndo` |
+| 4.8.a | Tested (incl. E2E) | 5 test(s), e.g. `R4_8_a_AKeyHeldForeverDoesNotBlockTheUndo` |
+| 4.8.b | Tested (incl. E2E) | 7 test(s), e.g. `R4_8_a_HeldModifiersAreReleasedForTheBatchAndRestoredAfter_R4_8_b` |
+| 4.8.c | Tested (incl. E2E) | 2 test(s), e.g. `R4_8_b_TheUndoShortcutRevertsTheCorrection_R4_8_c` |
 | 5.1 | Tested | 3 test(s), e.g. `R5_1_b_BindsToLoopbackWithApiKeyAndNoSlots` |
 | 5.1.a | Recorded check | setup extracts cudart beside llama-server; `R5_1_a_*` |
 | 5.1.b | Tested | 1 test(s), e.g. `R5_1_b_BindsToLoopbackWithApiKeyAndNoSlots` |
@@ -213,10 +212,10 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 5.1.d | Tested | 1 test(s), e.g. `R5_1_d_LlamaSharpIsNotUsed` |
 | 5.2 | Tested | 3 test(s), e.g. `R5_2_ModelIsASettingDefaultingToTheSpikeAWinner` |
 | 5.3 | Tested | 1 test(s), e.g. `R5_3_c_CpuFallbackUsesTheSmallerModel` |
-| 5.3.a | Recorded check | Â§4.1 |
-| 5.3.b | Recorded check | Â§4.1 |
+| 5.3.a | Recorded check | §4.1 |
+| 5.3.b | Recorded check | §4.1 |
 | 5.3.c | Tested | 1 test(s), e.g. `R5_3_c_CpuFallbackUsesTheSmallerModel` |
-| 5.3.d | Recorded check | Â§4.1 default chosen |
+| 5.3.d | Recorded check | §4.1 default chosen |
 | 5.4 | Tested | 1 test(s), e.g. `R5_4_ThinkingDisabled` |
 | 5.5 | Tested | 1 test(s), e.g. `R5_5_MedianUnder2sOnGpu` |
 | 5.6 | Tested (incl. E2E) | 7 test(s), e.g. `R5_6_a_AFailedStartIsNotRetriedOnEveryKeystroke` |
@@ -251,7 +250,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 7.1 | Tested (incl. E2E) | 7 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 7.2 | Tested | 3 test(s), e.g. `R7_2_AnswersUnder10ms` |
 | 7.3 | Tested | 5 test(s), e.g. `R7_3_HistoryBoostsTheUsersOwnWords` |
-| 7.4 | Tested (incl. E2E) | 4 test(s), e.g. `R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey_R4_8_a` |
+| 7.4 | Tested (incl. E2E) | 5 test(s), e.g. `R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey` |
 | 7.5 | Tested | 1 test(s), e.g. `R7_5_NoSuggestionAfterNonMatchingText` |
 | 7.6 | Tested (incl. E2E) | 2 test(s), e.g. `R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6` |
 | 7.7 | Tested | 1 test(s), e.g. `R7_7_DisabledPredictorSuggestsNothing` |
@@ -289,12 +288,12 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 10.4 | Recorded check | App project |
 | 10.5 | Tested | 6 test(s), e.g. `R10_5_CancellationPropagates` |
 | 10.6 | Tested | 2 test(s), e.g. `R10_6_b_ReadsAWindowAroundTheCaretNotTheWholeDocument` |
-| 10.6.a | Recorded check | Spike B (Â§4.1): TextPattern2 in Notepad/Word, selection fallback in Chromium |
+| 10.6.a | Recorded check | Spike B (§4.1): TextPattern2 in Notepad/Word, selection fallback in Chromium |
 | 10.6.b | Tested | 1 test(s), e.g. `R10_6_b_ReadsAWindowAroundTheCaretNotTheWholeDocument` |
 | 10.6.c | Tested | 1 test(s), e.g. `R10_7_c_NeverUsesValuePatternSetValue_R10_6_c` |
 | 10.6.d | Tested (incl. E2E) | 1 test(s), e.g. `R11_3_b_InstantAndAiFixesInBrowserEditors` |
-| 10.7 | Tested | 4 test(s), e.g. `R10_7_a_ArrowKeysAreSentAsTheNavigationCluster` |
-| 10.7.a | Tested | 2 test(s), e.g. `R10_7_a_ArrowKeysAreSentAsTheNavigationCluster` |
+| 10.7 | Tested | 6 test(s), e.g. `R10_7_a_ALongerTailIsStillSteppedOverNotRetyped_D28` |
+| 10.7.a | Tested | 4 test(s), e.g. `R10_7_a_ALongerTailIsStillSteppedOverNotRetyped_D28` |
 | 10.7.b | Tested | 1 test(s), e.g. `R10_7_b_EveryInjectedEventCarriesOurTag` |
 | 10.7.c | Tested | 1 test(s), e.g. `R10_7_c_NeverUsesValuePatternSetValue_R10_6_c` |
 | 10.8 | Tested | 3 test(s), e.g. `R10_8_GateReportsElevated` |
@@ -324,16 +323,16 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 13.1 | Recorded check | package zip contents |
 | 13.2 | Tested | 1 test(s), e.g. `R13_2_ReadmeIsBritishAndSpeltCorrectly` |
 | 13.3 | Recorded check | no v1.0.0 tag (D1) |
-| 13.4 | Recorded check | timed setup + verify run |
+| 13.4 | Tested | 1 test(s), e.g. `R13_4_TheInstallerCanAskTheRunningCopyToExit` |
 | 14.1 | Out of scope (14) | Out of scope |
 | 14.2 | Out of scope (14) | Out of scope |
 | 14.3 | Out of scope (14) | Out of scope |
 | 14.4 | Tested | 4 test(s), e.g. `R4_2_ForeignInsertedTextBreaksTheSessionAndIsNotCorrected` |
-| 14.5 | Tested (incl. E2E) | 9 test(s), e.g. `R4_8_a_CtrlZRevertsTheCorrection_R4_8_c` |
+| 14.5 | Tested (incl. E2E) | 12 test(s), e.g. `R4_8_a_AKeyHeldForeverDoesNotBlockTheUndo` |
 | 14.6 | Out of scope (14) | Out of scope |
 | 14.7 | Out of scope (14) | Out of scope |
 | 14.8 | Out of scope (14) | Out of scope |
-| 14.9 | Tested | 4 test(s), e.g. `R4_4_d_NoFullStopAddedToAnUnfinishedSentence` |
+| 14.9 | Tested | 6 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
 
 ## For developers
 

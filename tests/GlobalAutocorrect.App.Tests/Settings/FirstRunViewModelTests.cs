@@ -94,8 +94,9 @@ public class FirstRunViewModelTests
         var rows = vm.ShortcutRows;
         Assert.Equal(["Ctrl", "Alt", "P"], rows[0].Keys);
         Assert.Equal(["Ctrl", "Alt", "Z"], rows[1].Keys);
-        Assert.Equal(["Ctrl", "Z"], rows[2].Keys);
-        Assert.Equal(["Tab"], rows[3].Keys);
+        Assert.Equal(["Tab"], rows[2].Keys);
+        Assert.DoesNotContain(rows, r => r.Keys.SequenceEqual(["Ctrl", "Z"]));   // D36: Ctrl+Z is the app's own undo
+        Assert.Equal(3, rows.Count);
     }
 
     [Fact]

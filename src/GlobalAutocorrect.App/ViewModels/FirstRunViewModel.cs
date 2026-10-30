@@ -73,7 +73,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
     public bool IsLastStep => Step == LastStep;
     public bool HasMessage => Message.Length > 0;
 
-    /// <summary>Pause, undo, Ctrl+Z and Tab (9.4), as keycap chips.</summary>
+    /// <summary>Pause, undo and Tab (9.4), as keycap chips. No Ctrl+Z: that stays the app's own undo (D36).</summary>
     public IReadOnlyList<ShortcutRow> ShortcutRows
     {
         get
@@ -83,7 +83,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
             [
                 new(Split(s.PauseShortcut), "Pause or resume Global Autocorrect"),
                 new(Split(s.UndoShortcut), "Undo the latest correction, from anywhere"),
-                new(["Ctrl", "Z"], "Undo a correction straight after it happens"),
+
                 new(["Tab"], "Accept the suggested next word"),
             ];
         }

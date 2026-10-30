@@ -7,7 +7,7 @@ using static GlobalAutocorrect.Windows.Native.NativeMethods;
 
 namespace GlobalAutocorrect.Windows.Input;
 
-public enum RawKind { Key, MouseDown, AcceptSuggestion, UndoLocal }
+public enum RawKind { Key, MouseDown, AcceptSuggestion }
 
 /// <summary>One event from the hook: timestamp and sequence only, no translation yet (10.3.a).</summary>
 public readonly record struct RawInput(RawKind Kind, uint Vk, uint Scan, uint Flags, bool IsDown, bool Injected, long Seq, long AtMs);
@@ -15,7 +15,7 @@ public readonly record struct RawInput(RawKind Kind, uint Vk, uint Scan, uint Fl
 /// <summary>
 /// Low-level keyboard and mouse hooks on a dedicated thread (10.3.a). The callback only timestamps, numbers and enqueues,
 /// then returns, because Windows silently removes a slow low-level hook (12.6). Events we injected (tagged) are ignored
-/// (10.7.b). Tab and Ctrl+Z are swallowed only when their arm says so (7.4, 4.8.a).
+/// (10.7.b). Tab is swallowed only when its arm says so (7.4). Ctrl+Z always goes to the app (D36).
 /// </summary>
 public sealed class KeyboardHook : IKeyMonitor, IDisposable
 {
@@ -31,10 +31,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
     private long _seq;
     private long _lastKeyAtMs = -100_000;
     private int _lastCallbackTick = Environment.TickCount;
-    private volatile bool _swallowTabUp, _swallowZUp;
+    private volatile bool _swallowTabUp;
 
     public InputArm SuggestionArm { get; } = new();
-    public InputArm UndoArm { get; } = new();
     public ChannelReader<RawInput> Events => _channel.Reader;
     public int Reinstalls { get; private set; }
 
@@ -112,13 +111,12 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         bool down = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;
         long at = NowMs(Stopwatch.GetTimestamp());
 
-        // Modifier state as this hook has seen it. Windows' own key state can lag behind back-to-back events (Ctrl then Z
-        // in one burst), which made Ctrl+Z look like a plain Z (found by E2E).
+        // Modifier state as this hook has seen it. Windows' own key state can lag behind back-to-back events (a modifier
+        // then a key in one burst), so the key looked unmodified (found by E2E).
         TrackModifier(k.vkCode, down);
         if (!down)
         {
             if (k.vkCode == VK_TAB && _swallowTabUp) { _swallowTabUp = false; return 1; }
-            if (k.vkCode == 'Z' && _swallowZUp) { _swallowZUp = false; return 1; }
             // Key-ups don't change text and don't count in the sequence; the translator needs them for modifier state.
             _channel.Writer.TryWrite(new RawInput(RawKind.Key, k.vkCode, k.scanCode, k.flags, false, injected, Interlocked.Read(ref _seq), at));
             return CallNextHookEx(_kb, nCode, wParam, lParam);
@@ -135,23 +133,16 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
                 Enqueue(RawKind.AcceptSuggestion, k, true, false, at);
                 return 1;
             }
-            // 4.8.a: Ctrl+Z straight after a correction, caret unchanged, reverts it.
-            if (k.vkCode == 'Z' && ctrl && !alt && !shift && !win && UndoArm.TryConsume(prev))
-            {
-                _swallowZUp = true;
-                Enqueue(RawKind.UndoLocal, k, true, false, at);
-                return 1;
-            }
+
         }
-        // A modifier on its own changes no text and moves no caret. It must not count as "something happened", or
-        // the Ctrl in Ctrl+Z would always cancel the undo arm before the Z arrives (found by E2E, 4.8.a).
+        // A modifier on its own changes no text and moves no caret, so it doesn't count as "something happened": Shift
+        // before a capital must not cancel the Tab arm.
         if (IsModifier(k.vkCode))
         {
             _channel.Writer.TryWrite(new RawInput(RawKind.Key, k.vkCode, k.scanCode, k.flags, true, injected, Interlocked.Read(ref _seq), at));
             return CallNextHookEx(_kb, nCode, wParam, lParam);
         }
         SuggestionArm.Disarm();
-        UndoArm.Disarm();
         Enqueue(RawKind.Key, k, true, injected, at);
         return CallNextHookEx(_kb, nCode, wParam, lParam);
     }
@@ -186,7 +177,6 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
             {
                 // A click can move the caret: it is a session break and counts in the sequence (D6).
                 SuggestionArm.Disarm();
-                UndoArm.Disarm();
                 long seq = Interlocked.Increment(ref _seq);
                 long at = NowMs(Stopwatch.GetTimestamp());
                 Interlocked.Exchange(ref _lastKeyAtMs, at);
@@ -198,7 +188,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private void Enqueue(RawKind kind, KBDLLHOOKSTRUCT k, bool down, bool injected, long at)
     {
-        // Swallowed Tab/Ctrl+Z never reach the app, so they don't advance the sequence the write gate compares.
+        // A swallowed Tab never reaches the app, so they don't advance the sequence the write gate compares.
         long seq = kind == RawKind.Key ? Interlocked.Increment(ref _seq) : Interlocked.Read(ref _seq);
         Interlocked.Exchange(ref _lastKeyAtMs, at);
         _channel.Writer.TryWrite(new RawInput(kind, k.vkCode, k.scanCode, k.flags, down, injected, seq, at));

@@ -22,7 +22,7 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     public long KeySeqAtDecision { get; } = keySeqAtDecision;
 }
 
-/// <summary>Raised after a verified write: enough to underline the word (4.7) and arm Ctrl+Z (4.8.a). No text.</summary>
+/// <summary>Raised after a verified write: enough to underline the word (4.7). No text.</summary>
 public sealed record CorrectionNotice(string TargetId, Layer Layer, int CaretDistance, int Length, long KeySeqAtWrite);
 
 /// <summary>

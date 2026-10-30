@@ -45,7 +45,7 @@ public sealed class CorrectionEngine
     public int QueuedWrites => _gate.Count;
     public CorrectionRecord? LastCorrection => _undo.Last;
 
-    /// <summary>After each verified write: underline it (4.7) and arm Ctrl+Z at this key sequence (4.8.a).</summary>
+    /// <summary>After each verified write: underline it (4.7).</summary>
     public event Action<CorrectionNotice>? Corrected;
     public event Action<string>? Desynced;
 
@@ -159,8 +159,9 @@ public sealed class CorrectionEngine
     }
 
     /// <summary>
-    /// Undo the most recent correction (4.8). Local = Ctrl+Z straight after it, which the hook only allows when nothing
-    /// was typed and the caret didn't move (4.8.a). Global = the shortcut, from anywhere in the same field (4.8.b, D9).
+    /// Undo the most recent correction (4.8). Global = the shortcut, from anywhere in the same field (4.8.b, D9); the app
+    /// only uses this. Local = straight after it, nothing typed and the caret unmoved (4.8.a): the app no longer takes
+    /// Ctrl+Z (D36), so local is only reached from tests.
     /// </summary>
     public UndoResult Undo(bool global)
     {

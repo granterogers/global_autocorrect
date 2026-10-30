@@ -3,7 +3,7 @@ using GlobalAutocorrect.Core.Undo;
 namespace GlobalAutocorrect.Windows.Input;
 
 /// <summary>
-/// Undo is asked for while the user is still holding Ctrl (Ctrl+Z, 4.8.a) or Ctrl+Alt (the shortcut, 4.8.b). Its keys
+/// Undo is asked for while the user is still holding the shortcut's Ctrl+Alt (4.8.b). Its keys
 /// must not arrive as Ctrl+T, Ctrl+Right and so on, so the request waits until the hook has seen the modifiers let go,
 /// for at most <paramref name="maxWaitMs"/>; after that the writer's own release-and-restore takes over (found by E2E:
 /// an undo in a WPF box deleted the word and lost the retyped one).

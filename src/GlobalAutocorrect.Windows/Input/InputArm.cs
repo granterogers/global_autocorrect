@@ -1,7 +1,7 @@
 namespace GlobalAutocorrect.Windows.Input;
 
 /// <summary>
-/// A one-shot permission the hook checks synchronously: "if the very next key is Tab (or Ctrl+Z), take it" (7.4, 4.8.a).
+/// A one-shot permission the hook checks synchronously: "if the very next key is Tab, take it" (7.4).
 /// Armed at a key sequence number; any other key, click or caret move in between makes it stale.
 /// </summary>
 public sealed class InputArm
