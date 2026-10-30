@@ -181,6 +181,22 @@ public sealed class EditRulesTests
         Assert.Equal("the inorganic samples", Fix("the inorganic samples", "the in organic samples"));
     }
 
+    [Theory]
+    [InlineData("so quickly aboutkitchen quote", "so quickly about the kitchen quote")]   // a small word dropped inside the run
+    [InlineData("I'm not surelast paragraph", "I'm not sure the last paragraph")]
+    [InlineData("I thinkI will go", "I think I will go")]                                 // "thinkI" is not code
+    public void R4_5_a_ARunTogetherNonWordIsSplitEvenWithADroppedSmallWord_D48(string typed, string model)
+    {
+        // Found on the realistic stress set: the model fixed these, and the rules refused them.
+        var s = new FakeSpeller("so", "quickly", "about", "the", "kitchen", "quote", "I", "I'm", "not", "sure", "last", "paragraph", "think", "will", "go");
+        Assert.Equal(model, ApplyWith(s, typed, model));
+    }
+
+    [Theory]
+    [InlineData("we went to the stationfor seven", "we went to the station at seven")]   // a word swap still can't hide in a split
+    public void R4_5_a_SplitsStillCannotHideAWordSwap_D48(string typed, string model) =>
+        Assert.Equal(typed, ApplyWith(new FakeSpeller("we", "went", "to", "the", "station", "at", "for", "seven", "send", "it", "my", "var", "now"), typed, model));
+
     [Fact]
     public void R4_5_e_CautiousTurnsOffNonWordLeniency_D36()
     {

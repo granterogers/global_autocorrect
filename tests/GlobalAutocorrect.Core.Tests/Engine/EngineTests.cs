@@ -444,6 +444,33 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_4_a_AMisspellingTheFirstPassMissedIsCaughtOnTheLookBack_D49()
+    {
+        // User: obvious misspellings in a long paragraph should always be caught in the end. The model misses on both
+        // normal passes (sentence end, pause); only the look-back after the pause sends the sentence a third time.
+        int calls = 0;
+        var h = new Harness(model: s => calls++ < 2 ? s : s.Replace("bcuasse", "because"), latencyMs: 300);
+        h.Type("We left early bcuasse of the rain. Then we walked home");
+        h.Wait(1200);
+        Assert.Contains("bcuasse", h.Text);                       // both normal passes missed it
+        h.Wait(3000);                                             // still paused: the look-back
+        Assert.Contains("We left early because of the rain.", h.Text);
+        Assert.Equal(3, h.Llm!.Requests.Count);
+    }
+
+    [Fact]
+    public void R4_4_a_TheLookBackResendsOnlySentencesWithAnObviousMisspellingAndOnlyOnce_D49()
+    {
+        var h = new Harness(model: s => s, latencyMs: 200);       // a model that never fixes anything
+        h.Type("All good here. We left early bcuasse of the rain. Then home");
+        h.Wait(10_000);
+        int sent = h.Llm!.Requests.Count;
+        Assert.Equal(1, h.Llm.Requests.Count(r => r == "All good here. We left early bcuasse of the rain."));   // the look-back, once
+        Assert.DoesNotContain(h.Llm.Requests, r => r == "All good here.");                                       // clean: never re-sent
+        h.Wait(10_000);
+        Assert.Equal(sent, h.Llm.Requests.Count);                 // no loop
+    }
+    [Fact]
     public void R4_6_d_PressingEnterWhileTheFixIsCheckedIsNotADesync_D42()
     {
         // User report (Notepad): a fast typist hit Enter while the app was checking its fix; the check refused any line

@@ -62,6 +62,9 @@ public sealed class CorrectionEngine
             _ai = new AiTrigger(_o, deps.Clock, deps.Llm, new EditRules(_o.Rules, deps.Speller, deps.IsPersonalWord) { PairCount = deps.PairCount, WordCount = deps.WordCount }, deps.Counters)
             {
                 Sweep = deps.PairCount is null ? null : new NonWordSweep(deps.Speller, deps.Suggester, deps.IsPersonalWord, deps.PairCount),
+                // D49: not in the dictionary, the personal dictionary or the UK word list.
+                IsObviousNonWord = _o.RevisitAfterMs <= 0 ? null : w => !deps.Speller.IsValid(w) && !deps.IsPersonalWord(w)
+                    && !(deps.Suggester.Lookup(w.ToLowerInvariant(), 1) is [{ Distance: 0 }]),
             };
         _gate = new WriteGate(_o, deps.Clock, deps.Keys, Session, deps.Counters);
         if (_ai is not null) _ai.Extended += _gate.Shift;   // D43
@@ -181,6 +184,7 @@ public sealed class CorrectionEngine
             var ready = _ai.Poll(Session, out bool rerun);
             foreach (var w in ready) _gate.Enqueue(w);
             if (rerun || _ai.PauseDue(Session)) _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a pause
+            else if (_gate.Count == 0) _ai.TryRevisit(Session, Target, _gate.IsDesynced);       // D49: look back once paused
         }
         _gate.TryWrite(Target);
     }

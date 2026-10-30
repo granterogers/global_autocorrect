@@ -32,6 +32,7 @@ public sealed record AppSettings
     {
         PauseMs = Math.Clamp(PauseMs, 300, 2000),
         FixWholeParagraph = Boldness != Boldness.Cautious && tuned.FixWholeParagraph,   // D43
+        RevisitAfterMs = Boldness == Boldness.Cautious ? 0 : tuned.RevisitAfterMs,         // D49
         Rules = tuned.Rules with
         {
             MaxNormalisedDistance = Boldness switch

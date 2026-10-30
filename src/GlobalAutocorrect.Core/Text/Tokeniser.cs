@@ -78,7 +78,12 @@ public static partial class Tokeniser
     private static bool HasInnerCapital(string w)
     {
         for (int i = 1; i < w.Length; i++)
-            if (char.IsUpper(w[i]) && char.IsLower(w[i - 1])) return true;
+        {
+            if (!char.IsUpper(w[i]) || !char.IsLower(w[i - 1])) continue;
+            // D48: a capital I closing a run-together word ("thinkI", "sI") is a missed space before "I", not code.
+            if (w[i] == 'I' && (i == w.Length - 1 || !char.IsLetter(w[i + 1]))) continue;
+            return true;
+        }
         return false;
     }
 

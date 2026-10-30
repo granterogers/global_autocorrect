@@ -192,6 +192,13 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         if (a.Length == 1)
             return e.NewWords.Count == 1 && _functionWords.Contains(e.NewWords[0]) && Similarity.Key(e.NewWords[0]).Contains(a[0]);
         var nw = e.NewWords;
+        // D48: a run-together non-word split with a small word dropped inside it ("aboutkitchen" → "about the kitchen",
+        // "surelast" → "sure the last"): the other words' letters must match what was typed almost exactly.
+        if (nw.Count >= 2 && nw.Any(_functionWords.Contains))
+        {
+            string content = string.Concat(nw.Where(w => !_functionWords.Contains(w)).Select(Similarity.Key));
+            if (content.Length >= 3 && Similarity.DamerauLevenshtein(a, content) <= 1) return true;
+        }
         for (int head = 0; head < nw.Count; head++)
         {
             if (head > 0 && !_functionWords.Contains(nw[head - 1])) break;

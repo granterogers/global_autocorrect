@@ -27,6 +27,10 @@ public sealed record EngineOptions
     /// </summary>
     public int InstantQuietMs { get; init; } = 60;
 
+    /// <summary>D49: after this long without a key, recently typed sentences that still hold an obvious misspelling are
+    /// sent to the AI again (0 turns it off).</summary>
+    public int RevisitAfterMs { get; init; } = 1500;
+
     /// <summary>D43: correct the whole current paragraph, not only what was typed since the last click or paste.</summary>
     public bool FixWholeParagraph { get; init; } = true;
 

@@ -40,6 +40,65 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     /// <summary>D43: characters taken in at the front of the typed buffer, so queued writes can move with them.</summary>
     public event Action<int>? Extended;
 
+    /// <summary>D49: true for a word that is obviously not a word (no dictionary, personal dictionary or UK word list).</summary>
+    public Func<string, bool>? IsObviousNonWord { get; init; }
+
+    private readonly HashSet<string> _revisited = new(StringComparer.Ordinal);
+    private long _revisitGeneration = -1;
+    private const int MaxRevisitsPerSession = 20;
+
+    /// <summary>
+    /// D49 (the user's idea): once the user has paused, look back over everything typed in this stretch (the typed
+    /// buffer, up to 4,000 characters, across paragraphs) for a finished sentence that still holds an obvious
+    /// misspelling, and send that sentence (with the one before it, for context) to the AI again. Each sentence once.
+    /// The first pass can miss: the model's fix was refused, or arrived while the text was moving.
+    /// </summary>
+    public bool TryRevisit(TypingSession session, ITextTarget target, Func<string, bool> isDesynced)
+    {
+        if (IsObviousNonWord is null || _pending is not null || clock.NowMs - session.LastKeyAtMs < options.RevisitAfterMs) return false;
+        if (_revisitGeneration != session.Generation) { _revisited.Clear(); _revisitGeneration = session.Generation; }
+        if (_revisited.Count >= MaxRevisitsPerSession) return false;
+        string typed = session.Typed;
+        var spans = FinishedSentences(typed);
+        for (int k = spans.Count - 1; k >= 0; k--)
+        {
+            var (s, e) = spans[k];
+            string key = s + ":" + typed[s..e];
+            if (_revisited.Contains(key) || !HasObviousNonWord(typed[s..e])) continue;
+            _revisited.Add(key);
+            var win = target.ReadWindow();
+            if (!win.CaretKnown || isDesynced(win.TargetId) || !session.MatchesField(win.Before)) return false;
+            int ctxStart = k > 0 && !typed.AsSpan(spans[k - 1].Start, s - spans[k - 1].Start).Contains('\n') ? spans[k - 1].Start : s;
+            string ctx = typed[ctxStart..e];
+            counters.AiRequest();
+            _pendingShift = 0;
+            _pending = new Pending(llm.CleanAsync(ctx, CancellationToken.None), clock.NowMs, ctx, ctxStart, session.Generation, session.LastKeySeq);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HasObviousNonWord(string sentence) =>
+        Tokeniser.Tokenise(sentence).Any(t => t.IsWord && !t.IsProtected && t.Length >= 2 && char.IsLower(t.Text[0])
+                                              && t.Text.All(char.IsLetter) && IsObviousNonWord!(t.Text));
+
+    /// <summary>[start, end) of each sentence that has been finished (a full stop, ! or ? then a space, or a line break).</summary>
+    private static List<(int Start, int End)> FinishedSentences(string s)
+    {
+        var list = new List<(int, int)>();
+        int start = 0;
+        for (int i = 0; i < s.Length; i++)
+        {
+            bool stop = s[i] == '\n' || (s[i] is '.' or '!' or '?' && i + 1 < s.Length && char.IsWhiteSpace(s[i + 1]));
+            if (!stop) continue;
+            int end = s[i] == '\n' ? i : i + 1;
+            if (end > start && s[start..end].Trim().Length > 0) list.Add((start, end));
+            start = i + 1;
+            while (start < s.Length && s[start] == ' ') start++;
+        }
+        return list;
+    }
+
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
         session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs

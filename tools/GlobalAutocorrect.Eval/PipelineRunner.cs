@@ -106,7 +106,7 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
             engine.Tick();
         }
         // The user stops: let pauses, AI passes and queued writes play out.
-        for (int t = 0; t < 4000; t += 25)
+        for (int t = 0; t < 8000; t += 25)   // long enough for the look-back after a pause (D49)
         {
             await HoldWhileModelWorks(engine, rec, ct);
             clock.Advance(25);
