@@ -1,0 +1,46 @@
+# D66: the E2E (screen) tests five times every night, at the same time, on the latest main. Intermittent failures (a
+# browser that lags, a key lost on the runner) only show up across many runs; the pass rate per night makes a slow
+# decline visible within a day. GitHub emails the repository owner when a scheduled run fails.
+# Free: the repository is public. Each copy takes about 8 minutes.
+name: Nightly E2E
+
+on:
+  schedule:
+    - cron: '30 2 * * *'   # 02:30 UTC, when nobody is pushing
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read            # the summary job reads this run's job results
+
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: ['1', '2', '3', '4', '5']
+    uses: ./.github/workflows/e2e.yml
+    with:
+      slot: ${{ matrix.slot }}
+
+  pass-rate:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pass rate and failed tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.run_id }}
+        run: |
+          jobs=$(gh api "repos/$REPO/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("e2e"))]')
+          total=$(echo "$jobs" | jq 'length')
+          passed=$(echo "$jobs" | jq '[.[] | select(.conclusion == "success")] | length')
+          {
+            echo "## Nightly screen tests: $passed of $total runs passed"
+            echo
+            echo "$jobs" | jq -r '.[] | "- \(.name): \(.conclusion)"'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "passed $passed of $total"
+          if [ "$passed" -ne "$total" ]; then exit 1; fi
