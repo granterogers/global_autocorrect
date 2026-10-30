@@ -14,7 +14,21 @@ public sealed record ServerOptions(
     int GpuLayers = 99,
     int ContextSize = 4096,
     int StartTimeoutSeconds = 120,
-    string? CpuModelPath = null);   // 5.3.c: the smaller model for the CPU fallback, if downloaded
+    string? CpuModelPath = null,    // 5.3.c: the smaller model for the CPU fallback, if downloaded
+    IReadOnlyList<string>? ExtraArgs = null);   // D56: more llama-server flags (speculative decoding)
+
+/// <summary>D56: llama-server flags the app always adds.</summary>
+public static class ServerFlags
+{
+    /// <summary>
+    /// Lookup (n-gram) speculative decoding: a clean-up is mostly a copy of the input, so the server drafts the next
+    /// tokens from text already in the prompt and the model checks them in one step. Measured on the tuning set: p50
+    /// 339 → 193 ms, p95 519 → 352 ms, fixed 94.4% and false edits 0.20% unchanged. n=4 matching tokens before drafting,
+    /// up to 24 drafted (n=3 was faster but lost two fixes; the defaults, n=12 m=48, saved only a fifth).
+    /// </summary>
+    public static IReadOnlyList<string> LookupDecoding { get; } =
+        ["--spec-type", "ngram-simple", "--spec-ngram-simple-size-n", "4", "--spec-ngram-simple-size-m", "24"];
+}
 
 public enum ServerState { Stopped, Starting, Ready, Failed }
 
@@ -109,6 +123,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
             RedirectStandardError = true,
             RedirectStandardOutput = true,
         };
+        foreach (var a in _o.ExtraArgs ?? []) psi.ArgumentList.Add(a);
         IServerProcess proc;
         try { proc = _start(psi); }
         catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException) { return false; }

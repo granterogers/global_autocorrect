@@ -2,7 +2,16 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
-## 2026-10-30 (night) — Split words joined, prediction scored, settings switches, wider CI screen tests
+## 2026-10-30 (late) — Spacing, speed, per-app prediction, update check; Intercom report
+
+- **User report (Intercom):** "liaise with  theServicees team to seee what are nthe ext stes ." D54: an article run into a capitalised word is a missed space, not code. The rest was fixed when replayed through the real model; the reply was typed while a deploy restarted the app, so `deploy.ps1` now waits for a 15 s break in typing, and `install.ps1` restarts the installed copy if anything fails after closing it. The sentence is now `u004` in the stress set.
+- **D55 spacing (4.3):** space before punctuation, double spaces, missing space after a full stop, "i", sentence starts: instant, no AI. Realistic stress exact 49% → 55%; tuning identical item by item.
+- **D56 speed (12.1):** lookup decoding in llama-server. Holdout p50 330 → 177 ms, p95 496 → 309 ms, accuracy identical (93.3%, 0.08%, 87% exact).
+- **D57 per-app prediction (7.3):** measured neutral (per app = per process, and Intercom, Outlook web and Teams web are all Edge); kept at a mild weight.
+- **D58 update check (13.1, 13.4):** daily check of GitHub releases, install only on the user's click, SHA-256 checked before unpacking; release.yml publishes SHA256SUMS.txt (v0.9.0-rc1 has none, so it is never offered).
+- **D53 confirmed on screen in CI:** suggestion letters 12 px next to the field's 12 px in CKEditor (was 10). CI screen tests 27/27; the CKEditor suggestion check failed 3 times then passed, now with diagnostics for the next time.
+- **Test fixes:** App tests no longer write to the user's crash.txt and can no longer start the real app (the shared test App's queued start-up is cancelled; a test proves it).
+- **Needs the user:** real Teams and Intercom tests, v1.0 decision; per-website prediction if wanted.## 2026-10-30 (night) — Split words joined, prediction scored, settings switches, wider CI screen tests
 
 - **Accepted plan (user: "Go ahead and do"):** five steps, each with tests, real-model measurement where it applies, CI screen tests, deploy and push.
 - **D50:** words split into pieces ("ne arly", "the ir") are joined when the joined word is in the dictionary. Realistic stress: obvious misspellings left 6 → 3, fixed 89.5% → 90.6%, desyncs 0; tuning 94.6%.

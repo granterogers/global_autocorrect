@@ -71,7 +71,7 @@ Measured on 200 test messages that were never used for tuning. These are everyda
 | Mistakes fixed | **92.9%** | 95% ❌ (not met) |
 | Correct words wrongly changed | **0.08%** (about 1 in 1,300) | under 1% ✅ |
 | Messages left exactly as intended | 87% | — |
-| Time for an AI clean-up | 361 ms typical, 535 ms slowest 5% | under 2 s ✅ |
+| Time for an AI clean-up | 177 ms typical, 309 ms slowest 5% (held-out set, with lookup decoding, D56) | under 2 s ✅ |
 
 **Where it falls short.** Light slips are fixed 94% of the time and heavily mangled messages 97%. Messages with many different slips at once are fixed 88% of the time. Most misses are:
 - a dropped small word the model won't guess ("make stand-up" instead of "make the stand-up");

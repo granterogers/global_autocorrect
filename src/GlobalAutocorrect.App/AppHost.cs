@@ -114,7 +114,8 @@ public sealed class AppHost : IAsyncDisposable
             Path.Combine(CacheDir, "llama", build, "cuda", "llama-server.exe"),
             Path.Combine(CacheDir, "models", Settings.Model),
             Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"),
-            CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel)));
+            CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel),
+            ExtraArgs: ServerFlags.LookupDecoding));   // D56
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();

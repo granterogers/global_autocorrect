@@ -40,7 +40,13 @@ internal static class RunCommand
         string build = manifest.GetProperty("llama").GetProperty("build").GetString()!;
         await using var host = new LlamaServerHost(new ServerOptions(
             Path.Combine(cache, "llama", build, "cuda", "llama-server.exe"), Path.Combine(cache, "models", modelFile),
-            Path.Combine(cache, "llama", build, "cpu", "llama-server.exe")));
+            Path.Combine(cache, "llama", build, "cpu", "llama-server.exe"),
+            // D56: the app's own flags unless --server-args "spec-type=ngram-simple;spec-ngram-simple-size-n=4" says
+            // otherwise ("spec-type=none" measures without them). No leading dashes: the option parser would take them
+            // for options of its own.
+            ExtraArgs: o.GetValueOrDefault("server-args") is { } sa
+                ? sa.Split(';', StringSplitOptions.RemoveEmptyEntries).SelectMany(kv => kv.Split('=', 2) is [var k, var v] ? new[] { "--" + k, v } : ["--" + kv]).ToArray()
+                : ServerFlags.LookupDecoding));
         if (!await host.StartAsync(CancellationToken.None)) { Console.Error.WriteLine("model server did not start; run scripts/setup.ps1 then scripts/verify.ps1"); return 1; }
         using var client = new LlamaServerClient(host.BaseAddress!, PromptTemplate.LoadOrDefault(o.GetValueOrDefault("prompt")), apiKey: host.ApiKey);
         await client.CleanAsync("warm up teh cache", CancellationToken.None);

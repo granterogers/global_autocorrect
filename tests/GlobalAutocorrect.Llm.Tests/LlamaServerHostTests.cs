@@ -30,8 +30,8 @@ public sealed class LlamaServerHostTests
         public Func<ProcessStartInfo, bool> Healthy { get; set; } = _ => true;
         public bool HealthOverride { get; set; } = true;
 
-        public LlamaServerHost Host(string? cpu = "cpu\\llama-server.exe") =>
-            new(new ServerOptions("cuda\\llama-server.exe", "model.gguf", cpu, StartTimeoutSeconds: 1),
+        public LlamaServerHost Host(string? cpu = "cpu\\llama-server.exe", IReadOnlyList<string>? extra = null) =>
+            new(new ServerOptions("cuda\\llama-server.exe", "model.gguf", cpu, StartTimeoutSeconds: 1, ExtraArgs: extra),
                 psi =>
                 {
                     Starts.Add(psi);
@@ -55,6 +55,21 @@ public sealed class LlamaServerHostTests
         Assert.Contains("--no-slots", args);
         Assert.Equal("0", args[args.IndexOf("--reasoning-budget") + 1]);   // 12.8
         Assert.True(host.BaseAddress!.IsLoopback);
+    }
+
+    [Fact]
+    public async Task R12_1_D56_LookupDecodingFlagsReachBothServers()
+    {
+        // The GPU server and, when it fails, the CPU fallback both start with the app's extra flags.
+        var f = new Fake { Healthy = psi => psi.FileName.StartsWith("cpu", StringComparison.Ordinal) };
+        await using var host = f.Host(extra: ServerFlags.LookupDecoding);
+        Assert.True(await host.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(2, f.Starts.Count);
+        foreach (var s in f.Starts)
+        {
+            Assert.Equal("ngram-simple", s.ArgumentList[s.ArgumentList.IndexOf("--spec-type") + 1]);
+            Assert.Equal("4", s.ArgumentList[s.ArgumentList.IndexOf("--spec-ngram-simple-size-n") + 1]);
+        }
     }
 
     [Fact]
