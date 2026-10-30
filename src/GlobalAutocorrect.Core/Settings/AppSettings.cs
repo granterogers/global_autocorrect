@@ -26,13 +26,15 @@ public sealed record AppSettings
     public bool StartWithWindows { get; init; } = true;            // 8.1
     public int IdleUnloadMinutes { get; init; } = 15;              // 5.6.b
     public bool AutoLearnWords { get; init; } = true;              // 8.5
+    public bool FixWholeParagraph { get; init; } = true;           // D43, D52: a switch on the Clean-up page
+    public bool LookBackWhenPaused { get; init; } = true;          // D49, D52
     public bool FirstRunDone { get; init; }
 
     public EngineOptions ToEngineOptions(EngineOptions tuned) => tuned with
     {
         PauseMs = Math.Clamp(PauseMs, 300, 2000),
-        FixWholeParagraph = Boldness != Boldness.Cautious && tuned.FixWholeParagraph,   // D43
-        RevisitAfterMs = Boldness == Boldness.Cautious ? 0 : tuned.RevisitAfterMs,         // D49
+        FixWholeParagraph = Boldness != Boldness.Cautious && FixWholeParagraph && tuned.FixWholeParagraph,   // D43, D52
+        RevisitAfterMs = Boldness == Boldness.Cautious || !LookBackWhenPaused ? 0 : tuned.RevisitAfterMs,   // D49, D52
         Rules = tuned.Rules with
         {
             MaxNormalisedDistance = Boldness switch

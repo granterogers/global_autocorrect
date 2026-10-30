@@ -5,7 +5,7 @@
 Global Autocorrect tidies up what you type, as you type, in almost any Windows app. It runs entirely on your laptop, using your NVIDIA GPU. No text ever leaves the machine.
 
 - **Obvious slips are fixed the moment you finish a word.** `teh` becomes `the`, and `bookk` becomes `book`.
-- **When you pause, it looks back over what you've typed recently** for anything still obviously misspelt, and has another go at that sentence.
+- **When you pause, it looks back over what you've typed recently** for anything still obviously misspelt, and has another go at that sentence. (Settings › Clean-up › "Look back when you pause".)
 - **Everything else is fixed by a small AI model that reads the surrounding sentence.** That includes run-together or split words, missing apostrophes and capitals, punctuation and grammar slips. It runs when you finish a sentence or pause for a moment.
 - **It fixes mistakes, not your style.** It never swaps your words for synonyms, rephrases you, or changes British spellings to American ones.
 - **A faint suggestion after the caret finishes your word or predicts the next one.** Press **Tab** to take it, or just keep typing to ignore it.
@@ -13,7 +13,7 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 ## What it doesn't do
 
 - It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
-- It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Set "How bold" to **Cautious** to correct only what you type yourself.
+- It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Turn off "Fix the whole paragraph" on the Clean-up page, or set "How bold" to **Cautious**, to correct only what you type yourself.
 - It keeps no history or list of corrections. Only counts are kept, such as "corrections today".
 - **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
 - English (UK) only, on a UK keyboard layout.
@@ -100,7 +100,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 - **Some apps also autocorrect.** If Word, Outlook or Notepad changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
 - **Code editors are excluded by default.** In VS Code and similar editors, only about a page of text is visible to other apps.
 - **Changing the AI model takes effect after a restart.**
-- **While the model is loaded it uses about 4 GB of ordinary memory as well as about 4.5 GB of graphics memory.** That's how this model is built (part of it lives in ordinary memory so the rest fits on the graphics card). It unloads itself after 15 minutes without typing (Settings › AI) and reloads in about 3 seconds on the next key.
+- **While the model is loaded it uses about 4 GB of ordinary memory as well as about 4.5 GB of graphics memory.** That's how this model is built (part of it lives in ordinary memory so the rest fits on the graphics card). It unloads itself after 15 minutes without typing (Settings › Clean-up › "Free the AI's memory after": 5, 15, 30 or 60 minutes) and reloads in about 3 seconds on the next key.
 - **Other GPU-heavy apps can slow clean-ups down.** The model needs about 3.5 GB of the 8 GB of graphics memory. If games, video tools or other AI apps take the rest, Windows quietly moves graphics memory into ordinary memory and clean-ups can take seconds instead of a third of a second. `scripts/verify.ps1` measures this.
 - **Ctrl+Alt+Z undoes from anywhere in the field that was corrected**, not from another window. If you've moved to another window, it tells you to switch back.
 - **A shortcut can be taken by another app.** If Ctrl+Alt+P or Ctrl+Alt+Z is already in use, the tray tells you and you can choose another in Settings.

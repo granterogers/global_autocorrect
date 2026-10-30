@@ -10,7 +10,8 @@ namespace GlobalAutocorrect.App.ViewModels;
 /// <summary>One entry in the model drop-down: the file name we store and the friendly name we show.</summary>
 public sealed record ModelChoice(string File, string Display);
 
-/// <summary>Clean-up (9.3.b): pause length, how bold corrections are, underline on/off, model.</summary>
+/// <summary>Clean-up (9.3.b): pause length, how bold corrections are, whole paragraph and look-back (D52), underline on/off,
+/// when the AI frees its memory, model.</summary>
 public sealed partial class CleanUpViewModel : ObservableObject
 {
     public const int MinPauseMs = 300;
@@ -25,6 +26,15 @@ public sealed partial class CleanUpViewModel : ObservableObject
     [ObservableProperty] private bool _underlineEnabled = true;
     [ObservableProperty] private Boldness _boldness = Boldness.Standard;
     [ObservableProperty] private ModelChoice? _selectedModel;
+    [ObservableProperty] private bool _fixWholeParagraph = true;
+    [ObservableProperty] private bool _lookBackWhenPaused = true;
+    [ObservableProperty] private int _idleUnloadMinutes = 15;
+
+    /// <summary>D52: when the AI model is unloaded after you stop typing, freeing about 4 GB of memory.</summary>
+    public IReadOnlyList<int> IdleUnloadChoices { get; } = [5, 15, 30, 60];
+
+    /// <summary>"Cautious" corrects only what you type yourself, so these two switches are off then.</summary>
+    public bool BoldEnoughForParagraphSwitches => Boldness != Boldness.Cautious;
 
     public ObservableCollection<ModelChoice> Models { get; } = [];
 
@@ -63,7 +73,23 @@ public sealed partial class CleanUpViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCautious));
         OnPropertyChanged(nameof(IsStandard));
         OnPropertyChanged(nameof(IsBold));
+        OnPropertyChanged(nameof(BoldEnoughForParagraphSwitches));
         if (!_loading) _settings.Update(_settings.Settings with { Boldness = value });
+    }
+
+    partial void OnFixWholeParagraphChanged(bool value)
+    {
+        if (!_loading) _settings.Update(_settings.Settings with { FixWholeParagraph = value });
+    }
+
+    partial void OnLookBackWhenPausedChanged(bool value)
+    {
+        if (!_loading) _settings.Update(_settings.Settings with { LookBackWhenPaused = value });
+    }
+
+    partial void OnIdleUnloadMinutesChanged(int value)
+    {
+        if (!_loading) _settings.Update(_settings.Settings with { IdleUnloadMinutes = value });
     }
 
     partial void OnUnderlineEnabledChanged(bool value)
@@ -86,6 +112,9 @@ public sealed partial class CleanUpViewModel : ObservableObject
             PauseMs = NormalisePause(s.PauseMs);
             UnderlineEnabled = s.UnderlineEnabled;
             Boldness = s.Boldness;
+            FixWholeParagraph = s.FixWholeParagraph;
+            LookBackWhenPaused = s.LookBackWhenPaused;
+            IdleUnloadMinutes = IdleUnloadChoices.Contains(s.IdleUnloadMinutes) ? s.IdleUnloadMinutes : 15;
             LoadModels(s.Model);
         }
         finally { _loading = false; }

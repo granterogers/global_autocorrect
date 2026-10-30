@@ -63,6 +63,30 @@
                 </StackPanel>
             </Border>
 
+            <!-- Whole paragraph (D43, D52) -->
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextParagraph24}"
+                            IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="Fix the whole paragraph" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Also corrects text you pasted or typed earlier in the paragraph you're typing in." />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch IsChecked="{Binding FixWholeParagraph, Mode=TwoWay}" AutomationProperties.Name="Fix the whole paragraph" />
+            </ui:CardControl>
+
+            <!-- Look back (D49, D52) -->
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon History24}"
+                            IsEnabled="{Binding BoldEnoughForParagraphSwitches}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="Look back when you pause" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Has another go at any recent sentence that still has an obvious misspelling." />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch IsChecked="{Binding LookBackWhenPaused, Mode=TwoWay}" AutomationProperties.Name="Look back when you pause" />
+            </ui:CardControl>
+
             <!-- Underline -->
             <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextUnderline24}">
                 <ui:CardControl.Header>
@@ -84,6 +108,18 @@
                 </ui:CardControl.Header>
                 <ComboBox MinWidth="300" ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
                           DisplayMemberPath="Display" AutomationProperties.Name="AI model" />
+            </ui:CardControl>
+
+            <!-- Idle unload (D52) -->
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon Sleep24}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="Free the AI's memory after" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="When you stop typing, the AI gives back about 4 GB of memory and 4.5 GB of graphics memory after this long. It reloads in about 3 seconds." />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox MinWidth="140" ItemsSource="{Binding IdleUnloadChoices}" SelectedItem="{Binding IdleUnloadMinutes, Mode=TwoWay}"
+                          ItemStringFormat="{}{0} minutes" AutomationProperties.Name="Free the AI's memory after" />
             </ui:CardControl>
         </StackPanel>
     </ScrollViewer>

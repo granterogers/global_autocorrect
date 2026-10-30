@@ -47,6 +47,43 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void R9_3_b_D52_ParagraphSwitchesTurnOffWholeParagraphAndLookBack()
+    {
+        var tuned = new EngineOptions { FixWholeParagraph = true, RevisitAfterMs = 1500 };
+        var standard = new AppSettings().ToEngineOptions(tuned);
+        Assert.True(standard.FixWholeParagraph);
+        Assert.Equal(1500, standard.RevisitAfterMs);
+
+        Assert.False(new AppSettings { FixWholeParagraph = false }.ToEngineOptions(tuned).FixWholeParagraph);
+        Assert.Equal(1500, new AppSettings { FixWholeParagraph = false }.ToEngineOptions(tuned).RevisitAfterMs);
+        Assert.Equal(0, new AppSettings { LookBackWhenPaused = false }.ToEngineOptions(tuned).RevisitAfterMs);
+        Assert.True(new AppSettings { LookBackWhenPaused = false }.ToEngineOptions(tuned).FixWholeParagraph);
+
+        // Cautious overrides both switches, whatever they say.
+        var cautious = new AppSettings { Boldness = Boldness.Cautious }.ToEngineOptions(tuned);
+        Assert.False(cautious.FixWholeParagraph);
+        Assert.Equal(0, cautious.RevisitAfterMs);
+    }
+
+    [Fact]
+    public void R9_3_b_D52_ParagraphSwitchesAreSavedAndOnByDefault()
+    {
+        Directory.CreateDirectory(_dir);
+        string file = Path.Combine(_dir, "settings.json");
+        File.WriteAllText(file, """{ "FirstRunDone": true }""");   // a settings file from before D52
+        var old = new SettingsStore(file).Load();
+        Assert.True(old.FixWholeParagraph);
+        Assert.True(old.LookBackWhenPaused);
+
+        var store = new SettingsStore(file);
+        store.Save(old with { FixWholeParagraph = false, LookBackWhenPaused = false, IdleUnloadMinutes = 5 });
+        var back = new SettingsStore(file).Load();
+        Assert.False(back.FixWholeParagraph);
+        Assert.False(back.LookBackWhenPaused);
+        Assert.Equal(5, back.IdleUnloadMinutes);
+    }
+
+    [Fact]
     public void R5_2_PromptIsASettingAndABrokenFileFallsBack()
     {
         Directory.CreateDirectory(_dir);

@@ -87,16 +87,9 @@ public class ThemeTests
     [Fact]
     public void R9_2_d_ThemeServiceSwapsBrushesForLightAndDark()
     {
-        Exception? error = null;
-        var t = new Thread(() =>
+        WpfApp.Run(app =>
         {
-            try
-            {
-                var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                app.Resources.MergedDictionaries.Add(new ResourceDictionary
-                {
-                    Source = new Uri("pack://application:,,,/GlobalAutocorrect;component/Theme/Tokens.xaml", UriKind.Absolute)
-                });
+                // The real App: App.xaml merges Tokens.xaml.
                 var service = new ThemeService(app);
 
                 service.Apply(ApplicationTheme.Dark);
@@ -108,12 +101,6 @@ public class ThemeTests
                 Assert.Equal(Palette.ToColor(Palette.Light.SurfaceCard), ((System.Windows.Media.SolidColorBrush)app.Resources["SurfaceCardBrush"]).Color);
                 Assert.Equal(Palette.ToColor(Palette.Light.TextSecondary), ((System.Windows.Media.SolidColorBrush)app.Resources["TextSecondaryBrush"]).Color);
                 Assert.Equal(ApplicationTheme.Light, service.Current);
-            }
-            catch (Exception e) { error = e; }
         });
-        t.SetApartmentState(ApartmentState.STA);
-        t.Start();
-        t.Join();
-        if (error is not null) throw new Xunit.Sdk.XunitException(error.ToString());
     }
 }

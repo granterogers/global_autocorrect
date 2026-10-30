@@ -102,6 +102,40 @@ public class SettingsViewModelTests
         Assert.Equal("gemma-4-E2B-it-Q5_K_M.gguf", s.Settings.Model);
     }
 
+    [Fact]
+    public void R9_3_b_D52_ParagraphSwitchesAndIdleUnloadAreSaved()
+    {
+        using var s = new FakeServices();
+        var vm = new CleanUpViewModel(s, Path.Combine(s.Dir, "models"));
+        Assert.True(vm.FixWholeParagraph);
+        Assert.True(vm.LookBackWhenPaused);
+        Assert.Equal(15, vm.IdleUnloadMinutes);
+        Assert.True(vm.BoldEnoughForParagraphSwitches);
+
+        vm.FixWholeParagraph = false;
+        Assert.False(s.Settings.FixWholeParagraph);
+        vm.LookBackWhenPaused = false;
+        Assert.False(s.Settings.LookBackWhenPaused);
+        vm.IdleUnloadMinutes = 5;
+        Assert.Equal(5, s.Settings.IdleUnloadMinutes);
+
+        // Cautious greys the two switches out (it overrides them), and the page says so as soon as it's chosen.
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        vm.IsCautious = true;
+        Assert.False(vm.BoldEnoughForParagraphSwitches);
+        Assert.Contains(nameof(CleanUpViewModel.BoldEnoughForParagraphSwitches), raised);
+    }
+
+    [Fact]
+    public void R9_3_b_D52_AnIdleUnloadTimeNotOnTheListShowsAsTheDefault()
+    {
+        using var s = new FakeServices();
+        s.Update(s.Settings with { IdleUnloadMinutes = 7 });
+        var vm = new CleanUpViewModel(s, Path.Combine(s.Dir, "models"));
+        Assert.Equal(15, vm.IdleUnloadMinutes);
+    }
+
     // ---- 9.3.c Prediction ------------------------------------------------------------------------------------------------
 
     [Fact]
