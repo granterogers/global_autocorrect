@@ -20,12 +20,30 @@ public sealed class EngineTests
     }
 
     [Fact]
-    public void R4_3_a_FixesTheFinishedWordWithoutWaiting()
+    public void R4_3_a_FixesTheFinishedWordWithin100ms()
     {
         var h = new Harness();
         h.Type("we saw teh");
-        h.Engine.OnInput(h.Ed.TypeChar(' '));   // no clock advance, no tick: the fix must already be there
-        Assert.Equal("we saw the ", h.Text);
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Engine.Tick();
+        Assert.Equal("we saw teh ", h.Text);       // not in the same instant: a key may already be on its way (D47)
+        h.Wait(100);
+        Assert.Equal("we saw the ", h.Text);       // 4.3.a: within 100 ms
+    }
+
+    [Fact]
+    public void R4_3_a_AKeyRightBehindTheSpaceIsNeverDeletedByTheFix_D47()
+    {
+        // Found by the CI screen tests: the fix went out the moment the word ended, a key already on its way landed
+        // first, and the retype deleted it ("teh d" became "tthe og"). Now the fix waits for 60 ms of quiet.
+        var h = new Harness();
+        h.Type("we saw teh");
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Clock.Advance(40);
+        h.Engine.OnInput(h.Ed.TypeChar('d'));      // the next key, 40 ms later
+        h.Type("og ");
+        h.Wait(200);                               // the fix waits for the user's next pause, then lands safely
+        Assert.Equal("we saw the dog ", h.Text);
     }
 
     [Fact]
@@ -178,11 +196,11 @@ public sealed class EngineTests
     public void R4_4_a_TriggersAfterPauseButNotWhileTyping()
     {
         var h = new Harness(model: FixTheir, latencyMs: 100);
-        h.Type("i went their yesterday");
+        h.Type("i went their yesterday");            // ends with 100 ms of quiet
         Assert.Empty(h.Llm!.Requests);
-        h.Wait(650);
+        h.Wait(550);                                  // 650 ms since the last key
         Assert.Empty(h.Llm.Requests);
-        h.Wait(100);
+        h.Wait(100);                                  // 750 ms: past the 700 ms pause
         Assert.Single(h.Llm.Requests);
     }
 

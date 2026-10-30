@@ -66,10 +66,14 @@ public sealed class Harness
     {
         foreach (char c in s)
         {
-            Clock.Advance(msPerKey);
+            // The app ticks every 25 ms whether or not keys arrive (D47): between keys too.
+            int left = msPerKey;
+            for (; left > 25; left -= 25) { Clock.Advance(25); Engine.Tick(); }
+            Clock.Advance(left);
             Engine.OnInput(Ed.TypeChar(c));
             Engine.Tick();
         }
+        Wait(100);   // the user stops for a moment: an instant fix of the last word lands (D47)
     }
 
     public void Wait(int ms, int step = 25)

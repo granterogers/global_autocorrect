@@ -21,6 +21,12 @@ public sealed record EngineOptions
     /// </summary>
     public int WriteDeadlineMs { get; init; } = 60_000;
 
+    /// <summary>
+    /// D47: an instant fix waits until no key has arrived for this long. Written the moment the word ended, a key already
+    /// on its way (not yet seen by the hook) was deleted with the space: "teh d" became "tthe og" (CI screen tests).
+    /// </summary>
+    public int InstantQuietMs { get; init; } = 60;
+
     /// <summary>D43: correct the whole current paragraph, not only what was typed since the last click or paste.</summary>
     public bool FixWholeParagraph { get; init; } = true;
 

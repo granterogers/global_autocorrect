@@ -37,6 +37,8 @@ public sealed class UiaReader
     private const int TextPattern2Id = 10024;   // UIA_TextPattern2Id
 
     private readonly IUIAutomation2 _uia;
+    private string _infoFor = "", _class = "";
+    private string? _font;
 
     public UiaReader(uint timeoutMs = 250)
     {
@@ -92,7 +94,10 @@ public sealed class UiaReader
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, FontName(caret), el.CurrentClassName ?? "");
+            // Font and class name only change with the field: read them once per field, not on every read, so reads
+            // stay as quick as they were (each is another call into the app).
+            if (rid != _infoFor) { _infoFor = rid; _font = FontName(caret); _class = el.CurrentClassName ?? ""; }
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _font, _class);
         }
         catch (Exception e) when (IsUiaFailure(e))
         {

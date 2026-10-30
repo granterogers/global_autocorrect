@@ -100,7 +100,8 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
         foreach (char c in item.Noisy)
         {
             await HoldWhileModelWorks(engine, rec, ct);
-            clock.Advance(rng.Next(60, 121));   // 60–120 ms between keys: a fast typist
+            // 60–120 ms between keys: a fast typist. The app ticks every 25 ms meanwhile (D47).
+            for (int gap = rng.Next(60, 121); gap > 0; gap -= 25) { clock.Advance(Math.Min(25, gap)); if (gap > 25) engine.Tick(); }
             engine.OnInput(ed.TypeChar(c));
             engine.Tick();
         }

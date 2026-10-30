@@ -82,7 +82,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (w.Layer == Layer.Undo) return true;   // the user asked for it and is waiting
         bool gap = now - keys.LastKeyAtMs >= options.WriteGapMs && !keys.ModifierHeld;   // 4.6.c
         if (w.Layer == Layer.Instant)
-            return keys.LatestKeySeq == w.KeySeqAtDecision || gap;   // D6: nothing typed since the word ended, or a gap
+            return (keys.LatestKeySeq == w.KeySeqAtDecision && now - keys.LastKeyAtMs >= options.InstantQuietMs) || gap;   // D6, D47: quiet since the word ended, or a gap
 
         if (!gap) return false;
         // 4.6.a/b: while actively typing, the word being typed and the word before it are off limits.
