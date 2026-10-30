@@ -12,6 +12,20 @@ Every change below was made by looking at the **tuning** set only (260 messages)
 
 | T6 | Prompt v3: one more example with dropped "the", plus a clean sentence that must stay unchanged (guards against over-inserting) | **90.8%** | **0.20%** | 83% | 344 / 523 ms |
 
+**Accuracy push after RC1 (2026-10-30), still tuning set only.** Each run dumped every message with the raw whole-message model reply, so "the model missed it" could be told apart from "the app lost it" (`run --set tuning --dump`, tuning only).
+
+| Run | Change | Errors fixed | False edits | Exact | p50 / p95 |
+|---|---|---|---|---|---|
+| T6 again | Same code, re-run as the baseline | 90.8% | 0.20% | 83% | 515 / 786 ms |
+| (2 passes) | The model re-reads its own reply once. Not adopted | 90.5% | 0.20% | 83% | 860 / 1533 ms |
+| T7 | D30: two likely keyboard slips accepted (`by` → `but`, `to` → `got`); lone `i` always capitalised | 92.7% | 0.20% | 87% | — |
+| T8 | Prompt v4 (file): dropped small words put back "where any native writer would clearly use them", two more dropped-"the" examples, one heavy-typo example, one more clean example | 93.5% | 0.20% | 88% | 369 / — ms |
+
+| T9 | D31: a fix next to a dropped function word (`si` → `is the`); a capital after a "?" the reply adds; possessives of valid words | 94.4% | 0.23% | 88% | 375 / 569 ms |
+| T10 | Same, with the built-in prompt now v4; padding guard for `Spare room` → `The spare room` | **94.4%** | **0.20%** | 89% | 371 / 566 ms |
+
+**Tuning frozen again after T10** (prompt v4, rules D19–D31). The holdout is scored once more on this code; the earlier holdout score (92.3%) was seen before this round, which is disclosed with the new number.
+
 **Tuning frozen after T6** (prompt v3, rules D19–D27, instant layer D23). The holdout is scored once, next.
 
 T5 plateaus at about 90.5%. The scorer shares the alignment cost, so the error count moved from 733 to 728 (more accurate alignment). Most of what remains is dropped articles the model doesn't restore, and heavy multi-error messages.

@@ -50,6 +50,84 @@ public sealed class EditRulesTests
         Assert.Contains(r.Verdicts, v => v.Reason == RejectReason.TooDissimilar);
     }
 
+    [Theory]
+    [InlineData("it was nice by I am going", "it was nice but I am going")]   // missed key + neighbouring key
+    [InlineData("we will to a taxi", "we will got a taxi")]                 // missed key + swap
+    [InlineData("we will book a we taxi", "we will book a new taxi")]       // missed key + swap
+    public void R4_5_a_TwoLikelyKeyboardSlipsAreATypo_D30(string typed, string model)
+    {
+        // Found on the tuning set: the model's fix was right and "too dissimilar" threw it away (short words).
+        var s = new FakeSpeller("it", "was", "nice", "by", "but", "I", "am", "going", "we", "will", "to", "got", "a", "taxi", "book", "new");
+        var r = new EditRules(new EditRuleSettings(), s, _ => false).Filter(typed, model, WordDiff.Compute(typed, model));
+        Assert.Equal(model, Apply(typed, r));
+    }
+
+    [Fact]
+    public void R4_4_d_TwoUnlikelyEditsAreStillRejected_D30()
+    {
+        // "it" → "on": i/o are neighbours but t/n are not, so it isn't two likely slips; it is a different word.
+        var r = Run("I sat it the mat", "I sat on the mat");
+        Assert.Empty(r.Accepted);
+        Assert.Contains(r.Verdicts, v => v.Reason == RejectReason.TooDissimilar);
+    }
+
+    [Fact]
+    public void R4_5_e_CautiousTurnsOffTwoSlips_D30()
+    {
+        var s = new FakeSpeller("it", "was", "nice", "by", "but", "I", "am", "going");
+        const string a = "it was nice by I am going", b = "it was nice but I am going";
+        var r = new EditRules(new EditRuleSettings { AcceptLikelyKeyboardSlips = false }, s, _ => false).Filter(a, b, WordDiff.Compute(a, b));
+        Assert.Empty(r.Accepted);
+    }
+
+    [Fact]
+    public void R4_5_a_ALoneLowerCaseIIsCapitalisedMidSentence_D25()
+    {
+        // Found on the tuning set: the dictionary lists "i" (the letter), so "i" → "I" was taken for a style change.
+        var s = new FakeSpeller("i", "I", "and", "still", "think", "so", "i'm", "fine");
+        foreach (var (a, b) in new[] { ("and i still think so", "and I still think so"), ("and i'm fine", "and I'm fine") })
+        {
+            var r = new EditRules(new EditRuleSettings(), s, _ => false).Filter(a, b, WordDiff.Compute(a, b));
+            Assert.Equal(b, Apply(a, r));
+        }
+    }
+
+    private static string ApplyWith(FakeSpeller s, string a, string b) =>
+        Apply(a, new EditRules(new EditRuleSettings(), s, _ => false).Filter(a, b, WordDiff.Compute(a, b)));
+
+    [Fact]
+    public void R4_5_b_AFixNextToADroppedFunctionWordIsAccepted_D31()
+    {
+        // Found on the tuning set: "si" → "is the" was aligned as one edit and judged too dissimilar.
+        var s = new FakeSpeller("because", "jumper", "si", "is", "the", "wrong", "size");
+        Assert.Equal("because jumper is the wrong size", ApplyWith(s, "because jumper si wrong size", "because jumper is the wrong size"));
+        // The extra word must be a function word: "si" → "is very" is still content added.
+        var s2 = new FakeSpeller("because", "jumper", "si", "is", "very", "wrong", "size");
+        Assert.Equal("because jumper si wrong size", ApplyWith(s2, "because jumper si wrong size", "because jumper is very wrong size"));
+        // A note-style "Spare room needs…" is the writer's choice: an article plus a lost capital is not a typo fix.
+        var s3 = new FakeSpeller("the", "spare", "room", "needs", "hoovering");
+        Assert.Equal("Spare room needs hoovering", ApplyWith(s3, "Spare room needs hoovering", "The spare room needs hoovering"));
+    }
+
+    [Fact]
+    public void R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31()
+    {
+        // Found on the tuning set: "afternoon something" → "afternoon? Something" lost the capital.
+        var s = new FakeSpeller("could", "we", "move", "it", "to", "afternoon", "something", "came", "up");
+        Assert.Equal("could we move it to afternoon? Something came up",
+            ApplyWith(s, "could we move it to afternoon something came up", "could we move it to afternoon? Something came up"));
+        // Without the added full stop, the same capital mid-sentence is still a style change.
+        Assert.Equal("could we move it to afternoon something came up",
+            ApplyWith(s, "could we move it to afternoon something came up", "could we move it to afternoon Something came up"));
+    }
+
+    [Fact]
+    public void R4_5_a_APossessiveOfAKnownWordIsAWord_D31()
+    {
+        var s = new FakeSpeller("the", "heating", "broken", "again");
+        Assert.Equal("the heating's broken again", ApplyWith(s, "the heating broken again", "the heating's broken again"));
+    }
+
     [Fact]
     public void R4_5_b_AcceptsFunctionWordInsertionButNotContentWords()
     {

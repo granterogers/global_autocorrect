@@ -55,19 +55,19 @@ A program that watches the keyboard and types for you can look like a keylogger 
 
 ## Measured accuracy and speed
 
-Measured on 200 test messages that were never used for tuning. These are everyday UK English messages with realistic typing slips added, plus hand-mangled ones. The whole pipeline was scored: instant fixes, the AI and the safety rules together. Measured 29 October 2026 with Gemma 4 E4B on the RTX PRO 2000. The full report is `eval-report.md` in this folder.
+Measured on 200 test messages that were never used for tuning. These are everyday UK English messages with realistic typing slips added, plus hand-mangled ones. The whole pipeline was scored: instant fixes, the AI and the safety rules together. Measured 30 October 2026 with Gemma 4 E4B on the RTX PRO 2000, after a second round of tuning on the separate tuning set (the same 200 test messages were also scored once before that round, at 92.3%). The full report is `eval-report.md` in this folder.
 
 | | Result | Target |
 |---|---|---|
-| Mistakes fixed | **92.3%** | 95% ❌ (not met) |
-| Correct words wrongly changed | **0.19%** (about 1 in 500) | under 1% ✅ |
-| Messages left exactly as intended | 84% | — |
-| Time for an AI clean-up | 344 ms typical, 507 ms slowest 5% | under 2 s ✅ |
+| Mistakes fixed | **92.9%** | 95% ❌ (not met) |
+| Correct words wrongly changed | **0.08%** (about 1 in 1,300) | under 1% ✅ |
+| Messages left exactly as intended | 87% | — |
+| Time for an AI clean-up | 361 ms typical, 535 ms slowest 5% | under 2 s ✅ |
 
-**Where it falls short.** Light slips and heavily mangled messages are fixed 95% of the time. Messages with many different slips are fixed 86% of the time. Most misses are:
-- a dropped small word the model won't guess ("ask council" instead of "ask the council");
-- a slip that turns one real word into another;
-- run-together words next to a capitalised name.
+**Where it falls short.** Light slips are fixed 94% of the time and heavily mangled messages 97%. Messages with many different slips at once are fixed 88% of the time. Most misses are:
+- a dropped small word the model won't guess ("make stand-up" instead of "make the stand-up");
+- a slip that turns one real word into another, or into a name ("dun" became "Dunn" instead of "sun");
+- a space typed one letter too early, which splits one word and joins its last letter onto the next.
 
 It prefers leaving a mistake to changing something you meant. That's why wrong changes are so rare.
 
@@ -90,7 +90,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 
 ## Known limits
 
-- **Accuracy is below the 95% target** (92.3% of mistakes fixed). It is weakest on messages with many slips at once, and on a missing small word such as "the", which it rarely puts back.
+- **Accuracy is below the 95% target** (92.9% of mistakes fixed). It is weakest on messages with many slips at once, and on a missing small word such as "the", which it rarely puts back.
 - **It only works where the app reports its text and cursor position to Windows.** Most apps do. Where an app doesn't, Global Autocorrect does nothing rather than guess.
 - **It never corrects across a line break**, and only looks at the current paragraph.
 - **Some apps also autocorrect.** If Word, Outlook or Notepad changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.

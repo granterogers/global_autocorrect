@@ -1,0 +1,263 @@
+{
+  "set": "holdout",
+  "model": "gemma-4-E4B-it-Q5_K_M.gguf",
+  "llamaBuild": "b11960",
+  "date": "2026-10-30",
+  "messages": 200,
+  "errorsFixedRate": 0.9285714285714286,
+  "falseEditRate": 0.0007748934521503294,
+  "exactMatchRate": 0.865,
+  "needFix": 504,
+  "fixed": 468,
+  "correctWords": 2581,
+  "falseEdits": 2,
+  "latencyP50Ms": 361,
+  "latencyP95Ms": 535,
+  "modelRequests": 271,
+  "gpu": "CUDA0 (NVIDIA RTX PRO 2000 Blackwell Generation Laptop GPU)",
+  "offloaded": "43/43",
+  "targets": {
+    "errorsFixed": 0.95,
+    "falseEdits": 0.01
+  },
+  "meetsTargets": false,
+  "options": {
+    "PauseMs": 700,
+    "MaxNormalisedDistance": 0.5,
+    "MaxChangedWordRatio": 0.5
+  },
+  "byLevel": {
+    "Garbled": {
+      "messages": 22,
+      "errorsFixedRate": 0.9653179190751445,
+      "falseEditRate": 0,
+      "exactMatchRate": 0.8181818181818182
+    },
+    "Heavy": {
+      "messages": 30,
+      "errorsFixedRate": 0.8768115942028986,
+      "falseEditRate": 0.0029850746268656717,
+      "exactMatchRate": 0.6
+    },
+    "Light": {
+      "messages": 56,
+      "errorsFixedRate": 0.9411764705882353,
+      "falseEditRate": 0,
+      "exactMatchRate": 0.9285714285714286
+    },
+    "Medium": {
+      "messages": 45,
+      "errorsFixedRate": 0.928,
+      "falseEditRate": 0.0017331022530329288,
+      "exactMatchRate": 0.8444444444444444
+    },
+    "None": {
+      "messages": 47,
+      "errorsFixedRate": 1,
+      "falseEditRate": 0,
+      "exactMatchRate": 1
+    }
+  },
+  "worst": [
+    {
+      "Id": "b163",
+      "category": "Heavy: merge, lowercase, double, neighbour",
+      "NeedFix": 5,
+      "Fixed": 4,
+      "FalseEdits": 1,
+      "noisy": "our youngest has lost another tooth, ajd thetooth fairy needs to viisit tonight.",
+      "output": "Our youngest has lost another tooth, and the Tooth Fairy needs to visit tonight.",
+      "clean": "Our youngest has lost another tooth, and the tooth fairy needs to visit tonight."
+    },
+    {
+      "Id": "a112",
+      "category": "Medium: neighbour, double",
+      "NeedFix": 2,
+      "Fixed": 2,
+      "FalseEdits": 1,
+      "noisy": "Does the café across fhe road do a decent llunch deal these days?",
+      "output": "Does the cafe across the road do a decent lunch deal these days?",
+      "clean": "Does the café across the road do a decent lunch deal these days?"
+    },
+    {
+      "Id": "a113",
+      "category": "Heavy: drop, split, grammar, neighbour",
+      "NeedFix": 4,
+      "Fixed": 1,
+      "FalseEdits": 0,
+      "noisy": "hr lic ence for design software runs out next week, so we'll have to renew it.",
+      "output": "The licence for design software runs out next week, so we'll have to renew it.",
+      "clean": "Our licence for the design software runs out next week, so we'll have to renew it."
+    },
+    {
+      "Id": "a010",
+      "category": "Medium: grammar, swap",
+      "NeedFix": 3,
+      "Fixed": 1,
+      "FalseEdits": 0,
+      "noisy": "Sorry, I can't make stand-up toady because I've got a dentist appointment at 9.",
+      "output": "Sorry, I can't make stand-up today because I've got a dentist appointment at 9.",
+      "clean": "Sorry, I can't make the stand-up today because I've got a dentist appointment at 9."
+    },
+    {
+      "Id": "a088",
+      "category": "Medium: drop, grammar",
+      "NeedFix": 3,
+      "Fixed": 1,
+      "FalseEdits": 0,
+      "noisy": "Agenda or Monday: review last month's sales, discuss the Plymouth contract, and plan summer recruitment.",
+      "output": "Agenda for Monday: review last month's sales, discuss the Plymouth contract, and plan summer recruitment.",
+      "clean": "Agenda for Monday: review last month's sales, discuss the Plymouth contract, and plan the summer recruitment."
+    },
+    {
+      "Id": "a176",
+      "category": "Medium: merge, grammar",
+      "NeedFix": 5,
+      "Fixed": 3,
+      "FalseEdits": 0,
+      "noisy": "Hello all, training videos are now online at https://example.co.uk/training. They're about ten minutes long, so youcanwatch them over lunch.",
+      "output": "Hello all, training videos are now online at https://example.co.uk/training. They're about ten minutes long, so you can watch them over lunch.",
+      "clean": "Hello all, the training videos are now online at https://example.co.uk/training. They're about ten minutes long, so you can watch them over lunch."
+    },
+    {
+      "Id": "b111",
+      "category": "Heavy: grammar, neighbour, misplace",
+      "NeedFix": 6,
+      "Fixed": 4,
+      "FalseEdits": 0,
+      "noisy": "Lookingf orward to yhe barbecue, but I hope dun comes out for it.",
+      "output": "Looking forward to the barbecue, but I hope Dunn comes out for it.",
+      "clean": "Looking forward to the barbecue, but I hope the sun comes out for it."
+    },
+    {
+      "Id": "b130",
+      "category": "Heavy: drop, neighbour, lowercase, merge",
+      "NeedFix": 6,
+      "Fixed": 4,
+      "FalseEdits": 0,
+      "noisy": "thanks for sending the details of the crickeg caml. Couldyou tell me how much it cost per day?",
+      "output": "Thanks for sending the details of the cricket call. Could you tell me how much it cost per day?",
+      "clean": "Thanks for sending the details of the cricket camp. Could you tell me how much it costs per day?"
+    },
+    {
+      "Id": "b194",
+      "category": "Heavy: neighbour, misplace, double, swap",
+      "NeedFix": 5,
+      "Fixed": 3,
+      "FalseEdits": 0,
+      "noisy": "Looking for volujteers for the Christmast ree festival in Stt Mary's Church. Contact events@example.org.uk ot help.",
+      "output": "Looking for volunteers for the Christmast ree festival in St Mary's Church. Contact events@example.org.uk to help.",
+      "clean": "Looking for volunteers for the Christmas tree festival in St Mary's Church. Contact events@example.org.uk to help."
+    },
+    {
+      "Id": "g002",
+      "category": "garbled",
+      "NeedFix": 9,
+      "Fixed": 7,
+      "FalseEdits": 0,
+      "noisy": "im runnign abotu tne minutes lat ebecause the trian was cancleled at reaidng.",
+      "output": "In running about the minutes late because the train was cancelled at Reading.",
+      "clean": "I'm running about ten minutes late because the train was cancelled at Reading."
+    },
+    {
+      "Id": "g013",
+      "category": "garbled",
+      "NeedFix": 9,
+      "Fixed": 7,
+      "FalseEdits": 0,
+      "noisy": "plese coudl you doubel chekc the inovice? i thikn the totla is worng.",
+      "output": "Please could you double-check the invoice? I think the total is wrong.",
+      "clean": "Please could you double check the invoice? I think the total is wrong."
+    },
+    {
+      "Id": "a005",
+      "category": "Light: neighbour",
+      "NeedFix": 1,
+      "Fixed": 0,
+      "FalseEdits": 0,
+      "noisy": "Thanks Lriya, that spreadsheet is exactly what I needed for the budget meeting.",
+      "output": "Thanks Lriya, that spreadsheet is exactly what I needed for the budget meeting.",
+      "clean": "Thanks Priya, that spreadsheet is exactly what I needed for the budget meeting."
+    },
+    {
+      "Id": "a013",
+      "category": "Heavy: apostrophe, merge, drop",
+      "NeedFix": 4,
+      "Fixed": 3,
+      "FalseEdits": 0,
+      "noisy": "Whose tur is it to buy thebiscuits? Were completely out again.",
+      "output": "Whose our is it to buy the biscuits? We're completely out again.",
+      "clean": "Whose turn is it to buy the biscuits? We're completely out again."
+    },
+    {
+      "Id": "a053",
+      "category": "Light: split",
+      "NeedFix": 1,
+      "Fixed": 0,
+      "FalseEdits": 0,
+      "noisy": "I'm stuck in traffi c on the M6 so please start without me.",
+      "output": "I'm stuck in traffic c on the M6 so please start without me.",
+      "clean": "I'm stuck in traffic on the M6 so please start without me."
+    },
+    {
+      "Id": "a082",
+      "category": "Light: neighbour",
+      "NeedFix": 1,
+      "Fixed": 0,
+      "FalseEdits": 0,
+      "noisy": "Bi Neil, the cheque for £640 went in this morning, so the invoice should show as paid by Thursday.",
+      "output": "By Neil, the cheque for £640 went in this morning, so the invoice should show as paid by Thursday.",
+      "clean": "Hi Neil, the cheque for £640 went in this morning, so the invoice should show as paid by Thursday."
+    },
+    {
+      "Id": "a104",
+      "category": "Medium: misplace, drop",
+      "NeedFix": 3,
+      "Fixed": 2,
+      "FalseEdits": 0,
+      "noisy": "Huge thanks to everyone wh stayed late to finish thet ender last night.",
+      "output": "Huge thanks to everyone who stayed late to finish the ender last night.",
+      "clean": "Huge thanks to everyone who stayed late to finish the tender last night."
+    },
+    {
+      "Id": "a111",
+      "category": "Heavy: swap, neighbour, merge, drop",
+      "NeedFix": 5,
+      "Fixed": 4,
+      "FalseEdits": 0,
+      "noisy": "Keep an eye o your inbox, as HR wlil send thr holiday formsthis afternoon.",
+      "output": "Keep an eye on your inbox, as HR will send the holiday form this afternoon.",
+      "clean": "Keep an eye on your inbox, as HR will send the holiday forms this afternoon."
+    },
+    {
+      "Id": "a154",
+      "category": "Heavy: drop, split, double, swap",
+      "NeedFix": 3,
+      "Fixed": 2,
+      "FalseEdits": 0,
+      "noisy": "Ro colourr scheme for the pitc h is blue and grey, so please keep to it.",
+      "output": "Ro colour scheme for the pitch is blue and grey, so please keep to it.",
+      "clean": "Our colour scheme for the pitch is blue and grey, so please keep to it."
+    },
+    {
+      "Id": "a157",
+      "category": "Heavy: neighbour, split, swap, merge",
+      "NeedFix": 3,
+      "Fixed": 2,
+      "FalseEdits": 0,
+      "noisy": "The meeting room smells fo fish, so someone has been microwaving lefyover sagain.",
+      "output": "The meeting room smells of fish, so someone has been microwaving leftover again.",
+      "clean": "The meeting room smells of fish, so someone has been microwaving leftovers again."
+    },
+    {
+      "Id": "a197",
+      "category": "Heavy: drop, misplace, neighbour",
+      "NeedFix": 7,
+      "Fixed": 6,
+      "FalseEdits": 0,
+      "noisy": "Whiteboard in roomt wo needs new pns, and the cleaner says the radistor is makin g funny noise.",
+      "output": "Whiteboard in room wo needs new pens, and the cleaner says the radiator is making a funny noise.",
+      "clean": "Whiteboard in room two needs new pens, and the cleaner says the radiator is making a funny noise."
+    }
+  ]
+}

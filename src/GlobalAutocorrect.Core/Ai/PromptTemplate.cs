@@ -11,7 +11,7 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
     public static PromptTemplate Default { get; } = new(
         """
         You fix typing mistakes in short messages written in British English.
-        Fix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Put back a small word (the, a, to, is) only when it was clearly dropped by mistake.
+        Fix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example "in the main hall" or "for the interview".
         Keep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Use British spelling (colour, organise, travelling).
         If the text has no mistakes, return it unchanged.
         Reply with the corrected text only: no quotes, no notes.
@@ -33,6 +33,12 @@ public sealed record PromptTemplate(string System, IReadOnlyList<ChatTurn> Examp
             new("assistant", "I think I left the keys on the kitchen table, can you check"),
             new("user", "Dinner at mine on Friday, bring wine if you like."),
             new("assistant", "Dinner at mine on Friday, bring wine if you like."),
+            new("user", "theres a leak in bathroom ceiling agian, cna you ring plumber"),
+            new("assistant", "There's a leak in the bathroom ceiling again, can you ring the plumber"),
+            new("user", "sory for th edelay, i ws stuck in trafic on teh way bakc from leeds"),
+            new("assistant", "Sorry for the delay, I was stuck in traffic on the way back from Leeds"),
+            new("user", "Back in the office on Monday if you need anything."),
+            new("assistant", "Back in the office on Monday if you need anything."),
         ]);
 
     /// <summary>

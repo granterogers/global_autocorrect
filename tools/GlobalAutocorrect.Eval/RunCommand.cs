@@ -41,7 +41,7 @@ internal static class RunCommand
             Path.Combine(cache, "llama", build, "cuda", "llama-server.exe"), Path.Combine(cache, "models", modelFile),
             Path.Combine(cache, "llama", build, "cpu", "llama-server.exe")));
         if (!await host.StartAsync(CancellationToken.None)) { Console.Error.WriteLine("model server did not start; run scripts/setup.ps1 then scripts/verify.ps1"); return 1; }
-        using var client = new LlamaServerClient(host.BaseAddress!, PromptTemplate.Default, apiKey: host.ApiKey);
+        using var client = new LlamaServerClient(host.BaseAddress!, PromptTemplate.LoadOrDefault(o.GetValueOrDefault("prompt")), apiKey: host.ApiKey);
         await client.CleanAsync("warm up teh cache", CancellationToken.None);
 
         var options = EvalOptions(o);
@@ -56,6 +56,14 @@ internal static class RunCommand
             Console.WriteLine($"{item.Id,-6} {item.Level,-8} fix {r.Score.Fixed}/{r.Score.NeedFix} false {r.Score.FalseEdits}{(r.Score.Exact ? "  exact" : "")}");
         }
 
+        if (o.ContainsKey("dump"))   // tuning analysis: every message with its result (never used with the holdout, 6.1.e)
+        {
+            if (set == "holdout") { Console.Error.WriteLine("--dump is for the tuning set only"); return 2; }
+            var raw = new Dictionary<string, string>();
+            foreach (var r in results) raw[r.Item.Id] = (await client.CleanAsync(r.Item.Noisy, CancellationToken.None)).Text;   // whole message, no rules
+            await File.WriteAllLinesAsync(Path.Combine(outDir, $"items-{set}.jsonl"), results.Select(r => JsonSerializer.Serialize(new
+                { r.Item.Id, r.Item.Level, ops = r.Item.Ops, r.Score.NeedFix, r.Score.Fixed, r.Score.FalseEdits, noisy = r.Item.Noisy, output = r.Output, raw = raw[r.Item.Id], clean = r.Item.Clean })));
+        }
         var agg = Scorer.Combine(results.Select(r => r.Score));
         var lat = runner.Latencies.Order().ToArray();
         var byLevel = results.GroupBy(r => r.Item.Level).OrderBy(g => g.Key).ToDictionary(g => g.Key, g =>

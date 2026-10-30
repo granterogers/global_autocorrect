@@ -50,6 +50,39 @@ public static class TypoChannel
         return OtherSubstitution;
     }
 
+    /// <summary>
+    /// D30: the most likely way two slips turn <paramref name="intended"/> into <paramref name="typed"/>, through one
+    /// intermediate spelling ("but" → "bu" → "by": a missed key, then a neighbouring key). Zero unless they are exactly
+    /// two edits apart.
+    /// </summary>
+    public static double TwoSlipLikelihood(string typed, string intended)
+    {
+        string t = typed.ToLowerInvariant(), c = intended.ToLowerInvariant();
+        if (Math.Abs(t.Length - c.Length) > 2) return 0;
+        double best = 0;
+        foreach (var mid in OneEditAway(c))
+        {
+            if (Text.Similarity.DamerauLevenshtein(t, mid) != 1) continue;
+            best = Math.Max(best, Likelihood(mid, c) * Likelihood(t, mid));
+        }
+        return best;
+    }
+
+    /// <summary>Two slips where at most one is a random one: a missed key with a neighbouring key, say.</summary>
+    public const double TwoLikelySlips = Other * NeighbourKey;
+
+    private static IEnumerable<string> OneEditAway(string s)
+    {
+        const string Letters = "abcdefghijklmnopqrstuvwxyz";
+        for (int i = 0; i < s.Length; i++) yield return s.Remove(i, 1);
+        for (int i = 0; i + 1 < s.Length; i++) yield return string.Concat(s.AsSpan(0, i), [s[i + 1], s[i]], s.AsSpan(i + 2));
+        foreach (char l in Letters)
+        {
+            for (int i = 0; i <= s.Length; i++) yield return s.Insert(i, l.ToString());
+            for (int i = 0; i < s.Length; i++) if (s[i] != l) yield return string.Concat(s.AsSpan(0, i), [l], s.AsSpan(i + 1));
+        }
+    }
+
     private static Dictionary<char, HashSet<char>> BuildAdjacency()
     {
         var d = new Dictionary<char, HashSet<char>>();
