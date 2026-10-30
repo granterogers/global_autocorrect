@@ -63,6 +63,7 @@ public sealed class CorrectionEngine
                 Sweep = deps.PairCount is null ? null : new NonWordSweep(deps.Speller, deps.Suggester, deps.IsPersonalWord, deps.PairCount),
             };
         _gate = new WriteGate(_o, deps.Clock, deps.Keys, Session, deps.Counters);
+        if (_ai is not null) _ai.Extended += _gate.Shift;   // D43
         _gate.Written += (notice, w, typedAfter) =>
         {
             if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation);

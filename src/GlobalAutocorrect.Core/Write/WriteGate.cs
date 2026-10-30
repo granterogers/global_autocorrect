@@ -42,7 +42,15 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     public int Count => _queue.Count;
     public bool IsDesynced(string targetId) => _desynced.TryGetValue(targetId, out long g) && g == session.Generation;
 
+    private readonly Dictionary<string, List<long>> _verifyFailures = new(StringComparer.Ordinal);
+
     public void Enqueue(PendingWrite w) => _queue.Add(w);
+
+    /// <summary>D43: text was taken in at the front of the buffer; queued writes move with it.</summary>
+    public void Shift(int by)
+    {
+        foreach (var w in _queue) { w.Start += by; w.End += by; }
+    }
     public void Clear() => _queue.Clear();
 
     /// <summary>Tries the rightmost eligible write (so offsets to its left stay valid). Returns true if one landed.</summary>
@@ -106,8 +114,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (!session.MatchesField(win.Before))
         {
             if (session.FieldBehind(win.Before)) return false;   // the app hasn't drawn the last keys yet: next tick
+            // D42: the field changed in a way we didn't type (the app's own autocorrect, a paste). Start again from
+            // what it shows instead of ending the session: this paragraph keeps being corrected.
             counters.FieldMismatch();
-            session.Break(SessionBreakReason.FieldMismatch);
+            session.Resync(win.Before);
             _queue.Clear();
             return false;
         }
@@ -126,9 +136,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail)
             : target.ApplyEdit(caretDistance, deleteCount, w.Replacement);
 
-        string before = TextNorm.Normalise(win.Before);
+        // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
+        string before = TextNorm.Comparable(win.Before);
         string newTyped = typed[..w.Start] + w.Replacement + tail;
-        string expectedBefore = before[..^TextNorm.Normalise(typed).Length] + TextNorm.Normalise(newTyped);
+        string expectedBefore = before[..^TextNorm.Comparable(typed).Length] + TextNorm.Comparable(newTyped);
         if (!sent)
         {
             // Nothing was sent (focus had moved to another app): nothing to verify, nothing damaged.
@@ -139,10 +150,21 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (!target.Verify(expectedBefore, win.After))   // 4.6.d
         {
             counters.Desync();
-            session.Break(SessionBreakReason.Desync);
-            _desynced[win.TargetId] = session.Generation;   // the rest of this session only
             _queue.Clear();
             Desynced?.Invoke(win.TargetId);
+            // D42: a mismatch after writing is usually the app's own doing (autocorrect, how it stores a line break), not
+            // damage, so start again from what the field now shows and keep correcting. Only a field that keeps
+            // surprising us (three times in a minute) is left alone for the rest of the session, as 4.6.d says.
+            var recent = _verifyFailures.TryGetValue(win.TargetId, out var list) ? list : _verifyFailures[win.TargetId] = [];
+            recent.RemoveAll(at => clock.NowMs - at > 60_000);
+            recent.Add(clock.NowMs);
+            var fresh = target.ReadWindow();
+            if (recent.Count >= 3 || !fresh.CaretKnown)
+            {
+                session.Break(SessionBreakReason.Desync);
+                _desynced[win.TargetId] = session.Generation;   // the rest of this session only
+            }
+            else session.Resync(fresh.Before);
             return false;
         }
 

@@ -26,4 +26,4 @@ public readonly record struct KeyInput(KeyKind Kind, char Char, long Seq, long A
     public static KeyInput Of(char c, long seq, long at) => new(KeyKind.Char, c, seq, at);
 }
 
-public enum SessionBreakReason { None, Navigation, Shortcut, Paste, Foreign, Click, FocusChange, BackspaceIntoExisting, FieldMismatch, Overflow, Desync }
+public enum SessionBreakReason { None, Navigation, Shortcut, Paste, Foreign, Click, FocusChange, BackspaceIntoExisting, FieldMismatch, Overflow, Desync, Resync }

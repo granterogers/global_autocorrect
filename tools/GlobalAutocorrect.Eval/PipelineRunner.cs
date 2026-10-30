@@ -40,7 +40,7 @@ internal sealed class RecordingLlm(ILlmClient inner, List<double> latencies, Act
 
 internal sealed record EvalItem(string Id, string Clean, string Noisy, string Level, IReadOnlyList<string> Ops);
 
-internal sealed record ItemResult(EvalItem Item, string Output, MessageScore Score);
+internal sealed record ItemResult(EvalItem Item, string Output, MessageScore Score, string Counters = "");
 
 /// <summary>
 /// Scores the whole pipeline (6.2): each noisy message is typed into a simulated field at a realistic pace through the
@@ -55,10 +55,39 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
     /// <summary>Ids whose model traffic and rule verdicts are printed (eval data only).</summary>
     public HashSet<string> TraceIds { get; init; } = [];
 
+    /// <summary>
+    /// D42: the field behaves like a real editor: blank lines and double spaces reported differently, Edge-style
+    /// suggestions after the caret on some reads, reads that lag the last keys, and the app's own autocorrect on common
+    /// typos (Notepad, Word, Outlook do this). Each of these broke real use; with them on, the score is the real one.
+    /// </summary>
+    public bool Realistic => Quirks.Count > 0;
+
+    /// <summary>Which behaviours to switch on: blank, nbsp, ghost, lag, host ("all" for every one).</summary>
+    public HashSet<string> Quirks { get; init; } = [];
+
+    private bool On(string q) => Quirks.Contains("all") || Quirks.Contains(q);
+
+    private static readonly Dictionary<string, string> HostFixes = new(StringComparer.Ordinal)
+    {
+        ["teh"] = "the", ["dont"] = "don't", ["im"] = "I'm", ["thier"] = "their", ["recieve"] = "receive", ["wich"] = "which",
+        ["becuase"] = "because", ["adn"] = "and", ["taht"] = "that", ["i"] = "I",
+    };
+
     public async Task<ItemResult> RunAsync(EvalItem item, CancellationToken ct)
     {
         var clock = new ManualClock(1_000_000);
+        var rng = new Random(HashCode.Combine(seed, item.Id));
         var ed = new SimulatedEditor(clock, item.Id);
+        if (Realistic)
+        {
+            ed.ReportsBlankLinesOnce = On("blank");
+            ed.ReportsDoubleSpaceAsNbsp = On("nbsp");
+            ed.GhostAfterCaret = " and more";
+            ed.Chance = new Random(HashCode.Combine(seed, item.Id, 7));
+            ed.GhostChance = On("ghost") ? 0.2 : 0;
+            ed.LagChance = On("lag") ? 0.1 : 0;
+            if (On("host")) ed.HostAutocorrect = w => HostFixes.GetValueOrDefault(w);
+        }
         var rec = new RecordingLlm(llm, Latencies, TraceIds.Contains(item.Id) ? Console.WriteLine : null)
         {
             Rules = new EditRules(options.Rules, speller, _ => false),
@@ -67,7 +96,6 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
         var counters = new Counters();
         var engine = new CorrectionEngine(options, new EngineDeps(clock, ed, speller, suggester, rec, personal.Contains, personal.Add, counters, PairCount: pairCount, WordCount: wordCount));
         engine.SetTarget(ed);
-        var rng = new Random(HashCode.Combine(seed, item.Id));
 
         foreach (char c in item.Noisy)
         {
@@ -84,7 +112,7 @@ internal sealed class PipelineRunner(ISpellChecker speller, ISuggester suggester
             engine.Tick();
         }
         if (TraceIds.Contains(item.Id)) Console.WriteLine($"  counters: {counters.ToJson()} lastBreak={engine.Session.LastBreak}");
-        return new ItemResult(item, ed.Text, Scorer.Score(item.Clean, item.Noisy, ed.Text));
+        return new ItemResult(item, ed.Text, Scorer.Score(item.Clean, item.Noisy, ed.Text), counters.ToJson());
     }
 
     private static async Task HoldWhileModelWorks(CorrectionEngine engine, RecordingLlm rec, CancellationToken ct)

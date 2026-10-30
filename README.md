@@ -12,7 +12,7 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 ## What it doesn't do
 
 - It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
-- It never corrects pasted or dictated text, or text inserted by other tools. It only corrects what you type yourself.
+- It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Set "How bold" to **Cautious** to correct only what you type yourself.
 - It keeps no history or list of corrections. Only counts are kept, such as "corrections today".
 - **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
 - English (UK) only, on a UK keyboard layout.

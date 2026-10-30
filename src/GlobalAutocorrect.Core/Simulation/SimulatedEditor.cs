@@ -77,6 +77,31 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>The next N reads miss the last two characters, as a browser that hasn't drawn the last keys yet.</summary>
     public int LagNextReads { get; set; }
 
+    // D42: how real editors report text differently from the keys that made it (each one broke something in real use).
+    /// <summary>A blank line (Enter Enter) reads as one line break, as Edge's rich editors report it.</summary>
+    public bool ReportsBlankLinesOnce { get; set; }
+    /// <summary>Two spaces read as a non-breaking space and a space, as browser editors store them.</summary>
+    public bool ReportsDoubleSpaceAsNbsp { get; set; }
+    /// <summary>Text the app shows after the caret that isn't in the document (Edge's text prediction), on some reads.</summary>
+    public string GhostAfterCaret { get; set; } = "";
+    /// <summary>Randomness for <see cref="GhostChance"/> and <see cref="LagChance"/>.</summary>
+    public Random? Chance { get; set; }
+    public double GhostChance { get; set; }
+    public double LagChance { get; set; }
+
+    private TextWindow Report(string before, string after)
+    {
+        if (ReportsBlankLinesOnce)
+        {
+            before = System.Text.RegularExpressions.Regex.Replace(before, "\n{2,}", "\n");
+            after = System.Text.RegularExpressions.Regex.Replace(after, "\n{2,}", "\n");
+        }
+        if (ReportsDoubleSpaceAsNbsp) { before = before.Replace("  ", "  "); after = after.Replace("  ", "  "); }
+        if (Chance is not null && GhostAfterCaret.Length > 0 && Chance.NextDouble() < GhostChance) after = GhostAfterCaret + after;
+        if (Chance is not null && Chance.NextDouble() < LagChance && before.Length >= 2) before = before[..^2];
+        return new TextWindow(TargetStatus.Ok, Id, before, after);
+    }
+
     public TextWindow ReadWindow()
     {
         if (FailNextReads > 0) { FailNextReads--; return TextWindow.Unavailable(TargetStatus.Unavailable, Id); }
@@ -86,7 +111,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
             LagNextReads--;
             return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..(Caret - 2)], "");
         }
-        return new TextWindow(TargetStatus.Ok, Id, Text[Math.Max(0, Caret - 400)..Caret], Text[Caret..Math.Min(Text.Length, Caret + 80)]);
+        return Report(Text[Math.Max(0, Caret - 400)..Caret], Text[Caret..Math.Min(Text.Length, Caret + 80)]);
     }
 
     public bool ApplyEdit(int caretDistance, int deleteCount, string replacement)
@@ -110,12 +135,21 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     public bool Verify(string expectedBefore, string expectedAfter)
     {
         if (TypedDuringVerify.Length > 0) { Insert(TypedDuringVerify); TypedDuringVerify = ""; }
-        var w = ReadWindow();
-        string b = TextNorm.Normalise(w.Before), e = TextNorm.Normalise(expectedBefore);
+        // As the Windows target compares (D42): blank lines count once, typing (Enter included) may follow the fix, and
+        // the text after the caret only has to still be there. It also reads a few times, as the real one polls.
+        string e = TextNorm.Comparable(expectedBefore);
         string tail = e.Length > 48 ? e[^48..] : e;
-        int at = b.LastIndexOf(tail, StringComparison.Ordinal);
-        bool beforeOk = at >= 0 && b.Length - (at + tail.Length) <= 64 && !b.AsSpan(at + tail.Length).Contains('\n');
-        return w.CaretKnown && beforeOk && TextNorm.Normalise(w.After) == TextNorm.Normalise(expectedAfter);
+        string afterLine = TextNorm.Comparable(expectedAfter).Split('\n')[0];
+        string afterKey = afterLine.Length > 24 ? afterLine[..24] : afterLine;
+        for (int i = 0; i < 3; i++)
+        {
+            var w = ReadWindow();
+            string b = TextNorm.Comparable(w.Before);
+            int at = b.LastIndexOf(tail, StringComparison.Ordinal);
+            bool beforeOk = at >= 0 && b.Length - (at + tail.Length) <= 64;
+            if (w.CaretKnown && beforeOk && Targets.TextNorm.AfterConsistent(afterKey, TextNorm.Comparable(w.After))) return true;
+        }
+        return false;
     }
 
     private KeyInput Key(KeyKind kind, char c)
