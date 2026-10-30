@@ -186,7 +186,11 @@ public sealed class AppHost : IAsyncDisposable
         // Screen tests only (GA_E2E=1, synthetic text): each write as code points, so a CI failure shows what was written.
         // Never in normal use (8.6).
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1")
+        {
             engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
+            engine.WriteDropped += (layer, reason) => Diagnose($"dropped: {layer} {reason}");
+            engine.Session.Restarted += reason => Diagnose($"session: restart {reason}");
+        }
         return engine;
     }
 

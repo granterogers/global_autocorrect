@@ -54,6 +54,9 @@ public sealed class CorrectionEngine
     public event Action<CorrectionNotice>? Corrected;
     public event Action<string>? Desynced;
 
+    /// <summary>A queued write that was dropped and why (a reason code, never text).</summary>
+    public event Action<Layer, string>? WriteDropped;
+
     public CorrectionEngine(EngineOptions options, EngineDeps deps)
     {
         _o = options.Validate();
@@ -78,6 +81,7 @@ public sealed class CorrectionEngine
             Corrected?.Invoke(notice);
         };
         _gate.Desynced += id => { _undo.Clear(); Desynced?.Invoke(id); };
+        _gate.WriteDropped += (layer, reason) => WriteDropped?.Invoke(layer, reason);
     }
 
     /// <summary>Focus moved to another field (or none). Breaks the typing session.</summary>

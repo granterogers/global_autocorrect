@@ -53,11 +53,15 @@ public sealed class TypingSession
         }
     }
 
+    /// <summary>Raised when the typed record starts again (a break or a resync); for the screen tests' diagnostics.</summary>
+    public event Action<SessionBreakReason>? Restarted;
+
     public void Break(SessionBreakReason reason)
     {
         _typed.Clear();
         Generation++;
         LastBreak = reason;
+        Restarted?.Invoke(reason);
     }
 
     /// <summary>Keeps the buffer in step after one of our own (tagged) edits, which the hook never reports.</summary>
@@ -110,6 +114,7 @@ public sealed class TypingSession
         _typed.Clear().Append(para);
         Generation++;
         LastBreak = SessionBreakReason.Resync;
+        Restarted?.Invoke(SessionBreakReason.Resync);
     }
 
     /// <summary>

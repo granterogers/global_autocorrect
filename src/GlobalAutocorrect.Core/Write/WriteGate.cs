@@ -125,6 +125,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
         if (typed[w.Start..w.End] != w.Original) { Drop(w, "changed-on-read"); return false; }
         if (keys.LatestKeySeq != session.LastKeySeq) return false;   // a key slipped in during the read
+        // D60: a fix that starts where the typed record starts must not be the tail of a longer word in the field. A
+        // session that began mid-word ("Lo|oking") saw "oking" as a word and the instant layer made it "king", leaving
+        // "Loking" (CI screen tests, CKEditor). The field is the truth: a letter right before means it's a fragment.
+        if (w.Start == 0 && StartsMidWord(win.Before, typed)) { Drop(w, "fragment"); return false; }
 
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
@@ -192,6 +196,17 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         return true;
     }
 
+    /// <summary>A write that was dropped and why (a reason code, never text).</summary>
+    public event Action<Layer, string>? WriteDropped;
+
+    /// <summary>D60: true when the field shows a letter or digit right before the start of the typed record.</summary>
+    private static bool StartsMidWord(string fieldBefore, string typed)
+    {
+        string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(typed);
+        int at = f.Length - t.Length - 1;
+        return at >= 0 && t.Length > 0 && f.EndsWith(t, StringComparison.Ordinal) && char.IsLetterOrDigit(f[at]);
+    }
+
     /// <summary>Why the last write was dropped (a reason code, never text): for tests and the diagnostics log.</summary>
     public string LastDropReason { get; private set; } = "";
 
@@ -200,5 +215,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         _queue.Remove(w);
         counters.Dropped();
         LastDropReason = reason;
+        WriteDropped?.Invoke(w.Layer, reason);
     }
 }

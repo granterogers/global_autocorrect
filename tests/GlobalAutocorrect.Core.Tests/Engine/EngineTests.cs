@@ -32,6 +32,34 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_6_a_AWordFragmentAtTheStartOfTheTypedRecordIsNeverFixed_D60()
+    {
+        // CI screen tests (CKEditor): the typed record started mid-word, after "Lo", so "oking" looked like a typo of
+        // "king" and the instant fix left "Loking". The field shows a letter right before the record: it's a fragment.
+        // Here "teh" typed straight after an "x" already in the field: the field's word is "xteh", not "teh".
+        var h = new Harness();
+        h.Ed.Text = "x";
+        h.Ed.Caret = 1;
+        h.Type("teh forward ");
+        h.Wait(300);
+        Assert.Equal("xteh forward ", h.Text);
+        Assert.Equal("fragment", h.Engine.LastDropReason);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_3_a_AWordAtTheStartOfTheTypedRecordIsStillFixedAfterASpace_D60()
+    {
+        // The other side: text before the record that ends in a space is not a fragment.
+        var h = new Harness();
+        h.Ed.Text = "Hello ";
+        h.Ed.Caret = 6;
+        h.Type("teh ");
+        h.Wait(300);
+        Assert.Equal("Hello the ", h.Text);
+    }
+
+    [Fact]
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {
         // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".
