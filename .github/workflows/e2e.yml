@@ -8,7 +8,7 @@ name: E2E
 on:
   workflow_dispatch:
   push:
-    branches: [ci-e2e]
+    branches: [main, ci-e2e]
 
 permissions:
   contents: read

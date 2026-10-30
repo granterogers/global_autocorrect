@@ -132,6 +132,13 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // again rather than stepped over with Left/Right. Edge applied the arrow keys out of step with a key typed
         // straight after the batch, leaving "thed og" (found by E2E). No arrow keys, nothing to fall out of step.
         bool retype = caretDistance is > 0 and <= 3 && tail.All(c => c is ' ' or '\t' || char.IsPunctuation(c));
+        if (target.RetypeInsteadOfArrows && caretDistance > 0)
+        {
+            // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. Never
+            // across a line break: retyping it means pressing Enter, and Enter sends the message in Teams.
+            if (tail.Contains('\n') || caretDistance > 300) { Drop(w, "retype-unsafe"); return false; }
+            retype = true;
+        }
         bool sent = retype
             ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail)
             : target.ApplyEdit(caretDistance, deleteCount, w.Replacement);

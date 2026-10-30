@@ -46,6 +46,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         return SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
     }
 
+    /// <summary>D46: CKEditor 5 (Teams' message box) applies a burst of arrow keys after the edits that follow them.</summary>
+    public bool RetypeInsteadOfArrows => LastSnapshot?.ClassName.Contains("ck-editor", StringComparison.Ordinal) == true;
+
     /// <summary>Characters the user may have typed after the edit while we wait for the app to show it.</summary>
     public const int MaxTypedDuringVerify = 64;
 

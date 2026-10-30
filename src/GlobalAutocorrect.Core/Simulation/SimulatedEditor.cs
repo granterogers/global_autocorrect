@@ -74,6 +74,12 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>The next N reads fail, as a busy app's UIA sometimes does for a moment.</summary>
     public int FailNextReads { get; set; }
 
+    /// <summary>D46: like CKEditor 5 (Teams). Edits are retyped, and arrow keys in a write batch would be applied late.</summary>
+    public bool RetypeInsteadOfArrows { get; set; }
+
+    /// <summary>Left/Right presses our edits have sent while <see cref="RetypeInsteadOfArrows"/> was on: must stay 0.</summary>
+    public int ArrowsSentToRetypeEditor { get; private set; }
+
     /// <summary>The next N reads miss the last two characters, as a browser that hasn't drawn the last keys yet.</summary>
     public int LagNextReads { get; set; }
 
@@ -117,6 +123,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     public bool ApplyEdit(int caretDistance, int deleteCount, string replacement)
     {
         BeforeApply?.Invoke(this);
+        if (RetypeInsteadOfArrows && caretDistance > 0) ArrowsSentToRetypeEditor += caretDistance;
         // Exactly what the SendInput batch does: Left × d, Backspace × n, type, Right × d (10.7.a).
         int pos = Caret;
         for (int i = 0; i < caretDistance && pos > 0; i++) pos -= LastElementLength(Text[..pos]);

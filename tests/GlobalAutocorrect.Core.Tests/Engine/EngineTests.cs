@@ -399,6 +399,33 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R10_7_a_InCkEditorAFixFarBackIsRetypedWithoutArrowKeys_D46()
+    {
+        // Found by the CI screen tests: in CKEditor 5 (Teams) a burst of Left arrows was applied after the backspaces,
+        // so "their" -> "there" changed the end of "dog" instead.
+        var h = new Harness(model: FixTheir, latencyMs: 300);
+        h.Ed.RetypeInsteadOfArrows = true;
+        h.Type("i went their with the dog. ");
+        h.Wait(3000);
+        Assert.Equal("I went there with the dog. ", h.Text);
+        Assert.Equal(0, h.Ed.ArrowsSentToRetypeEditor);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R10_7_a_InCkEditorAFixIsNeverRetypedAcrossALineBreak_D46()
+    {
+        // Retyping a line break means pressing Enter, and Enter sends the message in Teams: such a fix is skipped.
+        var h = new Harness(model: FixTheir, latencyMs: 300);
+        h.Ed.RetypeInsteadOfArrows = true;
+        h.Type("i went their yesterday\nand more");
+        h.Wait(3000);
+        Assert.StartsWith("i went their yesterday\n", h.Text);
+        Assert.Equal(1, h.Text.Count(c => c == '\n'));
+        Assert.Equal(0, h.Ed.ArrowsSentToRetypeEditor);
+    }
+
+    [Fact]
     public void R4_6_d_PressingEnterWhileTheFixIsCheckedIsNotADesync_D42()
     {
         // User report (Notepad): a fast typist hit Enter while the app was checking its fix; the check refused any line

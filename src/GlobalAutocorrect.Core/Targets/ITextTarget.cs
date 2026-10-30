@@ -20,6 +20,12 @@ public interface ITextTarget
     /// <summary>One atomic batch: move left <paramref name="caretDistance"/>, delete <paramref name="deleteCount"/>, type, move back (10.7.a).</summary>
     bool ApplyEdit(int caretDistance, int deleteCount, string replacement);
 
+    /// <summary>
+    /// D46: the editor handles a burst of arrow keys late (CKEditor 5, Teams' message box: it moves its own cursor from
+    /// the browser's selection events, which arrive after the backspaces), so fixes delete back and retype instead.
+    /// </summary>
+    bool RetypeInsteadOfArrows => false;
+
     /// <summary>Re-reads and checks the field now shows <paramref name="expectedBefore"/> before the caret and <paramref name="expectedAfter"/> after it (4.6.d).</summary>
     bool Verify(string expectedBefore, string expectedAfter);
 }

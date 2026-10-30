@@ -18,7 +18,8 @@ public sealed record UiaSnapshot(
     string RuntimeId,
     (double X, double Y, double W, double H)? CaretRect,
     int ControlTypeId = 0,   // UIA control type id: language-independent, unlike ControlType
-    string? FontName = null) // the field's font where the app reports it, so the suggestion can match it (7.6)
+    string? FontName = null, // the field's font where the app reports it, so the suggestion can match it (7.6)
+    string ClassName = "")   // D46: tells CKEditor 5 (Teams) apart, which needs fixes retyped rather than arrowed to
 {
     public bool CaretKnown => Status == ReadStatus.Ok;
 
@@ -91,7 +92,7 @@ public sealed class UiaReader
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, FontName(caret));
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, FontName(caret), el.CurrentClassName ?? "");
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
