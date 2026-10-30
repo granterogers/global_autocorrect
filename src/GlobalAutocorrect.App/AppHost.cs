@@ -157,15 +157,18 @@ public sealed class AppHost : IAsyncDisposable
     private static bool MockedModel =>
         Environment.GetEnvironmentVariable("GA_E2E") == "1" && Environment.GetEnvironmentVariable("GA_E2E_LLM_URL") is not null;
 
+    /// <summary>D57: the app the field being learnt from belongs to (the engine has just read it), or null.</summary>
+    private string? CurrentApp => Target?.LastSnapshot?.ProcessName;
+
     private CorrectionEngine BuildEngine()
     {
         _engineOptions = Settings.ToEngineOptions(new EngineOptions());
         var engine = new CorrectionEngine(_engineOptions, new EngineDeps(
             SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
             Dictionary.Contains, Dictionary.Add, _counters,
-            ObserveWord: History.Observe,                      // 7.3, gated in the engine (8.3)
+            ObserveWord: w => History.Observe(w, CurrentApp),  // 7.3, gated in the engine (8.3); per app, D57
             NoteUnrecognised: Dictionary.NoteUnrecognised,     // 8.5
-            ObservePhrase: History.ObservePhrase,               // D40
+            ObservePhrase: (a, b, w) => History.ObservePhrase(a, b, w, CurrentApp),   // D40, D57
             PairCount: _ngram is null ? null : _ngram.PairCount,    // D37, D38
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused };
