@@ -75,14 +75,15 @@ It prefers leaving a mistake to changing something you meant. That's why wrong c
 
 | App | How it was tested | Result |
 |---|---|---|
-| Notepad (Windows 11) | Spike B; end-to-end tests: instant fix, AI fix, Ctrl+Z, Tab suggestion | ✅ (see note) |
+| Notepad (Windows 11) | Spike B; end-to-end tests: AI fix, Tab suggestion, works alongside the autocorrect built into Notepad | ✅ (see note) |
 | Word | Spike B | ✅ |
 | Edge: plain text box | Spike B; end-to-end tests | ✅ (see note) |
 | Edge: rich text box | Spike B; end-to-end tests | ✅ (see note) |
 | Edge: ProseMirror editor | Spike B; end-to-end tests | ✅ (see note) |
 | Edge: Lexical editor | Spike B; end-to-end tests | ✅ (see note) |
-| WPF text box | End-to-end tests | ✅ (see note) |
+| WPF text box | End-to-end tests: instant fix, Ctrl+Z undo and learning the word | ✅ (see note) |
 | Password boxes | End-to-end test | ✅ never touched |
+| Intercom, Claude.ai, ChatGPT in Edge | Not automated: they need your signed-in accounts. Their message boxes are rich web editors like the ones above | ⚠️ Please try: a typo, a "their/there" sentence, Ctrl+Z straight after a fix, Tab on a suggestion |
 | Outlook (classic) | Spike B could not put the cursor in the message body automatically | ⚠️ Not verified. Its message body is the same editor as Word, which passes |
 
 Note: the end-to-end results for this release candidate are in `e2e-results.txt` in this folder.
@@ -92,7 +93,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 - **Accuracy is below the 95% target** (92.3% of mistakes fixed). It is weakest on messages with many slips at once, and on a missing small word such as "the", which it rarely puts back.
 - **It only works where the app reports its text and cursor position to Windows.** Most apps do. Where an app doesn't, Global Autocorrect does nothing rather than guess.
 - **It never corrects across a line break**, and only looks at the current paragraph.
-- **Some apps also autocorrect.** If Word or Outlook changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
+- **Some apps also autocorrect.** If Word, Outlook or Notepad changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
 - **Code editors are excluded by default.** In VS Code and similar editors, only about a page of text is visible to other apps.
 - **Changing the AI model takes effect after a restart.**
 - **Other GPU-heavy apps can slow clean-ups down.** The model needs about 3.5 GB of the 8 GB of graphics memory. If games, video tools or other AI apps take the rest, Windows quietly moves graphics memory into ordinary memory and clean-ups can take seconds instead of a third of a second. `scripts/verify.ps1` measures this.

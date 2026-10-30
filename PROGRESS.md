@@ -2,6 +2,20 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-10-30 — Release candidate 1 (0.9.0-rc1) ready for review (2.6.e)
+
+- **Audit:** an independent read of the brief against the code found 4 blockers, 7 majors and 12 minors; all blockers and majors and the meaningful minors are fixed with tests (pause 8.2, hotkey thread 8.1, UIA failures 10.6.c, undo with modifiers 4.8.a, auto-learn 8.5, password history 8.3, stale suggestion 7.5–7.6, About numbers 9.3.g, midnight counts 6.5, retry backoff and orphan servers 5.6).
+- **End-to-end (11.3):** final full run 11/12. Both Tab tests then re-ran twice, 4/4. The one Tab failure ("Please t me") did not repeat and is unexplained; it is recorded in `e2e-results.txt`. These runs found 8 bugs, all fixed with unit tests: ToUnicodeEx crash, false desync, Ctrl+Z not seen (hook tracks modifiers), lost edit on one failed read (4.6.c), Edge read lagging the last keys (4.4.a), undo while Ctrl held (D29, 4.8.a–b), Edge arrow keys out of step (D28, 10.7.a), and orphaned model servers (5.6).
+- **Accuracy (6.6, holdout, final code):** 92.3% of errors fixed (target 95%, **missed**), 0.19% false edits (target met), p50 344 ms, p95 511 ms.
+- **Checks:** fast tier green (186 Core, 19 Llm, 55 Windows, 31 App). trace-check: 223/223 IDs. coverage: 0 gaps. UK spelling test over UI, messages and README. Package `artifacts/GlobalAutocorrect-0.9.0-rc1.zip` (6 MB) starts from a fresh unzip.
+- **Decisions added:** D28 (retype a short tail instead of arrow keys), D29 (undo waits for modifiers to be released).
+- **Needs the user (2.6.e):**
+  - Accept or reject RC1 with accuracy at 92.3%.
+  - Confirm D22 (key-press typing instead of Unicode keystrokes, a deviation from 10.7.a).
+  - Try Intercom, Claude.ai and ChatGPT in Edge (not automatable).
+  - Outlook untested.
+  - Never tag v1.0.0 until RC1 is accepted (13.3).
+- **Next task:** the user's RC1 review.
 ## 2026-10-29 (evening) — Spikes passed; Feature A wired end to end; tuning in progress
 
 - **BRIEF re-read** (2.2.c).

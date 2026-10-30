@@ -110,7 +110,7 @@ public sealed class DesktopTests
             Desk.Type("Please let me ");
             Thread.Sleep(900);   // the suggestion appears after a background read
             Desk.Keys(VK_TAB);
-            Assert.True(Desk.WaitUntil(() => Text(doc) == "Please let me know"), Text(doc));
+            Assert.True(Desk.WaitUntil(() => Text(doc) == "Please let me know"), $"got \"{Text(doc)}\"; {app.Diagnostics()}");
             Assert.Equal(0, app.Desyncs);
         }
         finally { close(); }
@@ -129,7 +129,7 @@ public sealed class DesktopTests
             Desk.Type("zq");   // nothing to suggest
             Thread.Sleep(900);
             Desk.Keys(VK_TAB);
-            Assert.True(Desk.WaitUntil(() => Text(doc) == "zq\t"), Text(doc));
+            Assert.True(Desk.WaitUntil(() => Text(doc) == "zq\t"), $"got \"{Text(doc)}\"; {app.Diagnostics()}");
         }
         finally { close(); }
     }
