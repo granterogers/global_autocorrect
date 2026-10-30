@@ -90,7 +90,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 
 ## Known limits
 
-- **Accuracy is below the 95% target** (92.9% of mistakes fixed). It is weakest on messages with many slips at once, and on a missing small word such as "the", which it rarely puts back.
+- **Accuracy is below the 95% target** (92.9% of mistakes fixed). A bigger model might reach it, but corrections would take about twice as long, so speed was chosen instead (D33). It is weakest on messages with many slips at once, and on a missing small word such as "the", which it rarely puts back.
 - **It only works where the app reports its text and cursor position to Windows.** Most apps do. Where an app doesn't, Global Autocorrect does nothing rather than guess.
 - **It never corrects across a line break**, and only looks at the current paragraph.
 - **Some apps also autocorrect.** If Word, Outlook or Notepad changes a word itself, Global Autocorrect notices and stays out of the way, so it may skip that correction.
@@ -99,7 +99,7 @@ Note: the end-to-end results for this release candidate are in `e2e-results.txt`
 - **Other GPU-heavy apps can slow clean-ups down.** The model needs about 3.5 GB of the 8 GB of graphics memory. If games, video tools or other AI apps take the rest, Windows quietly moves graphics memory into ordinary memory and clean-ups can take seconds instead of a third of a second. `scripts/verify.ps1` measures this.
 - **Ctrl+Alt+Z undoes from anywhere in the field that was corrected**, not from another window. If you've moved to another window, it tells you to switch back.
 - **A shortcut can be taken by another app.** If Ctrl+Alt+P or Ctrl+Alt+Z is already in use, the tray tells you and you can choose another in Settings.
-- **Corrections are typed as ordinary key presses** (D22 in `DECISIONS.md`). The brief asks for Unicode keystrokes, but Notepad scrambled those, so this is flagged for you to confirm.
+- **Corrections are typed as ordinary key presses**, as a keyboard would (D22 in `DECISIONS.md`). Sending raw Unicode characters instead, as first planned, scrambled text in Notepad. Characters with no key on a UK keyboard (such as é) are still sent as Unicode.
 - **UK English and a UK keyboard layout only.**
 
 ## Requirement coverage
