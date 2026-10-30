@@ -111,7 +111,13 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
         long seqAtWrite = keys.LatestKeySeq;
-        bool sent = target.ApplyEdit(caretDistance, deleteCount, w.Replacement);
+        // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed
+        // again rather than stepped over with Left/Right. Edge applied the arrow keys out of step with a key typed
+        // straight after the batch, leaving "thed og" (found by E2E). No arrow keys, nothing to fall out of step.
+        bool retype = caretDistance is > 0 and <= 3 && tail.All(c => c is ' ' or '\t' || char.IsPunctuation(c));
+        bool sent = retype
+            ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail)
+            : target.ApplyEdit(caretDistance, deleteCount, w.Replacement);
 
         string before = TextNorm.Normalise(win.Before);
         string newTyped = typed[..w.Start] + w.Replacement + tail;

@@ -158,6 +158,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private volatile bool _ctrl, _alt, _shift, _win;
 
+    /// <summary>Modifiers as this hook has seen them: exact about order, unlike Windows' own key state (4.8.a).</summary>
+    public bool ModifiersDown => _ctrl || _alt || _shift || _win;
+
     private void TrackModifier(uint vk, bool down)
     {
         switch (vk)

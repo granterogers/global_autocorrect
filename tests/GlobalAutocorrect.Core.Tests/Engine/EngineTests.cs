@@ -305,6 +305,30 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R10_7_a_AWordJustFinishedIsFixedWithoutArrowKeys_D28()
+    {
+        // Found by E2E in Edge: Left/Right fell out of step with the next typed key ("thed og").
+        var h = new Harness();
+        h.Type("we saw teh ");
+        Assert.Equal("we saw the ", h.Text);
+        Assert.Equal(0, h.Ed.CaretMoves);
+        Assert.Equal(UndoResult.Reverted, h.Engine.Undo(global: false));
+        Assert.Equal("we saw teh ", h.Text);
+        Assert.Equal(0, h.Ed.CaretMoves);
+    }
+
+    [Fact]
+    public void R10_7_a_ALongerTailIsStillSteppedOverNotRetyped_D28()
+    {
+        // Retyping is only for a short run of spaces and punctuation; words after the edit are never typed again.
+        var h = new Harness(model: FixTheir, latencyMs: 100);
+        h.Type("i went their yesterday. ");
+        h.Wait(2500);
+        Assert.Equal("I went there yesterday. ", h.Text);
+        Assert.True(h.Ed.CaretMoves > 0);
+    }
+
+    [Fact]
     public void R4_4_a_AFieldThatHasNotCaughtUpWithTheLastKeysIsReadAgain()
     {
         // Found by E2E in Edge: the read straight after ". " didn't have the full stop yet, the session was dropped as

@@ -24,6 +24,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     public Action<SimulatedEditor>? BeforeApply { get; set; }
 
     public int Edits { get; private set; }
+
+    /// <summary>Left and Right presses our edits have used (D28: none for a word just finished).</summary>
+    public int CaretMoves { get; private set; }
     public long LatestKeySeq { get; private set; }
     public long LastKeyAtMs { get; private set; } = -100_000;
     public bool ModifierHeld { get; set; }
@@ -97,6 +100,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         Text = Text[..del] + replacement + Text[pos..];
         Caret = del + replacement.Length + (Caret - pos);
         Edits++;
+        CaretMoves += caretDistance * 2;
         return true;
     }
 

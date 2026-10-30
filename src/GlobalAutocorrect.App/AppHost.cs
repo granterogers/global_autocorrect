@@ -212,9 +212,8 @@ public sealed class AppHost : IAsyncDisposable
         }
         else if (name == "undo")
         {
-            _loop?.Post(e =>
+            _loop?.Undo(global: true, r =>   // 4.8.b, once the shortcut's keys are released
             {
-                var r = e.Undo(global: true);   // 4.8.b
                 if (r == Core.Undo.UndoResult.OtherField) Notice?.Invoke("Switch back to the field with the correction to undo it.");
                 else if (r == Core.Undo.UndoResult.TextChanged) Notice?.Invoke("That text has changed since the correction, so there's nothing to undo.");
             });
