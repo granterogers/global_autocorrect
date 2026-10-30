@@ -52,25 +52,37 @@ public sealed record MetricsSummary(string ErrorsFixed, string FalseEdits, strin
             ? dt.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("en-GB")) : iso;
 }
 
-/// <summary>About (9.3.g, 6.6): version, the measured accuracy, credits, and start with Windows (8.1).</summary>
+/// <summary>
+/// About (9.3.g, 6.6): version, the measured accuracy, credits, start with Windows (8.1), and updates from GitHub (D58).
+/// </summary>
 public sealed partial class AboutViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
     private readonly StartupRegistration _startup;
     private readonly string _noticePath;
     private readonly Action<string> _openFile;
+    private readonly IUpdateService? _updates;
     private bool _loading;
 
     [ObservableProperty] private bool _startWithWindows;
+    [ObservableProperty] private bool _checkForUpdates;
+    [ObservableProperty] private bool _hasUpdate;
+    [ObservableProperty] private string _updateTitle = "";
+    [ObservableProperty] private string _updateCaption = "";
+    [ObservableProperty] private string _updateMessage = "";
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))] private bool _installing;
     [ObservableProperty] private string _startupMessage = "";
     [ObservableProperty] private string _noticeMessage = "";
 
     /// <param name="metricsPath">metrics.json next to the exe; missing is fine.</param>
     /// <param name="noticePath">NOTICE.md with the credits for SCOWL and the Leipzig corpus.</param>
     /// <param name="openFile">Opens a file in the user's default app. Null uses the shell.</param>
-    public AboutViewModel(ISettingsService settings, string metricsPath, string noticePath, StartupRegistration startup, Action<string>? openFile = null)
+    /// <param name="updates">D58: the update check; null when it isn't running (no update is ever shown).</param>
+    public AboutViewModel(ISettingsService settings, string metricsPath, string noticePath, StartupRegistration startup, Action<string>? openFile = null,
+        IUpdateService? updates = null)
     {
         _settings = settings;
+        _updates = updates;
         _startup = startup;
         _noticePath = noticePath;
         _openFile = openFile ?? OpenWithShell;
@@ -80,7 +92,9 @@ public sealed partial class AboutViewModel : ObservableObject
 
     public string AppName => TrayController.AppName;
     public string Channel => "Release candidate";
-    public string Version { get; } = ReadVersion();
+    /// <summary>The running app's version, such as "0.9.0-rc1" (D58 compares releases with it).</summary>
+    public static string InstalledVersion { get; } = ReadVersion();
+    public string Version => InstalledVersion;
     public MetricsSummary? Metrics { get; }
     public bool HasMetrics => Metrics is not null;
     public bool HasNoMetrics => Metrics is null;
@@ -94,11 +108,51 @@ public sealed partial class AboutViewModel : ObservableObject
         StartupMessage = _startup.Apply(value) ? "" : "Windows wouldn't let us change this. Your organisation may manage start-up apps.";
     }
 
+    partial void OnCheckForUpdatesChanged(bool value)
+    {
+        if (_loading) return;
+        _settings.Update(_settings.Settings with { CheckForUpdates = value });
+        if (value) _updates?.CheckNow();
+        RefreshUpdate();
+    }
+
     public void Refresh()
     {
         _loading = true;
-        try { StartWithWindows = _settings.Settings.StartWithWindows; }
+        try
+        {
+            StartWithWindows = _settings.Settings.StartWithWindows;
+            CheckForUpdates = _settings.Settings.CheckForUpdates;
+        }
         finally { _loading = false; }
+        RefreshUpdate();
+    }
+
+    /// <summary>D58: "Update available: vX" only while the switch is on and a newer release was found.</summary>
+    private void RefreshUpdate()
+    {
+        var u = _settings.Settings.CheckForUpdates ? _updates?.Available : null;
+        HasUpdate = u is not null;
+        Installing = _updates?.Installing == true;
+        UpdateTitle = u is null ? "" : $"Update available: v{u.Version}";
+        UpdateCaption = u is null ? "" : $"Downloads {Size(u.Zip.Size)}, checks it against the checksum published with it, then closes and restarts Global Autocorrect with the new version.";
+        if (u is null) UpdateMessage = "";
+    }
+
+    private static string Size(long bytes) => bytes <= 0 ? "the update" : $"about {Math.Max(1, (int)Math.Round(bytes / 1048576.0))} MB";
+
+    private bool CanInstallUpdate() => !Installing;
+
+    /// <summary>D58: only ever from the user's click. Downloads, checks the checksum and runs the new version's installer.</summary>
+    [RelayCommand(CanExecute = nameof(CanInstallUpdate))]
+    private async Task InstallUpdate()
+    {
+        if (_updates is null) return;
+        UpdateMessage = "Downloading and checking the update…";
+        Installing = true;
+        string? problem = await _updates.InstallAsync();
+        Installing = _updates.Installing;
+        UpdateMessage = problem ?? "Installing. Global Autocorrect will close and start again in a moment.";
     }
 
     [RelayCommand]

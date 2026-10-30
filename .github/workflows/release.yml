@@ -1,4 +1,4 @@
-# Builds GlobalAutocorrect-<version>.zip and publishes it as a GitHub Release (13.1, D35).
+# Builds GlobalAutocorrect-<version>.zip and publishes it, with SHA256SUMS.txt for the app's update check (D58), as a GitHub Release (13.1, D35).
 # Runs the fast tier's unit tests only: the Model and E2E categories need the GPU, the model cache and the keyboard (11.1).
 # Trigger: by hand, or a pushed release-candidate tag (v*-rc*). The push hook's own tags are plain vX.Y.0 and never
 # match, so an ordinary push never publishes a release (D1, D35).
@@ -101,6 +101,10 @@ jobs:
         run: |
           $tag = '${{ steps.version.outputs.tag }}'
           $zip = "artifacts/GlobalAutocorrect-${{ steps.version.outputs.version }}.zip"
+          # D58: the app's "Install update" refuses a zip whose SHA-256 isn't listed here (sha256sum format).
+          $sums = 'artifacts/SHA256SUMS.txt'
+          "$((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content $sums -Encoding ascii
+          Get-Content $sums
           $notes = @"
           Build: $(Get-Content artifacts/package/GlobalAutocorrect/build.txt)
 
@@ -108,11 +112,11 @@ jobs:
           "@
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag $zip --clobber
+            gh release upload $tag $zip $sums --clobber
           } else {
             $flags = @('--title', "Global Autocorrect $tag", '--notes', $notes, '--target', $env:GITHUB_SHA)
             if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' }
-            gh release create $tag $zip @flags
+            gh release create $tag $zip $sums @flags
           }
           if ($LASTEXITCODE -ne 0) { throw 'publishing the release failed' }
           $global:LASTEXITCODE = 0

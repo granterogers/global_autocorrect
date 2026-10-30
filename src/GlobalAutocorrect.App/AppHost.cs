@@ -87,6 +87,9 @@ public sealed class AppHost : IAsyncDisposable
     public event Action? StateChanged;
     /// <summary>A shortcut was pressed but couldn't act (e.g. undo in another field, D9). Plain-language message.</summary>
     public event Action<string>? Notice;
+
+    /// <summary>Shows a tray notification (D58: an update is available).</summary>
+    public void ShowNotice(string message) => Notice?.Invoke(message);
     public event Action<GlobalAutocorrect.Core.Write.CorrectionNotice>? Corrected;
     public event Action<KeyInput>? KeyProcessed;
 

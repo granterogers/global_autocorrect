@@ -26,7 +26,7 @@ public partial class App
             return;
         }
 
-        var window = new SettingsWindow(Services, Services);
+        var window = new SettingsWindow(Services, Services, updates: _updates);
         ThemeService.Watch(window);   // Mica backdrop and caption colours follow Windows (9.2.d)
         window.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow = window;

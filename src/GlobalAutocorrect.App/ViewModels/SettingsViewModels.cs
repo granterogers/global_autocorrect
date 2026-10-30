@@ -18,7 +18,7 @@ public sealed record SettingsEnvironment(string ModelsDir, string MetricsPath, s
 /// <summary>All the settings pages' view models, created together so the window can refresh them as one.</summary>
 public sealed class SettingsViewModels : IDisposable
 {
-    public SettingsViewModels(ISettingsService settings, IStatusSource status, SettingsEnvironment env)
+    public SettingsViewModels(ISettingsService settings, IStatusSource status, SettingsEnvironment env, IUpdateService? updates = null)
     {
         Home = new HomeViewModel(settings, status);
         CleanUp = new CleanUpViewModel(settings, env.ModelsDir);
@@ -26,7 +26,7 @@ public sealed class SettingsViewModels : IDisposable
         Shortcuts = new ShortcutsViewModel(settings);
         Apps = new AppsViewModel(settings);
         Dictionary = new DictionaryViewModel(settings);
-        About = new AboutViewModel(settings, env.MetricsPath, env.NoticePath, env.Startup);
+        About = new AboutViewModel(settings, env.MetricsPath, env.NoticePath, env.Startup, updates: updates);
     }
 
     public HomeViewModel Home { get; }
