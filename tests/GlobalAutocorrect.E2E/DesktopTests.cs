@@ -22,7 +22,7 @@ public sealed class DesktopTests
     /// Opens a fresh Notepad tab and, at the end, empties and closes it, so Notepad's session restore never keeps
     /// test text (Notepad autosaves tabs; 12.1 inputs avoid words Notepad corrects itself).
     /// </summary>
-    private static (Window? Window, TextBox Doc, Action Close) OpenNotepad(UIA3Automation uia)
+    internal static (Window? Window, TextBox Doc, Action Close) OpenNotepad(UIA3Automation uia)
     {
         var before = Process.GetProcessesByName("Notepad").Select(p => p.Id).ToHashSet();
         // Classic (Win32) Notepad, as on Windows Server CI runners: one document per window, no tabs, no autosave, and
@@ -91,7 +91,7 @@ public sealed class DesktopTests
     /// The field's text. Classic Notepad's Win32 Edit is read with WM_GETTEXT: on Windows Server 2025 its UIA text
     /// (the Win32 edit proxy) was seen to lag behind what the window showed after a correction.
     /// </summary>
-    private static string Text(TextBox doc)
+    internal static string Text(TextBox doc)
     {
         string raw;
         if (doc.ClassName == "Edit" && doc.Properties.NativeWindowHandle.ValueOrDefault is var h && h != 0)

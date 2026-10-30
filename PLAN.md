@@ -129,6 +129,10 @@ Looked up 2026-10-29. **Do not upgrade during the build.**
 | esbuild / prosemirror-state / -view / -model / -schema-basic / -example-setup | 0.28.2 / 1.4.4 / 1.42.8 / 1.25.12 / 1.2.5 / 1.2.3 | npm (test pages) |
 | lexical / @lexical/rich-text | 0.53.0 / 0.53.0 | npm (test pages) |
 | ckeditor5 (Teams' editor; GPL licence key) | 49.0.0 | npm (test pages), added 2026-10-30 for the CI E2E run |
+| quill | 2.0.3 | npm (test pages), added 2026-10-30 for the CI E2E run |
+| tinymce (self-hosted from npm, GPL licence key, no Tiny Cloud / API key) | 8.9.3 | npm (test pages), added 2026-10-30 for the CI E2E run |
+| slate / slate-react / slate-dom / react / react-dom | 0.138.2 / 0.138.1 / 0.136.0 / 19.2.9 / 19.2.9 | npm (test pages), added 2026-10-30 for the CI E2E run; installed with `npm install --before=2026-10-16` so transitive packages are at least two weeks old too |
+| Google Chrome (Playwright channel `chrome`, tests only) | whatever windows-latest ships (printed by the workflow) | preinstalled on the runner, like Edge |
 | llama.cpp | build **b11960** (= release v0.8.0) | `llama-b11960-bin-win-cuda-13.4-x64.zip` sha256 `31c75ea62b80f0816c855ea783ef68757bc2d48028edaa57d904e4982bddea4a` |
 | cudart | 13.4 | `cudart-llama-bin-win-cuda-13.4-x64.zip` sha256 `738f8c251ac22b70c3ae6f83a10cf222725df0395246a2cf58f32bdb85fbe668` |
 | llama.cpp CPU fallback (5.1.c) | b11960 | `llama-b11960-bin-win-cpu-x64.zip` sha256 `73f962f82850d244db47eaacb9d913637027b82399124324298576d58c5f4287` |

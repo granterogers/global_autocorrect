@@ -176,6 +176,9 @@ public sealed class AppUnderTest : IDisposable
     private readonly Process _proc;
     public string DataDir { get; } = Path.Combine(Path.GetTempPath(), "ga-e2e-" + Guid.NewGuid().ToString("N")[..8]);
 
+    /// <summary>The app's process, whose windows include the overlays (7.6).</summary>
+    public int ProcessId => _proc.Id;
+
     public AppUnderTest(MockLlm llm, bool prediction = false)
     {
         Directory.CreateDirectory(DataDir);

@@ -14,6 +14,13 @@
     "prosemirror-model": "1.25.12",
     "prosemirror-schema-basic": "1.2.5",
     "prosemirror-state": "1.4.4",
-    "prosemirror-view": "1.42.8"
+    "prosemirror-view": "1.42.8",
+    "quill": "2.0.3",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "slate": "0.138.2",
+    "slate-dom": "0.136.0",
+    "slate-react": "0.138.1",
+    "tinymce": "8.9.3"
   }
 }

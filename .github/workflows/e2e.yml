@@ -1,14 +1,14 @@
 # Runs the E2E (screen) tests on a GitHub-hosted Windows runner, so the user never has to leave their PC for them
 # (11.3). The tests start the real app with the mock model (GA_E2E_LLM_URL), type with SendInput and read back with UIA
-# or Playwright (headed Edge), so no GPU or model cache is needed. Desk.RequireIdle does not wait when CI=true.
+# or Playwright (headed Edge and Chrome), so no GPU or model cache is needed. Desk.RequireIdle does not wait when CI=true.
 # Category=RealApp drives the user's own signed-in apps (Teams) and never runs here.
-# Trigger: by hand, or a push to the ci-e2e branch.
+# Trigger: by hand, or a push to main, ci-e2e or ci-coverage.
 name: E2E
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, ci-e2e]
+    branches: [main, ci-e2e, ci-coverage]
 
 permissions:
   contents: read
@@ -84,6 +84,8 @@ jobs:
           Get-AppxPackage Microsoft.WindowsNotepad -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Store Notepad: $($_.Version)" }
           $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
           if (Test-Path $edge) { Write-Host "Edge: $((Get-Item $edge).VersionInfo.ProductVersion)" } else { Write-Host 'Edge: not found' }
+          $chrome = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+          if (Test-Path $chrome) { Write-Host "Chrome: $((Get-Item $chrome).VersionInfo.ProductVersion)" } else { Write-Host 'Chrome: not found' }
           $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
           $bmp = [System.Drawing.Bitmap]::new($b.Width, $b.Height)
           $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -128,6 +130,11 @@ jobs:
           $code = $LASTEXITCODE
           Get-Content artifacts/e2e-output.txt -ErrorAction SilentlyContinue
           Get-ChildItem artifacts/test-results -Filter *.md -Recurse | ForEach-Object { Get-Content $_ | Add-Content $env:GITHUB_STEP_SUMMARY }
+          # 7.6: the suggestion overlay's measured size per app (OverlayTests), next to the screenshots in the artifact.
+          Get-ChildItem artifacts/screens -Filter 'overlay-*.txt' -ErrorAction SilentlyContinue | ForEach-Object {
+            Get-Content $_
+            "`n### Suggestion size: $($_.BaseName)`n``````text`n$(Get-Content $_ -Raw)`n``````" | Add-Content $env:GITHUB_STEP_SUMMARY
+          }
           if ($code -ne 0) { throw "E2E tests failed (exit code $code)" }
 
       - name: Stop screen recorder
