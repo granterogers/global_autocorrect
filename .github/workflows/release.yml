@@ -1,7 +1,7 @@
-# Builds GlobalAutocorrect-<version>.zip and publishes it as a GitHub Release (13.1, D34).
+# Builds GlobalAutocorrect-<version>.zip and publishes it as a GitHub Release (13.1, D35).
 # Runs the fast tier's unit tests only: the Model and E2E categories need the GPU, the model cache and the keyboard (11.1).
 # Trigger: by hand, or a pushed release-candidate tag (v*-rc*). The push hook's own tags are plain vX.Y.0 and never
-# match, so an ordinary push never publishes a release (D1, D34).
+# match, so an ordinary push never publishes a release (D1, D35).
 name: Release
 
 on:
