@@ -100,15 +100,18 @@ jobs:
           $p = Start-Process pwsh -ArgumentList '-NoProfile', '-File', "$env:RUNNER_TEMP/recorder.ps1", "$PWD\artifacts\screens\run" -WindowStyle Hidden -PassThru
           "RECORDER_PID=$($p.Id)" >> $env:GITHUB_ENV
 
+      # At medium integrity, as on the user's PC: the runner account is an administrator with UAC off, and the app
+      # refuses to run elevated (10.8). See .github/scripts/Start-MediumIntegrity.ps1.
       - name: Test (E2E)
+        timeout-minutes: 35
         env:
           GA_E2E: '1'
+          MSBUILDDISABLENODEREUSE: '1'
         run: |
-          New-Item -ItemType Directory -Force artifacts/test-results | Out-Null
-          dotnet test --project tests/GlobalAutocorrect.E2E --no-build --results-directory "$PWD/artifacts/test-results" --output Detailed `
-            -- --filter-not-trait "Category=RealApp" --report-xunit-trx --report-xunit-markdown --report-xunit-html `
-            2>&1 | Tee-Object -FilePath artifacts/e2e-output.txt
+          pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes 30 `
+            -CommandLine "`"$((Get-Command pwsh).Source)`" -NoProfile -File .github/scripts/e2e-tests.ps1"
           $code = $LASTEXITCODE
+          Get-Content artifacts/e2e-output.txt -ErrorAction SilentlyContinue
           Get-ChildItem artifacts/test-results -Filter *.md -Recurse | ForEach-Object { Get-Content $_ | Add-Content $env:GITHUB_STEP_SUMMARY }
           if ($code -ne 0) { throw "E2E tests failed (exit code $code)" }
 

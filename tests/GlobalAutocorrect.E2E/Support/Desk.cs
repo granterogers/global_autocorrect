@@ -190,10 +190,20 @@ public sealed class AppUnderTest : IDisposable
         psi.Environment["GA_E2E_LLM_URL"] = llm.Url;
         psi.Environment["GA_DATA_DIR"] = DataDir;
         _proc = Process.Start(psi)!;
-        Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(DataDir, "counters.json")), 20_000), "the app did not start");
-        // counters.json is also written on shutdown, so also check the app is still running.
-        Thread.Sleep(2000);
-        Assert.False(_proc.HasExited, $"the app exited at start (exit code 0x{(_proc.HasExited ? _proc.ExitCode : 0):X8})");
+        try
+        {
+            Assert.True(Desk.WaitUntil(() => File.Exists(Path.Combine(DataDir, "counters.json")), 20_000), "the app did not start");
+            // counters.json is also written on shutdown, so also check the app is still running.
+            Thread.Sleep(2000);
+            Assert.False(_proc.HasExited, $"the app exited at start; {Diagnostics()}");
+        }
+        catch
+        {
+            // A failed constructor never reaches Dispose: don't leave the app running (it holds the single-instance
+            // mutex, so every later test's copy would quit at once, and a prompt it shows would stay on screen).
+            Dispose();
+            throw;
+        }
     }
 
     /// <summary>What to print when a test fails: is the app alive, its counts, and any crash record.</summary>
