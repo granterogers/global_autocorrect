@@ -199,7 +199,7 @@ public sealed class CorrectionEngine
         {
             var ready = _ai.Poll(Session, out bool rerun);
             foreach (var w in ready) _gate.Enqueue(w);
-            if (rerun || _ai.PauseDue(Session)) _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a pause
+            if (rerun || _ai.PauseDue(Session) || _ai.RetryDue(Session)) _ai.Start(Session, Target, _gate.IsDesynced);   // 4.4.a pause; D65 retry
             else if (_gate.Count == 0) _ai.TryRevisit(Session, Target, _gate.IsDesynced);       // D49: look back once paused
         }
         _gate.TryWrite(Target);

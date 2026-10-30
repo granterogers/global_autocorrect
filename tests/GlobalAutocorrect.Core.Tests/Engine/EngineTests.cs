@@ -91,6 +91,22 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_4_a_ASentenceEndReadThatLagsIsRetriedAtOnce_D65()
+    {
+        // CI timings: in browsers a third of AI fixes took about 900 ms with an instant model. The read at the sentence
+        // end hadn't caught up with the last keys, and the only retry was the 700 ms pause trigger.
+        foreach (bool lag in new[] { false, true })
+        {
+            var h = new Harness(model: FixTheir, latencyMs: 100);
+            h.Type("we went their yesterday.");
+            if (lag) h.Ed.LagNextReads = 2;   // the browser hasn't drawn the last keys yet
+            h.Engine.OnInput(h.Ed.TypeChar(' '));
+            h.Wait(450);                      // well before the 700 ms pause trigger
+            Assert.True(h.Text == "we went there yesterday. ", $"lag={lag}: \"{h.Text}\"");
+        }
+    }
+
+    [Fact]
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {
         // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".

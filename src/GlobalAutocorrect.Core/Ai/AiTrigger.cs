@@ -109,18 +109,28 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     private long _retryAtMs = long.MinValue;
     private long _failedSeq = -1;
     private int _failedReads;
-    private const int RetryAfterMs = 300, MaxReadRetries = 3;
+    private bool _retryPending;
+    // D65: browsers draw a key tens of milliseconds after it arrives, so a read at the sentence end often hasn't caught
+    // up. It used to wait for the 700 ms pause trigger (CI timings: a third of browser AI fixes took ~900 ms with an
+    // instant model). Now it tries again every 40 ms, for up to 800 ms, while no new key arrives.
+    private const int RetryAfterMs = 40, MaxReadRetries = 20;
 
     private void ReadFailed(TypingSession session)
     {
         if (_failedSeq != session.LastKeySeq) { _failedSeq = session.LastKeySeq; _failedReads = 0; }
         if (++_failedReads >= MaxReadRetries) _lastTriggerSeq = session.LastKeySeq;   // give up on this text: a password box etc.
         _retryAtMs = clock.NowMs + RetryAfterMs;
+        _retryPending = _failedReads < MaxReadRetries;
     }
+
+    /// <summary>D65: a read that failed or lagged is due another try (no key has arrived since).</summary>
+    public bool RetryDue(TypingSession session) =>
+        _retryPending && _pending is null && session.LastKeySeq == _failedSeq && clock.NowMs >= _retryAtMs;
 
     public void Start(TypingSession session, ITextTarget target, Func<string, bool> isDesynced)
     {
         if (_pending is not null) { _rerun = true; return; }
+        _retryPending = false;   // set again below if this read fails too (D65)
         var win = target.ReadWindow();
         if (!win.CaretKnown) { ReadFailed(session); return; }   // 4.1.b, 10.6.c (retried shortly)
         if (isDesynced(win.TargetId)) { _lastTriggerSeq = session.LastKeySeq; return; }
