@@ -16,7 +16,7 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 - It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
 - It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Turn off "Fix the whole paragraph" on the Clean-up page, or set "How bold" to **Cautious**, to correct only what you type yourself.
 - It keeps no history or list of corrections. Only counts are kept, such as "corrections today".
-- **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
+- **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. It also notes which app you typed them in, so what you write in Teams is preferred in Teams and what you write in Outlook in Outlook (web apps count as their browser). Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
 - English (UK) only, on a UK keyboard layout.
 
 ## Shortcuts
@@ -47,6 +47,10 @@ pwsh "$env:LOCALAPPDATA\Programs\GlobalAutocorrect\scripts\verify.ps1"
 
 Every check prints OK, or explains the fix in plain language.
 It starts with Windows (you can turn that off in Settings) and lives in the system tray.
+
+### Updates
+
+When the app starts, and once a day after that, it asks GitHub whether a newer version has been released (nothing about you or your typing is sent). If there is one, the tray says so once and **Settings › About** shows "Update available" with an **Install update** button. Nothing is installed until you click it. It then downloads the new zip, checks it against the checksum published with the release (and refuses if that doesn't match or is missing), and runs its installer, which closes the app, replaces it and starts the new version. While you're on a release candidate you're offered newer release candidates too; on a final release, only final releases. Turn off **Check for updates** on the About page to stop the checks.
 
 ## Windows Defender
 
@@ -253,7 +257,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 6.6 | Recorded check | About page + README numbers |
 | 7.1 | Tested (incl. E2E) | 7 test(s), e.g. `R7_1_AllCapsPartialGetsUpperCaseCompletion` |
 | 7.2 | Tested | 3 test(s), e.g. `R7_2_AnswersUnder10ms` |
-| 7.3 | Tested | 8 test(s), e.g. `R7_3_HistoryBoostsTheUsersOwnWords` |
+| 7.3 | Tested | 14 test(s), e.g. `R7_3_AHistoryFileFromBeforePerAppLearningStillLoads_D57` |
 | 7.4 | Tested (incl. E2E) | 5 test(s), e.g. `R7_4_ArmIsOneShotAndOnlyForTheVeryNextKey` |
 | 7.5 | Tested | 1 test(s), e.g. `R7_5_NoSuggestionAfterNonMatchingText` |
 | 7.6 | Tested (incl. E2E) | 3 test(s), e.g. `R10_3_d_OverlayIsClickThroughNoActivateAndNotInAltTab_R7_6` |
@@ -278,7 +282,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 9.3.d | Tested | 1 test(s), e.g. `R9_3_d_ShortcutRecordingRejectsInvalidCombos` |
 | 9.3.e | Tested | 1 test(s), e.g. `R9_3_e_ExcludedAppsAddRemoveRestore` |
 | 9.3.f | Tested | 1 test(s), e.g. `R9_3_f_DictionaryAddRemoveViaViewModel` |
-| 9.3.g | Tested | 2 test(s), e.g. `R9_3_g_AboutReadsMetricsJson` |
+| 9.3.g | Tested | 4 test(s), e.g. `R9_3_g_AboutReadsMetricsJson` |
 | 9.4 | Tested | 6 test(s), e.g. `R9_4_FirstRunMarksDoneOnFinish` |
 | 9.5 | Recorded check | `artifacts/screens` + PROGRESS review notes |
 | 10.1 | Tested | 1 test(s), e.g. `R10_1_CoreHasNoWindowsReferences` |
@@ -324,10 +328,10 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 12.8 | Tested | 1 test(s), e.g. `R5_4_ThinkingDisabled` |
 | 12.9 | Recorded check | README known limits |
 | 12.10 | Recorded check | verify.ps1 5.8.g; README |
-| 13.1 | Recorded check | package zip contents |
+| 13.1 | Recorded check | package zip contents; release checksum (D58): 6 test(s), e.g. `R13_1_AChecksumMismatchIsRefusedAndTheDownloadDeleted_D58` |
 | 13.2 | Tested | 1 test(s), e.g. `R13_2_ReadmeIsBritishAndSpeltCorrectly` |
-| 13.3 | Recorded check | no v1.0.0 tag (D1) |
-| 13.4 | Tested | 1 test(s), e.g. `R13_4_TheInstallerCanAskTheRunningCopyToExit` |
+| 13.3 | Recorded check | no v1.0.0 tag (D1); release-candidate updates (D58): 9 test(s), e.g. `R13_3_AnEqualOrOlderVersionIsNeverOffered_D58` |
+| 13.4 | Tested | 3 test(s), e.g. `R13_4_AnUpdateIsShownAndInstalledOnlyWhenTheUserClicks_D58` |
 | 14.1 | Out of scope (14) | Out of scope |
 | 14.2 | Out of scope (14) | Out of scope |
 | 14.3 | Out of scope (14) | Out of scope |

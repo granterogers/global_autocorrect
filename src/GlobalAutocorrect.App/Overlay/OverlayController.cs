@@ -62,7 +62,7 @@ public sealed class OverlayController
         if (target.LastSnapshot is not { CaretRect: { } caret } snap) { Why("no-caret-rect", target.LastSnapshot?.Before); return; }
         // Stale if the user typed on while we read (7.4: the caret must not have moved since).
         if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) { Why("stale", null); return; }
-        var s = _host.Predictor?.Suggest(snap.Before);
+        var s = _host.Predictor?.Suggest(snap.Before, snap.ProcessName);   // D57: this app's own history counts for more
         if (s is null || s.Completion.Length == 0) { Why("no-suggestion", snap.Before); return; }
         Why("shown", snap.Before);
         Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight);

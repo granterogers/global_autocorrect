@@ -35,6 +35,32 @@
                 </Grid>
             </Border>
 
+            <!-- Update available (D58): installed only when the user clicks -->
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8"
+                            Icon="{ui:SymbolIcon ArrowCircleDown24}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisible}}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="{Binding UpdateTitle}" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="{Binding UpdateCaption}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding UpdateMessage}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource RowTitle}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button Appearance="Primary" Icon="{ui:SymbolIcon ArrowDownload24}" Content="Install update"
+                           Command="{Binding InstallUpdateCommand}" AutomationProperties.Name="Install update" />
+            </ui:CardControl>
+
             <!-- Measured accuracy (6.6) -->
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,8" Padding="20,16">
                 <StackPanel>
@@ -90,6 +116,17 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch IsChecked="{Binding StartWithWindows, Mode=TwoWay}" AutomationProperties.Name="Start with Windows" />
+            </ui:CardControl>
+
+            <!-- Check for updates (D58, 9.3) -->
+            <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon ArrowSync24}">
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource RowTitle}" Text="Check for updates" />
+                        <TextBlock Style="{StaticResource RowCaption}" Text="Looks for a newer version on GitHub when the app starts and once a day. Nothing is installed until you choose to." />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch IsChecked="{Binding CheckForUpdates, Mode=TwoWay}" AutomationProperties.Name="Check for updates" />
             </ui:CardControl>
 
             <!-- Credits -->

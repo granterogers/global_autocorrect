@@ -30,6 +30,37 @@ public class PageLoadTests
         Assert.Contains("Free the AI's memory after", names);
     }
 
+    [Fact]
+    public void R9_3_g_D58_AboutPageLoadsWithItsUpdateRows()
+    {
+        var names = new List<string>();
+        bool shown = false;
+        WpfApp.Run(_ =>
+        {
+            using var s = new FakeServices();
+            var updates = new UpdateTests.FakeUpdates { Available = UpdateTests.Rc2 };
+            var vm = new AboutViewModel(s, Path.Combine(s.Dir, "metrics.json"), Path.Combine(s.Dir, "NOTICE.md"),
+                new GlobalAutocorrect.App.Tray.StartupRegistration(@"Software\GlobalAutocorrectTests\PageLoad", @"C:\App\x.exe"), _ => { }, updates);
+            var page = new AboutPage(vm);
+            page.Measure(new Size(900, 2000));
+            page.Arrange(new Rect(0, 0, 900, 2000));
+            // Bindings inside a card's header are attached later, at data-binding priority: let them run.
+            var frame = new System.Windows.Threading.DispatcherFrame();
+            page.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => frame.Continue = false);
+            System.Windows.Threading.Dispatcher.PushFrame(frame);
+            var all = Find<FrameworkElement>(page);
+            names.AddRange(all.Select(System.Windows.Automation.AutomationProperties.GetName));
+            // A card's header isn't in the logical tree: look in each card's header for the title.
+            var card = all.OfType<Wpf.Ui.Controls.CardControl>().Single(c => c.Header is FrameworkElement h
+                && Find<System.Windows.Controls.TextBlock>(h).Any(t => t.Text == "Update available: v0.9.0-rc2"));
+            shown = card.Visibility == Visibility.Visible;
+        });
+
+        Assert.Contains("Check for updates", names);
+        Assert.Contains("Install update", names);
+        Assert.True(shown);
+    }
+
     private static List<T> Find<T>(DependencyObject root) where T : DependencyObject
     {
         var found = new List<T>();
