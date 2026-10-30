@@ -154,6 +154,7 @@ public sealed class AppHost : IAsyncDisposable
         _loop.Start();
 
         _focus = new FocusTracker(_uia);
+        if (Environment.GetEnvironmentVariable("GA_E2E") == "1") _focus.Trace += Diagnose;   // D71: screen tests only
         _focus.FocusChanged += _ =>
         {
             _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));

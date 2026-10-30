@@ -49,8 +49,16 @@ public sealed class FocusTracker : IDisposable
         ready.Wait();
     }
 
+    private readonly FocusFilter _filter = new();
+
+    /// <summary>D71: every focus event with whether it was a repeat (screen tests' diagnostics only).</summary>
+    public event Action<string>? Trace;
+
     private void OnEvent(nint hook, uint ev, nint hwnd, int idObject, int idChild, uint thread, uint time)
     {
+        bool isNew = _filter.IsNew(ev, hwnd, idObject, idChild);
+        Trace?.Invoke($"focus: ev={ev:X4} obj={idObject} child={idChild} {(isNew ? "new" : "repeat, ignored")}");
+        if (!isNew) return;   // D71: the same element again carries no news
         FocusChanged?.Invoke(hwnd);
         // Warm up off this thread, at most one at a time; a slow app must not stall focus tracking.
         if (Interlocked.Exchange(ref _warming, 1) == 0)
