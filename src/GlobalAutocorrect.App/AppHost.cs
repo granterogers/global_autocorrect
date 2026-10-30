@@ -52,6 +52,8 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     private static readonly Lock DiagnoseLock = new();
+
+    private static string Codes(string s) => string.Join(' ', s.Take(24).Select(c => $"{(int)c:X4}"));
     private NgramModel? _ngram;
     private readonly SettingsStore _store = new(Path.Combine(DataDir, "settings.json"));
     private readonly Counters _counters = new();
@@ -181,6 +183,10 @@ public sealed class AppHost : IAsyncDisposable
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
+        // Screen tests only (GA_E2E=1, synthetic text): each write as code points, so a CI failure shows what was written.
+        // Never in normal use (8.6).
+        if (Environment.GetEnvironmentVariable("GA_E2E") == "1")
+            engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
         return engine;
     }
 

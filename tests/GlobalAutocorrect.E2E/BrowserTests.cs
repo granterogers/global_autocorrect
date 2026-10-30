@@ -14,7 +14,8 @@ namespace GlobalAutocorrect.E2E;
 [Collection("screen")]
 public sealed class BrowserTests
 {
-    private static string Model(string s) => s.Replace("i went their", "I went there");
+    // "i" may already be "I" when the AI is asked (D55 fixes it instantly at the next space).
+    private static string Model(string s) => s.Replace("i went their", "I went there").Replace("I went their", "I went there");
 
     /// <summary>Opens a local test page in headed Edge (channel "msedge") or Google Chrome (channel "chrome").</summary>
     internal static async Task<(IBrowser Browser, IPage Page, IPlaywright Pw)> Open(string page, string channel = "msedge")

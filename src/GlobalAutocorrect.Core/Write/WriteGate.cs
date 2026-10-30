@@ -23,7 +23,8 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
 }
 
 /// <summary>Raised after a verified write: enough to underline the word (4.7). No text.</summary>
-public sealed record CorrectionNotice(string TargetId, Layer Layer, int CaretDistance, int Length, long KeySeqAtWrite);
+public sealed record CorrectionNotice(string TargetId, Layer Layer, int CaretDistance, int Length, long KeySeqAtWrite,
+    string Original = "", string Replacement = "", bool Retyped = false);   // the last three for the screen tests' diagnostics only
 
 /// <summary>
 /// Applies queued edits only when it is safe (4.6, §6.2). Typing is never blocked: only the write waits (4.6.e, 12.3).
@@ -186,7 +187,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (w.Layer == Layer.Instant) counters.Instant();
         else if (w.Layer == Layer.Ai) counters.Ai();
 
-        var notice = new CorrectionNotice(win.TargetId, w.Layer, caretDistance, TextNorm.Elements(w.Replacement), seqAtWrite);
+        var notice = new CorrectionNotice(win.TargetId, w.Layer, caretDistance, TextNorm.Elements(w.Replacement), seqAtWrite, w.Original, w.Replacement, retype);
         Written?.Invoke(notice, w, newTyped);
         return true;
     }
