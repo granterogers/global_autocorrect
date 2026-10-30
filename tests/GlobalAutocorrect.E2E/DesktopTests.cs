@@ -25,37 +25,47 @@ public sealed class DesktopTests
     private static (Window? Window, TextBox Doc, Action Close) OpenNotepad(UIA3Automation uia)
     {
         var before = Process.GetProcessesByName("Notepad").Select(p => p.Id).ToHashSet();
+        // Classic (Win32) Notepad, as on Windows Server CI runners: one document per window, no tabs, no autosave, and
+        // closing an edited document asks to save, so the test's own copy is simply ended. Store Notepad runs from
+        // WindowsApps and hands off to its existing process.
+        List<Process> NewClassic() => Process.GetProcessesByName("Notepad").Where(p => !before.Contains(p.Id) && IsClassic(p)).ToList();
+        void EndNewClassic()
+        {
+            foreach (var p in NewClassic()) { try { p.Kill(); p.WaitForExit(3000); } catch (InvalidOperationException) { } }
+            Thread.Sleep(300);
+        }
         Process.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true });
         // Store Notepad hands off to another process, so wait for its window to be in front rather than attaching.
-        Assert.True(Desk.WaitUntil(() =>
+        var sw = Stopwatch.StartNew();
+        bool inFront = Desk.WaitUntil(() =>
         {
             GetWindowThreadProcessId(GetForegroundWindow(), out uint pid);
-            try { return Process.GetProcessById((int)pid).ProcessName.Equals("Notepad", StringComparison.OrdinalIgnoreCase); }
-            catch (ArgumentException) { return false; }
-        }, 10_000), "Notepad did not come to the front");
+            try { if (Process.GetProcessById((int)pid).ProcessName.Equals("Notepad", StringComparison.OrdinalIgnoreCase)) return true; }
+            catch (ArgumentException) { }
+            // Windows' focus rules can keep a new window behind the current one; after a while, hand it the foreground.
+            if (sw.ElapsedMilliseconds > 3000)
+                foreach (var p in NewClassic()) { p.Refresh(); if (p.MainWindowHandle != 0) Desk.BringToFront(p.MainWindowHandle); }
+            return false;
+        }, 10_000);
+        if (!inFront) { EndNewClassic(); Assert.Fail("Notepad did not come to the front"); }
         Thread.Sleep(800);
-        // Classic (Win32) Notepad, as on Windows Server CI runners: one document per window, no tabs, no autosave, and
-        // closing an edited document asks to save. Store Notepad runs from WindowsApps.
         GetWindowThreadProcessId(GetForegroundWindow(), out uint fgPid);
         bool classic;
-        try { classic = Process.GetProcessById((int)fgPid).MainModule?.FileName.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase) != true; }
-        catch (Exception e) when (e is ArgumentException or System.ComponentModel.Win32Exception) { classic = false; }
+        try { classic = IsClassic(Process.GetProcessById((int)fgPid)); }
+        catch (ArgumentException) { classic = false; }
         Window? win = null;
         Desk.Keys(VK_CONTROL, (ushort)'N');   // a new, empty tab even if Notepad restored others
         Thread.Sleep(800);
         // The editor of the new tab is whatever has focus now (class names vary between Notepad builds).
-        var doc = (Desk.WaitUntil(() => uia.FocusedElement()?.Patterns.Text.IsSupported == true, 5000) ? uia.FocusedElement() : null)?.AsTextBox()
-                  ?? throw new InvalidOperationException("Notepad editor not focused");
+        var doc = (Desk.WaitUntil(() => uia.FocusedElement()?.Patterns.Text.IsSupported == true, 5000) ? uia.FocusedElement() : null)?.AsTextBox();
+        if (doc is null)
+        {
+            EndNewClassic();
+            throw new InvalidOperationException("Notepad editor not focused");
+        }
         void Close()
         {
-            if (classic)
-            {
-                // Nothing is autosaved, so the test's own window can just go; closing it normally would stop at the
-                // "save changes?" prompt and leave it in front of the next test.
-                foreach (var p in Process.GetProcessesByName("Notepad").Where(p => !before.Contains(p.Id))) { p.Kill(); p.WaitForExit(3000); }
-                Thread.Sleep(300);
-                return;
-            }
+            if (classic) { EndNewClassic(); return; }
             doc.Focus();
             Desk.Keys(VK_CONTROL, (ushort)'A');
             Desk.Keys(VK_DELETE);
@@ -66,7 +76,34 @@ public sealed class DesktopTests
         return (win, doc, Close);
     }
 
-    private static string Text(TextBox doc) => doc.Patterns.Text.Pattern.DocumentRange.GetText(-1).Replace("\r", "\n").TrimEnd('\n');
+    private static bool IsClassic(Process p)
+    {
+        try { return p.MainModule?.FileName.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase) == false; }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException) { return false; }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessageW", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern nint SendMessage(nint hwnd, uint msg, nint wParam, System.Text.StringBuilder lParam);
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static extern nint SendMessage(nint hwnd, uint msg, nint wParam, nint lParam);
+
+    /// <summary>
+    /// The field's text. Classic Notepad's Win32 Edit is read with WM_GETTEXT: on Windows Server 2025 its UIA text
+    /// (the Win32 edit proxy) was seen to lag behind what the window showed after a correction.
+    /// </summary>
+    private static string Text(TextBox doc)
+    {
+        string raw;
+        if (doc.ClassName == "Edit" && doc.Properties.NativeWindowHandle.ValueOrDefault is var h && h != 0)
+        {
+            int len = (int)SendMessage(h, 0x000E, 0, 0);   // WM_GETTEXTLENGTH
+            var sb = new System.Text.StringBuilder(len + 1);
+            SendMessage(h, 0x000D, sb.Capacity, sb);        // WM_GETTEXT
+            raw = sb.ToString();
+        }
+        else raw = doc.Patterns.Text.Pattern.DocumentRange.GetText(-1);
+        return raw.Replace("\r\n", "\n").Replace("\r", "\n").TrimEnd('\n');
+    }
 
     [Fact]
     public void R11_3_a_NotepadInstantFix_R0_2_a()
@@ -194,12 +231,18 @@ public sealed class DesktopTests
                 System.Windows.Threading.Dispatcher.Run();
             });
             ui.SetApartmentState(ApartmentState.STA);
+            ui.IsBackground = true;   // a failed test must not keep the test host alive
             ui.Start();
             Assert.True(ready.Wait(10_000, TestContext.Current.CancellationToken), "the WPF window did not open");
             (_window, _box) = (window!, box!);
             nint hwnd = _window.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(_window).Handle);
+            Desk.BringToFront(hwnd);   // a click on a window behind the foreground one can be refused
             Desk.ClickCentre(hwnd);   // a real click: focus, and a session break before any typing
-            Assert.True(Desk.WaitUntil(() => _window.Dispatcher.Invoke(() => _box.IsKeyboardFocused), 3000), "the WPF box did not get focus");
+            if (!Desk.WaitUntil(() => _window.Dispatcher.Invoke(() => _box.IsKeyboardFocused), 3000))
+            {
+                Dispose();
+                Assert.Fail("the WPF box did not get focus");
+            }
             Thread.Sleep(500);
         }
 

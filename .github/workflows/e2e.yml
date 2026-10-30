@@ -54,6 +54,21 @@ jobs:
       - name: Build
         run: dotnet build GlobalAutocorrect.slnx -c Debug --no-restore -v q
 
+      # Windows only lets a window take the foreground when its process had the last input, or the foreground lock
+      # time-out (200 s by default) has passed since any input. On the user's PC the test's own typing and clicks
+      # cover that; here the runner's high-integrity console holds the foreground and the medium-integrity tests may
+      # not click or type into it (UIPI), so lift the lock for this throwaway VM (set before any input, when allowed).
+      - name: Desktop setup
+        run: |
+          Add-Type -Namespace Ci -Name User32 -MemberDefinition @'
+          [DllImport("user32.dll", SetLastError = true)] public static extern bool SystemParametersInfo(uint action, uint param, System.IntPtr pv, uint winIni);
+          [DllImport("user32.dll", SetLastError = true)] public static extern bool SystemParametersInfo(uint action, uint param, ref uint pv, uint winIni);
+          '@
+          $ok = [Ci.User32]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 3)   # SPI_SETFOREGROUNDLOCKTIMEOUT = 0, save + broadcast
+          $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+          $v = [uint32]1; $null = [Ci.User32]::SystemParametersInfo(0x2000, 0, [ref]$v, 0)   # SPI_GETFOREGROUNDLOCKTIMEOUT
+          Write-Host "foreground lock time-out set: $ok (error $err); now $v ms"
+
       # What the tests will drive: the session, the screen, Notepad and Edge. A screenshot that is all black or fails
       # means there is no interactive desktop for SendInput and UIA.
       - name: Desktop diagnostics
