@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Force artifacts/test-results | Out-Null
 & {
     "integrity: $((whoami /groups | Select-String 'Mandatory Label').ToString().Trim())"
     dotnet test --project tests/GlobalAutocorrect.E2E --no-build --results-directory "$PWD/artifacts/test-results" --output Detailed `
-        -- --filter-not-trait "Category=RealApp" --report-xunit-trx --report-xunit-markdown --report-xunit-html
+        -- --filter-not-trait "Category=RealApp" --filter-not-trait "Category=Endurance" --report-xunit-trx --report-xunit-markdown --report-xunit-html
     "exit code: $LASTEXITCODE"
 } *> $out
 exit $LASTEXITCODE

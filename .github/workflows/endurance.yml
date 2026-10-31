@@ -1,0 +1,75 @@
+# D72: the app typed into for hours on a GitHub-hosted Windows runner (mock model, suggestions on), sampling its
+# memory, handles, threads and GDI/USER objects every minute. A slow leak only shows after a working day. Free: the
+# repository is public. GitHub allows a job up to 6 hours.
+name: Endurance
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'How long to type for (at most 320)'
+        default: '240'
+  schedule:
+    - cron: '0 3 * * 0'   # Sundays 03:00 UTC, four hours
+
+permissions:
+  contents: read
+
+jobs:
+  endurance:
+    runs-on: windows-latest
+    timeout-minutes: 350
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
+
+      - name: Restore
+        run: dotnet restore GlobalAutocorrect.slnx
+
+      - name: Build
+        run: dotnet build GlobalAutocorrect.slnx -c Debug --no-restore -v q
+
+      # As in e2e.yml: lift the foreground lock for this throwaway VM so the medium-integrity test can focus Notepad.
+      - name: Desktop setup
+        run: |
+          Add-Type -Namespace Ci -Name User32 -MemberDefinition @'
+          [DllImport("user32.dll", SetLastError = true)] public static extern bool SystemParametersInfo(uint action, uint param, System.IntPtr pv, uint winIni);
+          '@
+          $ok = [Ci.User32]::SystemParametersInfo(0x2001, 0, [IntPtr]::Zero, 3)   # SPI_SETFOREGROUNDLOCKTIMEOUT = 0
+          Write-Host "foreground lock time-out set: $ok"
+
+      - name: Endurance run
+        env:
+          GA_E2E: '1'
+          GA_ENDURANCE_MINUTES: ${{ inputs.minutes || '240' }}
+          MSBUILDDISABLENODEREUSE: '1'
+        run: |
+          $minutes = [int]$env:GA_ENDURANCE_MINUTES
+          if ($minutes -gt 320) { throw 'at most 320 minutes (the job limit is 6 hours)' }
+          pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes ($minutes + 15) `
+            -CommandLine "`"$((Get-Command pwsh).Source)`" -NoProfile -File .github/scripts/endurance-tests.ps1"
+          $code = $LASTEXITCODE
+          Get-Content artifacts/endurance-output.txt -ErrorAction SilentlyContinue | Select-Object -Last 60
+          Get-Content artifacts/endurance/summary.md -ErrorAction SilentlyContinue | Add-Content $env:GITHUB_STEP_SUMMARY
+          if ($code -ne 0) { throw "endurance run failed (exit code $code)" }
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: endurance-results
+          path: |
+            artifacts/endurance-output.txt
+            artifacts/endurance/
+            artifacts/timings/
+            artifacts/diagnostics/
+          if-no-files-found: warn
