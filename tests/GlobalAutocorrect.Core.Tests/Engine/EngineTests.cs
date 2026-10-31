@@ -107,6 +107,33 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_6_a_ALateFocusEventForTheFieldBeingTypedInDoesNotRestartTheRecord_D73()
+    {
+        // Nightly CI (CKEditor in Chrome): the focus event for the editor arrived 22 characters into the typing and broke
+        // the session mid-word. The field still shows exactly what was typed, so it is the same field.
+        var h = new Harness();
+        h.Type("we saw te");
+        long generation = h.Engine.Session.Generation;
+        h.Engine.OnInput(new KeyInput(KeyKind.FocusChange, '\0', h.Ed.LatestKeySeq, h.Clock.NowMs));
+        Assert.Equal(generation, h.Engine.Session.Generation);   // the record carried on
+        h.Type("h ");
+        h.Wait(200);
+        Assert.Equal("we saw the ", h.Text);   // "teh" is still a whole word to the app, so it is fixed
+    }
+
+    [Fact]
+    public void R4_6_a_AFocusEventIntoAFieldWithOtherTextStillRestartsTheRecord_D73()
+    {
+        var h = new Harness();
+        h.Type("we saw te");
+        h.Ed.Text = "a different field";   // focus really moved
+        h.Ed.Caret = h.Ed.Text.Length;
+        h.Engine.OnInput(new KeyInput(KeyKind.FocusChange, '\0', h.Ed.LatestKeySeq, h.Clock.NowMs));
+        Assert.Equal(SessionBreakReason.FocusChange, h.Engine.Session.LastBreak);
+        Assert.Equal(0, h.Engine.Session.Length);
+    }
+
+    [Fact]
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {
         // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".

@@ -95,6 +95,11 @@ public sealed class CorrectionEngine
 
     public void OnInput(KeyInput k)
     {
+        // D73: Chromium can announce focus on the field being typed in long after typing began (nightly CI: 22 characters
+        // in, mid-word). If the focused field still shows exactly what was typed, it is the same field: carry on.
+        if (k.Kind == KeyKind.FocusChange && Target is not null && Session.Length >= 3
+            && Target.ReadWindow() is { CaretKnown: true } w && Session.MatchesField(w.Before))
+            return;
         var effect = Session.Apply(k);
         if (k.Kind is KeyKind.FocusChange or KeyKind.Click) _targetOk = null;   // possibly a different field now
         if (Paused || Target is null) return;
