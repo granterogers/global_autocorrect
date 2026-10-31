@@ -43,6 +43,7 @@ public sealed class EnduranceTests
         var (_, doc, close) = DesktopTests.OpenNotepad(uia);
         var samples = new List<Sample>();
         int paragraphs = 0, missed = 0;
+        var missedTypos = new Dictionary<string, int>();
         var clock = Stopwatch.StartNew();
         var nextSample = TimeSpan.Zero;
         try
@@ -58,10 +59,15 @@ public sealed class EnduranceTests
                 Desk.Keys(0x0D);   // Enter: a new paragraph
                 Thread.Sleep(2000);   // the user pauses: AI pass and look-back
                 paragraphs++;
-                string text = DesktopTests.Text(doc);
-                string last = text.Split('\n', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-                if (last.Contains(" teh ", StringComparison.Ordinal) || last.Contains("went their", StringComparison.Ordinal) || last.Contains("recieve", StringComparison.Ordinal))
-                    missed++;
+                // The paragraph before this one, typed about 5 s ago: its fixes have had time to land (a fix arriving
+                // after 2 s is no fault). Which typo stayed is counted, so a real miss still shows.
+                var lines = DesktopTests.Text(doc).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length >= 2)
+                {
+                    string previous = lines[^2];
+                    foreach (var typo in new[] { " teh ", "went their", "recieve" })
+                        if (previous.Contains(typo, StringComparison.Ordinal)) { missed++; missedTypos[typo] = missedTypos.GetValueOrDefault(typo) + 1; break; }
+                }
                 // Keep the document small, as a user would start a new message: select all and delete.
                 if (paragraphs % 20 == 0) { Desk.Keys(0x11, 0x41); Desk.Keys(0x2E); Thread.Sleep(500); }
                 Assert.False(Process.GetProcessById(app.ProcessId).HasExited, $"the app exited after {clock.Elapsed}; {app.Diagnostics()}");
@@ -86,7 +92,7 @@ public sealed class EnduranceTests
         Assert.True(hLate <= hEarly * 1.25 + 100, $"handles grew from {hEarly} to {hLate}");
         Assert.True(gdiLate <= gdiEarly + 50, $"GDI objects grew from {gdiEarly} to {gdiLate}");
         Assert.True(userLate <= userEarly + 50, $"USER objects grew from {userEarly} to {userLate}");
-        Assert.True(missed <= paragraphs / 20, $"{missed} of {paragraphs} paragraphs kept a typo");
+        Assert.True(missed <= paragraphs / 20, $"{missed} of {paragraphs} paragraphs kept a typo: {string.Join(", ", missedTypos.Select(kv => $"\"{kv.Key.Trim()}\" {kv.Value}"))}");
         Assert.Equal(0, app.Desyncs);
     }
 
