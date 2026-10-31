@@ -86,6 +86,7 @@ public sealed class CorrectionEngine
         _gate.Desynced += id => { _undo.Clear(); Desynced?.Invoke(id); };
         _gate.WriteDropped += (layer, reason) => WriteDropped?.Invoke(layer, reason);
         _gate.Mismatch += d => Mismatch?.Invoke(d);
+        Session.Resynced += _gate.OnResynced;   // D74
     }
 
     /// <summary>Focus moved to another field (or none). Breaks the typing session.</summary>

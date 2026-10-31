@@ -13,7 +13,7 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     /// <summary>The whole words this write corrects (Original may be just the changed letters).</summary>
     public IReadOnlyList<string> Words { get; } = words ?? [original];
     public Layer Layer { get; } = layer;
-    public long Generation { get; } = generation;
+    public long Generation { get; set; } = generation;   // moves on when a resync keeps the write (D74)
     public int Start { get; set; } = start;
     public int End { get; set; } = end;
     public string Original { get; } = original;
@@ -128,10 +128,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             // what it shows instead of ending the session: this paragraph keeps being corrected.
             counters.FieldMismatch();
             Mismatch?.Invoke(Describe(session.Typed, win.Before));   // D74: what differed (screen tests' diagnostics)
-            if (!session.Resync(win.Before)) return false;   // D61: the read is behind the keys: next tick
-            // D74: the queued fixes were in the old record's positions; they are dropped, and now counted and logged as
-            // dropped (they used to vanish silently: the endurance run lost 1 instant fix in 6 this way).
-            foreach (var q in _queue.ToArray()) Drop(q, "cleared-on-resync");
+            session.Resync(win.Before);   // D61: refused if the read is behind the keys (next tick); D74: OnResynced keeps the queue
             return false;
         }
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
@@ -214,6 +211,28 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
     /// <summary>A write that was dropped and why (a reason code, never text).</summary>
     public event Action<Layer, string>? WriteDropped;
+
+    /// <summary>
+    /// D74: the record was resynced from the field. A queued fix whose text from its start to the caret is unchanged in
+    /// the new record is moved to the same place in it; the rest are dropped, counted and logged. Before, every queued fix
+    /// vanished silently on a resync (the endurance run lost 1 instant fix in 6 this way while typing fast in Notepad).
+    /// </summary>
+    public void OnResynced(string oldTyped, long oldGeneration)
+    {
+        string now = session.Typed;
+        foreach (var w in _queue.Where(q => q.Generation == oldGeneration).ToArray())
+        {
+            string tail = w.Start <= oldTyped.Length ? oldTyped[w.Start..] : "";
+            if (tail.Length > 0 && now.EndsWith(tail, StringComparison.Ordinal))
+            {
+                int delta = now.Length - oldTyped.Length;
+                w.Start += delta;
+                w.End += delta;
+                w.Generation = session.Generation;
+            }
+            else Drop(w, "cleared-on-resync");
+        }
+    }
 
     /// <summary>D74: the field didn't match the typed record before a write: lengths and the last characters as codes.</summary>
     public event Action<string>? Mismatch;

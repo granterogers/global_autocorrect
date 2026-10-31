@@ -56,6 +56,9 @@ public sealed class TypingSession
     /// <summary>Raised when the typed record starts again (a break or a resync); for the screen tests' diagnostics.</summary>
     public event Action<SessionBreakReason>? Restarted;
 
+    /// <summary>D74: raised after a resync with the old record and its generation, so queued fixes can be moved, not lost.</summary>
+    public event Action<string, long>? Resynced;
+
     /// <summary>D69: the record's last character just before the latest restart (a letter means it restarted mid-word).</summary>
     public char? LastCharBeforeRestart { get; private set; }
 
@@ -122,10 +125,13 @@ public sealed class TypingSession
         string para = f[(f.LastIndexOf('\n') + 1)..];
         if (para.Length > MaxLength) para = para[^MaxLength..];
         LastCharBeforeRestart = _typed.Length > 0 ? _typed[^1] : null;
+        string old = _typed.ToString();
+        long oldGeneration = Generation;
         _typed.Clear().Append(para);
         Generation++;
         LastBreak = SessionBreakReason.Resync;
         Restarted?.Invoke(SessionBreakReason.Resync);
+        Resynced?.Invoke(old, oldGeneration);
         return true;
     }
 

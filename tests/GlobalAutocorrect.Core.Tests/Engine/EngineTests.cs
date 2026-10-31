@@ -134,6 +134,33 @@ public sealed class EngineTests
     }
 
     [Fact]
+    public void R4_3_a_AQueuedFixSurvivesAResyncThatChangedOnlyEarlierText_D74()
+    {
+        // Endurance run (fast typing in Notepad): an instant fix waiting for a pause was thrown away when the record was
+        // resynced, though the resync only changed text earlier in the paragraph. It is moved, not dropped.
+        var h = new Harness();
+        h.Type("hello world we saw ");
+        foreach (char c in "teh c") { h.Clock.Advance(30); h.Engine.OnInput(h.Ed.TypeChar(c)); }   // typing on: the fix waits
+        h.Ed.Text = "Hullo" + h.Ed.Text[5..];                        // the app's own autocorrect changed an earlier word
+        Assert.True(h.Engine.Session.Resync(h.Ed.Text[..h.Ed.Caret]));   // as the AI trigger does on the mismatch
+        h.Wait(300);
+        Assert.Equal("Hullo world we saw the c", h.Text);
+    }
+
+    [Fact]
+    public void R4_3_a_AQueuedFixWhoseTextChangedIsDroppedOnAResyncAndCounted_D74()
+    {
+        var h = new Harness();
+        h.Type("hello world we saw ");
+        foreach (char c in "teh c") { h.Clock.Advance(30); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        h.Ed.Text = h.Ed.Text.Replace("teh", "tea");                  // the app changed the very word
+        Assert.True(h.Engine.Session.Resync(h.Ed.Text[..h.Ed.Caret]));
+        h.Wait(300);
+        Assert.Equal("hello world we saw tea c", h.Text);
+        Assert.Equal(1, h.Counters.DroppedWrites);
+    }
+
+    [Fact]
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {
         // The user's Intercom reply: a space before the full stop, two spaces between words, and a lower-case "i".
