@@ -210,6 +210,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
             engine.WriteDropped += (layer, reason) => Diagnose($"dropped: {layer} {reason}");
+            engine.Mismatch += Diagnose;   // D74
             engine.Session.Restarted += reason => Diagnose(
                 $"session: restart {reason} after [{(engine.Session.LastCharBeforeRestart is { } c ? ((int)c).ToString("X4") : "empty")}]");
         }

@@ -57,6 +57,9 @@ public sealed class CorrectionEngine
     /// <summary>A queued write that was dropped and why (a reason code, never text).</summary>
     public event Action<Layer, string>? WriteDropped;
 
+    /// <summary>D74: the field didn't match the typed record before a write (codes and lengths only).</summary>
+    public event Action<string>? Mismatch;
+
     public CorrectionEngine(EngineOptions options, EngineDeps deps)
     {
         _o = options.Validate();
@@ -82,6 +85,7 @@ public sealed class CorrectionEngine
         };
         _gate.Desynced += id => { _undo.Clear(); Desynced?.Invoke(id); };
         _gate.WriteDropped += (layer, reason) => WriteDropped?.Invoke(layer, reason);
+        _gate.Mismatch += d => Mismatch?.Invoke(d);
     }
 
     /// <summary>Focus moved to another field (or none). Breaks the typing session.</summary>
