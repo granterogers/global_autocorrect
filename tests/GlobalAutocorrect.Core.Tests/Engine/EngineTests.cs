@@ -160,6 +160,24 @@ public sealed class EngineTests
         Assert.Equal(1, h.Counters.DroppedWrites);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void R4_6_c_AFixAfterABlankLineLandsInPlaceWhereEditorsReportItOnce_D76(bool blankLinesOnce)
+    {
+        // The user's Intercom reply: "ccess" was fixed one character off ("aaccess") in an editor that reports a blank
+        // line as one line break, and the app's check after writing failed ("one character shorter").
+        var h = new Harness(model: s => s.Replace("givaen", "given").Replace("ccess", "access"), latencyMs: 200);
+        h.Ed.ReportsBlankLinesOnce = blankLinesOnce;
+        var writes = new List<string>();
+        h.Engine.Corrected += n => writes.Add($"{n.Original}->{n.Replacement}");
+        h.Type("Hi Ola,\n\nWe have now linked your account and givaen portal ccess.\n\nBest with,");
+        h.Wait(3000);
+        Assert.Equal("Hi Ola,\n\nWe have now linked your account and given portal access.\n\nBest with,", h.Text);
+        Assert.DoesNotContain(writes, w => w.Contains("aaccess"));
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
     [Fact]
     public void R4_3_a_SpacingIsTidiedAsYouType_D55()
     {

@@ -127,7 +127,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             // D42: the field changed in a way we didn't type (the app's own autocorrect, a paste). Start again from
             // what it shows instead of ending the session: this paragraph keeps being corrected.
             counters.FieldMismatch();
-            Mismatch?.Invoke(Describe(session.Typed, win.Before));   // D74: what differed (screen tests' diagnostics)
+            Mismatch?.Invoke("write " + MismatchKind.Describe(session.Typed, win.Before));   // D74, D76: kinds of character only
             session.Resync(win.Before);   // D61: refused if the read is behind the keys (next tick); D74: OnResynced keeps the queue
             return false;
         }
@@ -234,17 +234,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
     }
 
-    /// <summary>D74: the field didn't match the typed record before a write: lengths and the last characters as codes.</summary>
+    /// <summary>D74, D76: the field didn't match the typed record before a write (kinds of character, never text).</summary>
     public event Action<string>? Mismatch;
 
-    private static string Describe(string typed, string field)
-    {
-        static string Tail(string s) => string.Join(' ', s[Math.Max(0, s.Length - 6)..].Select(c => ((int)c).ToString("X4")));
-        string t = TextNorm.Comparable(typed), f = TextNorm.Comparable(field);
-        int common = 0;
-        while (common < t.Length && common < f.Length && t[^(common + 1)] == f[^(common + 1)]) common++;
-        return $"mismatch: typed={t.Length} field={f.Length} sameTail={common} typedEnd=[{Tail(t)}] fieldEnd=[{Tail(f)}]";
-    }
+
 
     /// <summary>
     /// D61: no letter, digit or apostrophe right before typed[start..end], and the space or punctuation that ended the

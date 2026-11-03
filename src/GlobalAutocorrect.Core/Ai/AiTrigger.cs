@@ -40,6 +40,9 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     /// <summary>D43: characters taken in at the front of the typed buffer, so queued writes can move with them.</summary>
     public event Action<int>? Extended;
 
+    /// <summary>D76: the field didn't match the typed record when the AI was asked (kinds of character, never text).</summary>
+    public event Action<string>? Mismatch;
+
     /// <summary>D49: true for a word that is obviously not a word (no dictionary, personal dictionary or UK word list).</summary>
     public Func<string, bool>? IsObviousNonWord { get; init; }
 
@@ -139,6 +142,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             if (session.FieldBehind(win.Before)) { ReadFailed(session); return; }   // the app hasn't drawn the last keys yet
             // D42: the field differs from what was typed (the app's own autocorrect, a paste): carry on from what it shows.
             counters.FieldMismatch();
+            Mismatch?.Invoke("ai " + MismatchKind.Describe(session.Typed, win.Before));   // D76: kinds of character only
             if (!session.Resync(win.Before)) { ReadFailed(session); return; }   // D61: the read is behind the keys
         }
         _lastTriggerSeq = session.LastKeySeq;

@@ -76,6 +76,7 @@ public sealed class CorrectionEngine
             };
         _gate = new WriteGate(_o, deps.Clock, deps.Keys, Session, deps.Counters);
         if (_ai is not null) _ai.Extended += _gate.Shift;   // D43
+        if (_ai is not null) _ai.Mismatch += d => Mismatch?.Invoke(d);   // D76
         _gate.Written += (notice, w, typedAfter) =>
         {
             if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation);

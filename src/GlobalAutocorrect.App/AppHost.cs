@@ -52,6 +52,7 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     private static readonly Lock DiagnoseLock = new();
+    private int _mismatchLines;
 
     /// <summary>D64: timings.json, typical and slowest-5% duration of each stage since the app started. Durations only.</summary>
     private void SaveTimings()
@@ -204,13 +205,18 @@ public sealed class AppHost : IAsyncDisposable
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused };
         engine.Corrected += n => Corrected?.Invoke(n);
+        // D76: in normal use too, how the field differed from what was typed: kinds of character and lengths, never text
+        // (8.6), at most 500 lines a run. Intercom disagreed 83 times in an afternoon; this says how.
+        engine.Mismatch += d =>
+        {
+            if (Interlocked.Increment(ref _mismatchLines) <= 500) Diagnose($"mismatch: app={Target?.LastSnapshot?.ProcessName ?? "?"} {d}");
+        };
         // Screen tests only (GA_E2E=1, synthetic text): each write as code points, so a CI failure shows what was written.
         // Never in normal use (8.6).
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1")
         {
             engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
             engine.WriteDropped += (layer, reason) => Diagnose($"dropped: {layer} {reason}");
-            engine.Mismatch += Diagnose;   // D74
             engine.Session.Restarted += reason => Diagnose(
                 $"session: restart {reason} after [{(engine.Session.LastCharBeforeRestart is { } c ? ((int)c).ToString("X4") : "empty")}]");
         }
