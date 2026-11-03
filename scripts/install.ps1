@@ -72,6 +72,19 @@ foreach ($f in 'README.md', 'build.txt') { if (Test-Path (Join-Path $src $f)) { 
 $exe = Join-Path $InstallDir 'GlobalAutocorrect.exe'
 Write-Host "  installed to $InstallDir"
 
+# 3b. A Start menu entry, so the app can be found and opened by name (D75). Per user, no admin rights needed; written
+# again on every install so it always points at the installed copy and shows its current icon.
+$startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Global Autocorrect.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$link = $shell.CreateShortcut($startMenu)
+$link.TargetPath = $exe
+$link.WorkingDirectory = $InstallDir
+$link.IconLocation = "$exe,0"
+$link.Description = 'Fixes typos as you type, in any app'
+$link.Save()
+[void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell)
+Write-Host "  Start menu: Global Autocorrect"
+
 # 4. Start it. Never elevated: from an admin prompt, hand the start to Explorer, which runs it as the normal user.
 if (-not $NoStart) {
     $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)

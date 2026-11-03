@@ -13,8 +13,6 @@ internal static class IconTool
 
     // Palette: mirrors src/GlobalAutocorrect.App/Theme/Palette.cs (9.2.a).
     private static readonly Color AccentPrimary = Color.FromRgb(0x1F, 0x6F, 0xEB);
-    private static readonly Color AccentLight = Color.FromRgb(0x5B, 0x9B, 0xFF);
-    private static readonly Color AccentDark = Color.FromRgb(0x13, 0x4F, 0xB0);
     private static readonly Color PausedGrey = Color.FromRgb(0x8A, 0x94, 0xA6);
     private static readonly Color BadgeBar = Color.FromRgb(0x4A, 0x55, 0x68);
 
@@ -31,11 +29,18 @@ internal static class IconTool
 
     private static int RunCore(string[] args)
     {
-        string root = args.Length > 0 ? args[0] : FindRoot();
+        string root = args.Length > 0 && args[0] != "concepts" ? args[0] : FindRoot();
         string icons = Path.Combine(root, "assets", "icons");
         string previews = Path.Combine(root, "artifacts", "icons");
         Directory.CreateDirectory(icons);
         Directory.CreateDirectory(previews);
+        if (args.Contains("concepts"))
+        {
+            // D75: candidates only; the installed icons are not touched.
+            Concepts.WriteSheet(Path.Combine(previews, "concepts.png"), Render, EncodePng);
+            Console.WriteLine($"Wrote {Path.Combine(previews, "concepts.png")}");
+            return 0;
+        }
 
         Write("app", AppTile, icons, previews);
         Write("tray-active", size => TrayGlyph(size, paused: false), icons, previews);
@@ -67,28 +72,15 @@ internal static class IconTool
     // All shapes are described in a 0..1 unit square and scaled to the target size, so each size is drawn natively
     // (crisp) rather than shrunk from a big bitmap. Small sizes drop fine detail and thicken strokes.
 
-    /// <summary>App icon: blue gradient rounded tile, white text caret, check and (large sizes) a spark.</summary>
+    /// <summary>D75 (the user's choice of three): a rich blue tile with a white fountain-pen nib and, large, a spark.</summary>
     private static DrawingVisual AppTile(int size)
     {
         var v = new DrawingVisual();
         using var dc = v.RenderOpen();
         double s = size;
-        double margin = 0.03 * s, radius = 0.23 * s;
-        var tile = new Rect(margin, margin, s - 2 * margin, s - 2 * margin);
-
-        var gradient = new LinearGradientBrush(AccentLight, AccentDark, new Point(0.1, 0), new Point(0.9, 1));
-        dc.DrawRoundedRectangle(gradient, null, tile, radius, radius);
-
-        // Soft top highlight for depth; skipped at tiny sizes where it only muddies the blue.
-        if (size >= 32)
-        {
-            var sheen = new LinearGradientBrush(Color.FromArgb(70, 255, 255, 255), Color.FromArgb(0, 255, 255, 255), new Point(0.5, 0), new Point(0.5, 0.6));
-            dc.DrawRoundedRectangle(sheen, null, tile, radius, radius);
-        }
-
-        DrawCaret(dc, s, Colors.White, size);
-        DrawCheck(dc, s, Colors.White, size);
-        if (size >= 32) DrawSpark(dc, s, Colors.White);
+        Concepts.Tile(dc, s, size);
+        Concepts.NibGlyph(dc, s, size, AccentPrimary);
+        if (size >= 32) Concepts.Spark(dc, 0.25 * s, 0.27 * s, 0.09 * s, Colors.White);
         return v;
     }
 
@@ -109,64 +101,16 @@ internal static class IconTool
         var fill = new SolidColorBrush(paused ? PausedGrey : AccentPrimary);
         dc.DrawRoundedRectangle(fill, new Pen(Brushes.White, outline) { LineJoin = PenLineJoin.Round }, tile, radius, radius);
 
-        DrawCaret(dc, s, Colors.White, size, bold: true);
+        // D75: the app icon's nib, a little larger to fill the small tile; paused adds the badge.
+        Concepts.NibGlyph(dc, s, size, paused ? PausedGrey : AccentPrimary, grow: paused ? 0.95 : 1.12, shift: paused ? 0.08 : 0);
         if (paused) DrawPauseBadge(dc, s, size);
-        else DrawCheck(dc, s, Colors.White, size, bold: true);
         return v;
-    }
-
-    /// <summary>White I-beam text cursor, left of centre.</summary>
-    private static void DrawCaret(DrawingContext dc, double s, Color colour, int size, bool bold = false)
-    {
-        double stem = (size <= 24 || bold ? 0.12 : 0.095) * s;   // stem thickness
-        double cx = 0.355 * s;
-        double top = 0.21 * s, bottom = 0.79 * s;
-        double serifHalf = (size <= 24 ? 0.135 : 0.125) * s;
-        double serifH = stem * 0.95;
-        var brush = new SolidColorBrush(colour);
-        double r = stem / 2;
-        dc.DrawRoundedRectangle(brush, null, new Rect(cx - stem / 2, top, stem, bottom - top), r, r);        // stem
-        dc.DrawRoundedRectangle(brush, null, new Rect(cx - serifHalf, top, 2 * serifHalf, serifH), r, r);    // top serif
-        dc.DrawRoundedRectangle(brush, null, new Rect(cx - serifHalf, bottom - serifH, 2 * serifHalf, serifH), r, r);  // bottom serif
-    }
-
-    /// <summary>Bold check mark to the right of the caret ("clean-up").</summary>
-    private static void DrawCheck(DrawingContext dc, double s, Color colour, int size, bool bold = false)
-    {
-        double w = (size <= 24 || bold ? 0.115 : 0.095) * s;
-        var pen = new Pen(new SolidColorBrush(colour), w) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
-        var g = new StreamGeometry();
-        using (var c = g.Open())
-        {
-            c.BeginFigure(new Point(0.575 * s, 0.57 * s), false, false);
-            c.LineTo(new Point(0.665 * s, 0.665 * s), true, true);
-            c.LineTo(new Point(0.83 * s, 0.43 * s), true, true);
-        }
-        g.Freeze();
-        dc.DrawGeometry(null, pen, g);
-    }
-
-    /// <summary>Small four-point spark above the check; large sizes only.</summary>
-    private static void DrawSpark(DrawingContext dc, double s, Color colour)
-    {
-        double cx = 0.745 * s, cy = 0.255 * s, outer = 0.095 * s, inner = 0.025 * s;
-        var g = new StreamGeometry();
-        using (var c = g.Open())
-        {
-            c.BeginFigure(new Point(cx, cy - outer), true, true);
-            c.QuadraticBezierTo(new Point(cx + inner, cy - inner), new Point(cx + outer, cy), true, true);
-            c.QuadraticBezierTo(new Point(cx + inner, cy + inner), new Point(cx, cy + outer), true, true);
-            c.QuadraticBezierTo(new Point(cx - inner, cy + inner), new Point(cx - outer, cy), true, true);
-            c.QuadraticBezierTo(new Point(cx - inner, cy - inner), new Point(cx, cy - outer), true, true);
-        }
-        g.Freeze();
-        dc.DrawGeometry(new SolidColorBrush(colour), null, g);
     }
 
     /// <summary>White disc with two dark bars, bottom-right, over the grey tile (paused).</summary>
     private static void DrawPauseBadge(DrawingContext dc, double s, int size)
     {
-        double r = 0.27 * s;
+        double r = 0.23 * s;   // D75: smaller, so the nib stays whole
         var centre = new Point(s - r - 0.01 * s, s - r - 0.01 * s);
         double ring = Math.Max(1.0, 0.045 * s);
         dc.DrawEllipse(Brushes.White, new Pen(new SolidColorBrush(PausedGrey), ring), centre, r, r);
@@ -187,7 +131,7 @@ internal static class IconTool
         return bmp;
     }
 
-    private static byte[] EncodePng(BitmapSource bmp)
+    internal static byte[] EncodePng(BitmapSource bmp)
     {
         var enc = new PngBitmapEncoder();
         enc.Frames.Add(BitmapFrame.Create(bmp));
@@ -257,7 +201,7 @@ internal static class IconTool
         File.WriteAllBytes(path, EncodePng(Render(sheet, width, height)));
     }
 
-    private static BitmapSource Render(DrawingVisual visual, int width, int height)
+    internal static BitmapSource Render(DrawingVisual visual, int width, int height)
     {
         var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(visual);
