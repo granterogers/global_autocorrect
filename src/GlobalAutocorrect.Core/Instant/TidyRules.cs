@@ -40,7 +40,48 @@ public sealed class TidyRules(ISpellChecker speller)
             ?? MissingSpaceAfter(start, chunk)
             ?? DoubleSpace(typed, start, chunk)
             ?? CapitalI(typed, start, chunk)
+            ?? TwoCapitals(typed, start, chunk)
             ?? SentenceStart(typed, start, chunk);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex TwoInitialCapitals = new(@"^(\p{Lu})(\p{Lu})(\p{Ll}+)[.,;:!?]?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex TwoLetterCaps = new(@"^(\p{Lu})(\p{Lu})[.,;:!?]?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>D78: two-letter small words that Shift held a moment too long turns into capitals.</summary>
+    private static readonly HashSet<string> SmallWords = new(StringComparer.Ordinal)
+    {
+        "IF", "IN", "IS", "ON", "TO", "WE", "MY", "ME", "SO", "AN", "AT", "AS", "BE", "BY", "DO", "GO", "HE", "OR", "OF",
+    };
+
+    // D78: Shift held a moment too long: "THe" → "The", and at the start of a sentence or line "IF" → "If" (the user's
+    // Intercom reply). Never when the text before is in capitals too (shouting), never IT, US, UK, OK and the like.
+    private TidyFix? TwoCapitals(string typed, int start, string chunk)
+    {
+        var m = TwoInitialCapitals.Match(chunk);
+        if (m.Success)
+        {
+            string word = m.Groups[1].Value + m.Groups[2].Value.ToLowerInvariant() + m.Groups[3].Value;
+            if (!speller.IsValid(word) || PreviousWordIsCapitals(typed, start)) return null;
+            return new TidyFix(start + 1, start + 2, m.Groups[2].Value, m.Groups[2].Value.ToLowerInvariant(), "two-capitals");
+        }
+        m = TwoLetterCaps.Match(chunk);
+        if (!m.Success || !SmallWords.Contains(m.Groups[1].Value + m.Groups[2].Value) || PreviousWordIsCapitals(typed, start)) return null;
+        int i = start - 1;
+        while (i >= 0 && typed[i] == ' ') i--;
+        if (i < 0 || typed[i] is not ('.' or '!' or '?' or '\n')) return null;   // only where a capital is due anyway
+        return new TidyFix(start + 1, start + 2, m.Groups[2].Value, m.Groups[2].Value.ToLowerInvariant(), "two-capitals");
+    }
+
+    /// <summary>The word before (if any, within the last line or two) is all capitals: the user is writing in capitals.</summary>
+    private static bool PreviousWordIsCapitals(string typed, int start)
+    {
+        int e = start - 1;
+        while (e >= 0 && !char.IsLetter(typed[e])) e--;
+        if (e < 0) return false;
+        int s = e;
+        while (s > 0 && char.IsLetter(typed[s - 1])) s--;
+        string w = typed[s..(e + 1)];
+        return w.Length >= 2 && w.All(char.IsUpper);
     }
 
     // "steps ." → "steps.": a run of sentence punctuation typed after one space that follows a letter. Decided at the

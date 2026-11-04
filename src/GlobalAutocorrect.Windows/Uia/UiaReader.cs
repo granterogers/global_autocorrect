@@ -20,7 +20,8 @@ public sealed record UiaSnapshot(
     int ControlTypeId = 0,   // UIA control type id: language-independent, unlike ControlType
     string? FontName = null, // the field's font where the app reports it, so the suggestion can match it (7.6)
     string ClassName = "",   // D46: tells CKEditor 5 (Teams) apart, which needs fixes retyped rather than arrowed to
-    string FrameworkId = "") // D53: UIA's UI framework (Win32, WPF, the Chromium engine...), not the app
+    string FrameworkId = "", // D53: UIA's UI framework (Win32, WPF, the Chromium engine...), not the app
+    double? FontSizePt = null)  // D79: the field's font size where the app reports it
 {
     public bool CaretKnown => Status == ReadStatus.Ok;
 
@@ -43,6 +44,7 @@ public sealed class UiaReader
     private readonly IUIAutomation2 _uia;
     private string _infoFor = "", _class = "", _framework = "";
     private string? _font;
+    private double? _fontSize;
 
     public UiaReader(uint timeoutMs = 250)
     {
@@ -100,8 +102,8 @@ public sealed class UiaReader
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
             // Font and class name only change with the field: read them once per field, not on every read, so reads
             // stay as quick as they were (each is another call into the app).
-            if (rid != _infoFor) { _infoFor = rid; _font = FontName(caret); _class = el.CurrentClassName ?? ""; _framework = el.CurrentFrameworkId ?? ""; }
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _font, _class, _framework);
+            if (rid != _infoFor) { _infoFor = rid; _font = FontName(caret); _fontSize = FontSize(caret); _class = el.CurrentClassName ?? ""; _framework = el.CurrentFrameworkId ?? ""; }
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _font, _class, _framework, _fontSize);
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
@@ -161,6 +163,20 @@ public sealed class UiaReader
             var r = caret.Clone();
             r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -1);
             return r.GetAttributeValue(FontNameAttributeId) is string s && s.Length > 0 ? s : null;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return null; }
+    }
+
+    private const int FontSizeAttributeId = 40006;   // UIA_FontSizeAttributeId (points)
+
+    /// <summary>D79: the size in points of the character just before the caret; null if the app doesn't say.</summary>
+    private static double? FontSize(IUIAutomationTextRange caret)
+    {
+        try
+        {
+            var r = caret.Clone();
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -1);
+            return r.GetAttributeValue(FontSizeAttributeId) is double d && d is > 2 and < 200 ? d : null;
         }
         catch (Exception e) when (IsUiaFailure(e)) { return null; }
     }

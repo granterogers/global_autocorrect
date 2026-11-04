@@ -74,7 +74,7 @@ public sealed class OverlayController
         var s = _host.Predictor?.Suggest(snap.Before, snap.ProcessName);   // D57: this app's own history counts for more
         if (s is null || s.Completion.Length == 0) { Why("no-suggestion", snap.Before); return; }
         Why("shown", snap.Before);
-        Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight);
+        Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight, snap.FontSizePt);
     }
 
     private static readonly bool UnderTest = Environment.GetEnvironmentVariable("GA_E2E") == "1";
@@ -90,14 +90,14 @@ public sealed class OverlayController
         AppHost.Diagnose($"predict: {reason} beforeLength={before?.Length ?? -1} last=[{tail}]");
     }
 
-    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false)
+    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false, double? fontSizePt = null)
     {
         var hook = _host.Hook;
         if (completion.Length == 0 || hook is null) { Hide(); return; }
         _ui.BeginInvoke(() =>
         {
             if (hook.LatestKeySeq != seq) { Why("stale-at-show", null); return; }   // something happened in between
-            _suggestion.ShowAt(completion, caret, fontName, caretIsFontHeight);
+            _suggestion.ShowAt(completion, caret, fontName, caretIsFontHeight, fontSizePt);
             Why($"drawn h={caret.H:F0}", null);
             _shown = completion;
             hook.SuggestionArm.ArmAt(seq);   // Tab now means "accept", until anything else happens

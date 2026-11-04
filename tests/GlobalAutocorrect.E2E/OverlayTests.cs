@@ -42,13 +42,19 @@ public sealed class OverlayTests
     }
 
     [Fact]
-    public async Task R7_6_SuggestionIsTheFieldsTextSize_CKEditor()
+    public Task R7_6_SuggestionIsTheFieldsTextSize_CKEditor() => InBrowser("ckeditor");
+
+    /// <summary>D79: lines spaced out as in Intercom, so the caret is taller than the text (the user saw it too large).</summary>
+    [Fact]
+    public Task R7_6_SuggestionIsTheFieldsTextSize_SpacedLines_D79() => InBrowser("spaced");
+
+    private static async Task InBrowser(string page)
     {
         Desk.RequireIdle();
         using var llm = new MockLlm(Model);
-        using var app = new AppUnderTest(llm, prediction: true);
+        using var app = new AppUnderTest(llm, prediction: true, label: "overlay-" + page);
         using var uia = new UIA3Automation();
-        var (browser, p, pw) = await BrowserTests.Open("ckeditor");
+        var (browser, p, pw) = await BrowserTests.Open(page);
         try
         {
             Desk.Type(Typed);
@@ -59,7 +65,7 @@ public sealed class OverlayTests
                 got = (await p.EvaluateAsync<string>("window.getText()")).Replace(' ', ' ');
             }
             Assert.True(got == Typed, $"got \"{got}\"; {app.Diagnostics()}");
-            Measure("ckeditor", app, uia);
+            Measure(page, app, uia);
         }
         finally
         {

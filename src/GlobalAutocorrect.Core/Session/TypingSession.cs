@@ -88,7 +88,7 @@ public sealed class TypingSession
     /// </summary>
     public bool FieldBehind(string fieldBefore)
     {
-        string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(Typed);
+        string f = TextNorm.Comparable(fieldBefore).TrimEnd('\n'), t = TextNorm.Comparable(Typed).TrimEnd('\n');   // D77
         for (int k = 1; k <= Math.Min(8, t.Length - 1); k++)
             if (f.EndsWith(t[..^k], StringComparison.Ordinal)) return true;
         return false;
@@ -98,6 +98,12 @@ public sealed class TypingSession
     {
         // D42: line-break runs compare as one, so a blank line reported differently by the editor still matches.
         string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(Typed);
+        // D77: a line break right at the caret is reported differently by browsers: just after Enter the new empty line
+        // may not show yet, and Edge can report a break after the caret's line that wasn't typed (in real use this left
+        // the app retrying one mismatch every 25 ms for a minute). Compare without line breaks at the end; what comes
+        // before them must still match exactly.
+        string ft = f.TrimEnd('\n'), tt = t.TrimEnd('\n');
+        if (ft.Length != f.Length || tt.Length != t.Length) return ft.EndsWith(tt, StringComparison.Ordinal);
         if (t.Length != _typed.Length) return f.EndsWith(t, StringComparison.Ordinal);   // CRs or blank lines differ: compare only
         if (f.EndsWith(t, StringComparison.Ordinal)) return true;
         if (f.Length >= t.Length && f.EndsWith(t, StringComparison.OrdinalIgnoreCase))

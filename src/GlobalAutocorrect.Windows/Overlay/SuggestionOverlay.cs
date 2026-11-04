@@ -31,14 +31,16 @@ public sealed class SuggestionOverlay : OverlayWindow
     /// <param name="caret">Caret rectangle in physical pixels (x, y, width, height).</param>
     /// <param name="fontName">The field's font (UIA), or null to use Segoe UI.</param>
     /// <param name="caretIsFontHeight">D53: the app draws its caret one em tall (Chromium), not one line.</param>
-    public void ShowAt(string completion, (double X, double Y, double W, double H) caret, string? fontName = null, bool caretIsFontHeight = false)
+    /// <param name="fontSizePt">D79: the field's font size in points, where the app reports it.</param>
+    public void ShowAt(string completion, (double X, double Y, double W, double H) caret, string? fontName = null, bool caretIsFontHeight = false,
+        double? fontSizePt = null)
     {
         Completion = completion;
         _text.Text = completion;
         double h = Math.Max(caret.H, 12);
         var family = fontName is null ? DefaultFont : new FontFamily(fontName + ", Segoe UI");
         _text.FontFamily = family;
-        _text.FontSize = FontSizeFor(h * PixelsToDipsSafe(), family.LineSpacing, caretIsFontHeight);
+        _text.FontSize = FontSizeFor(h * PixelsToDipsSafe(), family.LineSpacing, caretIsFontHeight, fontSizePt * 96 / 72);
         _text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double width = (_text.DesiredSize.Width + 8) / PixelsToDipsSafe();
         PlaceAt(caret.X + Math.Max(caret.W, 1) + 1, caret.Y, width, h);
@@ -50,9 +52,16 @@ public sealed class SuggestionOverlay : OverlayWindow
     /// share of the caret drew text too small in some fonts and too big in others (user feedback).
     /// D53: Chromium (Edge, Chrome) draws its caret one em tall, so there the caret height is the font size; dividing it
     /// too drew the suggestion about 15% small (measured on the CI runner in CKEditor 5: 10 px letters next to 12 px).
+    /// D79: the user found the suggestion "consistently larger" in Intercom, where lines are spaced out and Chromium's
+    /// caret is a whole line tall, not one em. So the field's own font size wins whenever the app reports it and it is
+    /// plausible for the caret (a caret is between one em and about two lines tall); otherwise, as at a zoom the app
+    /// doesn't report, the caret decides as before.
     /// </summary>
-    public static double FontSizeFor(double caretHeightDips, double lineSpacing, bool caretIsFontHeight = false) =>
-        caretIsFontHeight ? caretHeightDips : caretHeightDips / Math.Clamp(lineSpacing is > 0 and < 10 ? lineSpacing : 1.33, 1.0, 1.6);
+    public static double FontSizeFor(double caretHeightDips, double lineSpacing, bool caretIsFontHeight = false, double? fieldFontDips = null)
+    {
+        if (fieldFontDips is double f && f >= 0.45 * caretHeightDips && f <= 1.05 * caretHeightDips) return f;
+        return caretIsFontHeight ? caretHeightDips : caretHeightDips / Math.Clamp(lineSpacing is > 0 and < 10 ? lineSpacing : 1.33, 1.0, 1.6);
+    }
 
     public void HideSuggestion()
     {

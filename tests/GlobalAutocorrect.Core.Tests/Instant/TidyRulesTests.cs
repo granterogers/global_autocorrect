@@ -49,6 +49,22 @@ public class TidyRulesTests
     public void R4_3_D55_CapitalIAndSentenceStarts(string typed, string? expected) => Assert.Equal(expected, After(typed));
 
     [Theory]
+    [InlineData("we met. THe ", "we met. The ")]
+    [InlineData("and WHen ", "and When ")]
+    [InlineData("access, etc.\n\nIF ", "access, etc.\n\nIf ")]   // the user's Intercom reply
+    [InlineData("done. IN ", "done. In ")]
+    public void R4_3_D78_TwoInitialCapitalsAreOneCapital(string typed, string expected) => Assert.Equal(expected, After(typed));
+
+    [Theory]
+    [InlineData("call the IT ")]                    // abbreviations stay
+    [InlineData("done. US ")]
+    [InlineData("done. OK ")]
+    [InlineData("PLEASE READ. IF ")]                // the text around it is in capitals: shouting, not a slip
+    [InlineData("and IF ")]                         // mid-sentence two letters: could be meant
+    [InlineData("the NHs ")]                        // not a word with one capital
+    public void R4_3_D78_CapitalsThatMayBeMeantStay(string typed) => Assert.Null(After(typed));
+
+    [Theory]
     [InlineData("use .NET ")]                       // a leading dot is part of a name
     [InlineData("great :) ")]                       // emoticons
     [InlineData("wink ;) ")]

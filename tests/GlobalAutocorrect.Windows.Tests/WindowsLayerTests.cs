@@ -228,6 +228,13 @@ public sealed class WindowsLayerTests
         Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, lineSpacing), 2);
     }
 
+    [Theory]
+    [InlineData(25.0, 16.0, 16.0)]   // Intercom-like: a line-tall caret (line-height 1.55) and 12 pt text: the text's size
+    [InlineData(17.0, 16.0, 16.0)]   // a caret one em tall (CKEditor): the same
+    [InlineData(40.0, 16.0, 40.0)]   // the page is zoomed and the app reports the unzoomed size: the caret decides
+    public void R7_6_D79_TheFieldsOwnFontSizeWinsWhenItFitsTheCaret(double caretDips, double fieldDips, double expected) =>
+        Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, 1.15, caretIsFontHeight: true, fieldFontDips: fieldDips), 2);
+
     [Fact]
     public void R7_6_D53_InChromiumTheCaretHeightIsTheFontSize()
     {
