@@ -75,7 +75,8 @@ public sealed class HostedBrowser
         return inside;
     }
 
-    /// <summary>The host's child processes' Chromium windows that aren't shown: the hosted engine's, drawn by the host.</summary>
+    /// <summary>The host's child processes' Chromium windows: the hosted engine's. They are shown while the app is (and
+    /// hidden with it in the tray), so being shown says nothing; <see cref="HostsBrowserInside"/> is what tells hosting.</summary>
     public static nint[] BrowserWindows(int hostPid)
     {
         var children = ChildProcesses(hostPid);
@@ -84,7 +85,7 @@ public sealed class HostedBrowser
         EnumWindows((h, _) =>
         {
             GetWindowThreadProcessId(h, out uint pid);
-            if (children.Contains((int)pid) && !IsWindowVisible(h) && IsBrowserWindow(ClassOf(h))) found.Add(h);
+            if (children.Contains((int)pid) && IsBrowserWindow(ClassOf(h))) found.Add(h);
             return true;
         }, 0);
         return [.. found];
@@ -129,7 +130,6 @@ public sealed class HostedBrowser
     private delegate bool EnumWindowsProc(nint hwnd, nint lParam);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc f, nint lParam);
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(nint parent, EnumWindowsProc f, nint lParam);
-    [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint hwnd);
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool GetWindowRect(nint hwnd, out tagRECT rect);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint hwnd, out uint pid);
