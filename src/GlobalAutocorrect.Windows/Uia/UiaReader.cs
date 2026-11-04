@@ -44,6 +44,7 @@ public sealed class UiaReader
     private readonly IUIAutomation2 _uia;
     private string _infoFor = "", _class = "", _framework = "";
     private readonly FieldStyleCache _style = new();   // D83
+    private readonly HostedBrowser _hosted = new();    // D87
 
     public UiaReader(uint timeoutMs = 250)
     {
@@ -68,14 +69,26 @@ public sealed class UiaReader
             type = el.CurrentLocalizedControlType ?? "";
             if (el.CurrentIsPassword != 0) return UiaSnapshot.Fail(ReadStatus.Password, pid, proc, type);   // 8.3
 
+            object? p2 = el.GetCurrentPattern(TextPattern2Id);
+            object? p1 = p2 is null ? el.GetCurrentPattern(TextPatternId) : null;
+            // D87: focus that stops at a frame hosting a browser engine (WinUI 3 WebView2): read the engine's focused field.
+            // The process stays the app's, so it is the app that is learnt about and gated (8.3, D81).
+            if (p2 is null && p1 is null && _hosted.FocusedIn(_uia, pid) is { } inner)
+            {
+                el = inner;
+                type = el.CurrentLocalizedControlType ?? "";
+                if (el.CurrentIsPassword != 0) return UiaSnapshot.Fail(ReadStatus.Password, pid, proc, type);
+                p2 = el.GetCurrentPattern(TextPattern2Id);
+            }
+
             IUIAutomationTextRange? caret = null;
             string source = "";
-            if (el.GetCurrentPattern(TextPattern2Id) is IUIAutomationTextPattern2 tp2)
+            if (p2 is IUIAutomationTextPattern2 tp2)
             {
                 caret = tp2.GetCaretRange(out _);
                 source = "TextPattern2";
             }
-            if (caret is null && el.GetCurrentPattern(TextPatternId) is IUIAutomationTextPattern tp)
+            if (caret is null && (p1 ??= el.GetCurrentPattern(TextPatternId)) is IUIAutomationTextPattern tp)
             {
                 var sel = tp.GetSelection();
                 if (sel is not null && sel.Length == 1)
@@ -125,6 +138,7 @@ public sealed class UiaReader
         {
             var el = _uia.GetFocusedElement();
             if (el is null) return null;
+            if (el.GetCurrentPattern(TextPatternId) is null && _hosted.FocusedIn(_uia, el.CurrentProcessId) is { } inner) el = inner;   // D87
             IUIAutomationTextRange? caret = (el.GetCurrentPattern(TextPattern2Id) as IUIAutomationTextPattern2)?.GetCaretRange(out _);
             if (caret is null && el.GetCurrentPattern(TextPatternId) is IUIAutomationTextPattern tp && tp.GetSelection() is { Length: 1 } sel)
                 caret = sel.GetElement(0);

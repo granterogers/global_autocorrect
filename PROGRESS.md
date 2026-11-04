@@ -2,6 +2,9 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 (late) — WhatsApp
+
+- **D87 (10.6; user report):** WhatsApp's message box is read through the WebView2 engine it hosts (focus stopped at its WinUI frame before). 4 tests, one live against an app hosting an engine (skipped in CI). Tab E2E test updated to D80 (v1.1.0).
 ## 2026-11-04 (release) — Version 1.0.0
 
 - **D86 (13.3, 13.1):** the user confirmed the RC on their PC and asked for 1.0. Tagged `v1.0.0`; every later pushed change is the next minor version and is released by GitHub Actions automatically. Builds carry the tag's version (`scripts/version.ps1`); About shows "Release".

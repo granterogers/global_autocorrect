@@ -250,6 +250,39 @@ public sealed class WindowsLayerTests
     public void R7_6_D85_OtherwiseUiaCaretStays(double sx, double sy, double sh) =>
         Assert.Equal((542.0, 229.0, 1.0, 42.0), SystemCaret.Pick((542, 229, 1, 42), (sx, sy, 1, sh)));
 
+    [Theory]
+    [InlineData("Chrome_WidgetWin_1", true)]             // the engine's window: WebView2, Chrome, Edge and Electron alike
+    [InlineData("Chrome_WidgetWin_0", true)]
+    [InlineData("WinUIDesktopWin32WindowClass", false)]  // the WinUI 3 frame that hosts it
+    [InlineData("Notepad", false)]
+    public void R10_6_D87_TheBrowserEnginesWindowIsKnownByItsClass(string className, bool browser) =>
+        Assert.Equal(browser, HostedBrowser.IsBrowserWindow(className));
+
+    [Fact]
+    public void R10_6_D87_AProcessHostingNoBrowserEngineHasNoHostedWindows() =>
+        Assert.Empty(HostedBrowser.BrowserWindows(Environment.ProcessId));
+
+    /// <summary>
+    /// D87, measured on the user's PC: WhatsApp's UIA focus stops at its WinUI frame, while its WebView2 engine's own
+    /// window holds the message box with the focus. Where an app on this PC hosts an engine like that, the focused
+    /// element is found in it. Skipped where none is running (the CI runners).
+    /// </summary>
+    [Fact]
+    public void R10_6_D87_AHostedBrowsersFocusedElementIsFound()
+    {
+        var hosts = Process.GetProcesses().Where(p => p.Id != Environment.ProcessId && p.MainWindowHandle != 0)
+            .Where(p => HostedBrowser.HostsBrowserInside(p.MainWindowHandle, p.Id) && HostedBrowser.BrowserWindows(p.Id).Length > 0).ToList();
+        if (hosts.Count == 0) Assert.Skip("no app on this PC hosts a browser engine");
+        var reader = new UiaReader();
+        var found = hosts.Select(p => (Host: p.Id, Element: new HostedBrowser().FocusedIn(reader.Automation, p.Id, p.MainWindowHandle)))
+            .Where(f => f.Element is not null).ToList();
+        Assert.NotEmpty(found);
+        Assert.All(found, f => Assert.NotEqual(f.Host, f.Element!.CurrentProcessId));   // the engine's element, not the frame
+
+        // The frame of an app that only started a browser (this test's own process has no engine inside its window).
+        Assert.False(HostedBrowser.HostsBrowserInside(Process.GetCurrentProcess().MainWindowHandle, Environment.ProcessId));
+    }
+
     /// <summary>D83: Intercom's reply box is read empty when focus lands; the font must still be learnt once typing starts.</summary>
     [Fact]
     public void R7_6_D83_AFieldFirstReadEmptyStillGetsItsFontOnceThereIsText()
