@@ -235,6 +235,32 @@ public sealed class WindowsLayerTests
     public void R7_6_D79_TheFieldsOwnFontSizeWinsWhenItFitsTheCaret(double caretDips, double fieldDips, double expected) =>
         Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, 1.15, caretIsFontHeight: true, fieldFontDips: fieldDips), 2);
 
+    /// <summary>D83: Intercom's reply box is read empty when focus lands; the font must still be learnt once typing starts.</summary>
+    [Fact]
+    public void R7_6_D83_AFieldFirstReadEmptyStillGetsItsFontOnceThereIsText()
+    {
+        var c = new FieldStyleCache();
+        Assert.False(c.ShouldRead("box", ""));          // focus lands in the empty box: nothing to read the font from
+        Assert.False(c.ShouldRead("box", "Hi All,\n"));  // just after Enter: the character before is a line break
+        Assert.True(c.ShouldRead("box", "H"));           // the first letter
+        c.Store("Arial", 10.5);
+        Assert.False(c.ShouldRead("box", "Hi"));         // known: not asked again
+        Assert.Equal(10.5, c.SizePt);
+        Assert.True(c.ShouldRead("other", "x"));         // another field starts afresh
+        Assert.Null(c.SizePt);
+    }
+
+    [Fact]
+    public void R7_6_D83_AnAppThatNeverSaysItsSizeIsAskedOnlyAFewTimes()
+    {
+        var c = new FieldStyleCache();
+        int asked = 0;
+        for (int i = 0; i < 50; i++)
+            if (c.ShouldRead("notepad", "abc")) { asked++; c.Store("Consolas", null); }
+        Assert.Equal(FieldStyleCache.MaxTries, asked);
+        Assert.Equal("Consolas", c.Font);                // an answer given once is kept
+    }
+
     [Fact]
     public void R7_6_D53_InChromiumTheCaretHeightIsTheFontSize()
     {

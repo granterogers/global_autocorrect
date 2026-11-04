@@ -2,6 +2,10 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 (evening) — Suggestion size in Intercom, again
+
+- **D83 (7.6; user report):** the field's font is asked again once there's text before the caret; it was learnt from the empty box and kept. 2 tests.
+
 ## 2026-11-04 (later) — The app learns per program; daily publishing to the source
 
 - **D82 (4.3, 4.5.d; user report):** "tomorrow5th" → "tomorrow 5th" at the next space; codes like "Windows11" left alone. 15 tests.

@@ -43,8 +43,7 @@ public sealed class UiaReader
 
     private readonly IUIAutomation2 _uia;
     private string _infoFor = "", _class = "", _framework = "";
-    private string? _font;
-    private double? _fontSize;
+    private readonly FieldStyleCache _style = new();   // D83
 
     public UiaReader(uint timeoutMs = 250)
     {
@@ -100,10 +99,12 @@ public sealed class UiaReader
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
-            // Font and class name only change with the field: read them once per field, not on every read, so reads
+            // Class and framework only change with the field: read them once per field, not on every read, so reads
             // stay as quick as they were (each is another call into the app).
-            if (rid != _infoFor) { _infoFor = rid; _font = FontName(caret); _fontSize = FontSize(caret); _class = el.CurrentClassName ?? ""; _framework = el.CurrentFrameworkId ?? ""; }
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _font, _class, _framework, _fontSize);
+            if (rid != _infoFor) { _infoFor = rid; _class = el.CurrentClassName ?? ""; _framework = el.CurrentFrameworkId ?? ""; }
+            // D83: the font is read from the character before the caret, so not from an empty field: asked again later.
+            if (_style.ShouldRead(rid, b)) _style.Store(FontName(caret), FontSize(caret));
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _style.Font, _class, _framework, _style.SizePt);
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
