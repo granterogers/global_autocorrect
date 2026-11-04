@@ -20,6 +20,12 @@ public sealed record AppSettings
     public string FallbackModel { get; init; } = "gemma-4-E2B-it-Q5_K_M.gguf";
     public string? PromptFile { get; init; }                         // 5.2: null = the built-in prompt
     public bool PredictionEnabled { get; init; } = true;           // 7.7
+    /// <summary>D80: show a next-word guess almost always (10% of the likelihood), not only when one word is clearly
+    /// likeliest (60%); the user wants to keep pressing Tab through an obvious sentence.</summary>
+    public bool AlwaysSuggestNextWord { get; init; } = true;
+
+    /// <summary>D80: the next-word threshold for <see cref="AlwaysSuggestNextWord"/>.</summary>
+    public double NextWordShare => AlwaysSuggestNextWord ? 0.1 : 0.6;
     public string PauseShortcut { get; init; } = "Ctrl+Alt+P";     // 8.2
     public string UndoShortcut { get; init; } = "Ctrl+Alt+Z";      // 4.8.b
     public List<string>? ExcludedApps { get; init; }               // 8.4; null = the built-in defaults

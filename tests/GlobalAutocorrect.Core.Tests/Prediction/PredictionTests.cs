@@ -61,6 +61,28 @@ public sealed class PredictionTests : IDisposable
         Assert.Equal(found.Word, found.Completion, ignoreCase: true);
     }
 
+    /// <summary>
+    /// D80: with "Always guess the next word" a guess follows almost every space, so Tab after Tab (each taking the word
+    /// and a space) carries on through a sentence; the strict setting stops far sooner.
+    /// </summary>
+    [Fact]
+    public void R7_1_TabAfterTabFinishesASentence_D80()
+    {
+        int Chain(double share)
+        {
+            var p = NewPredictor(out _);
+            p.MinNextShare = share;
+            string text = "Thank you for ";
+            int words = 0;
+            for (; words < 8 && p.Suggest(text) is { IsNextWord: true } s; words++) text += s.Completion + " ";
+            return words;
+        }
+
+        int always = Chain(0.1), strict = Chain(0.6);
+        Assert.True(always >= 3, $"only {always} words in a row with the guess always on");
+        Assert.True(always > strict, $"always on gave {always} words, strict {strict}");
+    }
+
     [Fact]
     public void R7_1_ModelPredictsKnownContexts()
     {

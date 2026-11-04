@@ -99,7 +99,9 @@ public sealed class AppHost : IAsyncDisposable
 
 
     /// <summary>Types the accepted suggestion as our own input, on the engine thread (7.4).</summary>
-    public void AcceptSuggestion(string completion) => _loop?.Post(e => e.InsertAtCaret(completion));
+    /// <param name="typed">D80: called once the text is in the field, so the next word can be guessed straight away.</param>
+    public void AcceptSuggestion(string completion, Action? typed = null) =>
+        _loop?.Post(e => { if (e.InsertAtCaret(completion)) typed?.Invoke(); });
 
     /// <summary>Paused/resumed, model loaded or unloaded: the tray and Home page refresh.</summary>
     public event Action? StateChanged;
@@ -121,7 +123,7 @@ public sealed class AppHost : IAsyncDisposable
         _speller = HunspellSpellChecker.FromAssets(AssetsDir);
         _suggester = SymSpellSuggester.FromAssets(AssetsDir);
         _ngram = NgramModel.FromAssets(AssetsDir);
-        Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled };
+        Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare };   // D80
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
@@ -242,7 +244,7 @@ public sealed class AppHost : IAsyncDisposable
             Notice?.Invoke("Your settings couldn't be saved, so they'll only last until Global Autocorrect closes.");
         }
         Dictionary.AutoLearnEnabled = s.AutoLearnWords;
-        if (Predictor is not null) Predictor.Enabled = s.PredictionEnabled;   // 7.7
+        if (Predictor is not null) { Predictor.Enabled = s.PredictionEnabled; Predictor.MinNextShare = s.NextWordShare; }   // 7.7, D80
         if (_llm is not null) _llm.IdleUnloadMinutes = s.IdleUnloadMinutes;
         if (_loop is not null)
         {

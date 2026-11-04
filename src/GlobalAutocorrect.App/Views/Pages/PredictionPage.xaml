@@ -17,6 +17,18 @@
             <ui:ToggleSwitch IsChecked="{Binding PredictionEnabled, Mode=TwoWay}" AutomationProperties.Name="Suggest the next word" />
         </ui:CardControl>
 
+        <!-- D80 -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextWordCount24}"
+                        IsEnabled="{Binding PredictionEnabled}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Always guess the next word" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="A guess after almost every word, so you can press Tab again and again to finish an obvious sentence. Off: only when one word is clearly likeliest." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding AlwaysSuggestNextWord, Mode=TwoWay}" AutomationProperties.Name="Always guess the next word" />
+        </ui:CardControl>
+
         <Border Style="{StaticResource CardBorder}" Padding="20,16">
             <Grid>
                 <Grid.ColumnDefinitions>

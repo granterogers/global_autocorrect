@@ -2,6 +2,11 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 — Always a next-word guess; Tab after Tab
+
+- **D80 (7.1, 7.4, 9.3.c; user request):** new Prediction setting "Always guess the next word" (on by default): a next-word guess needs a 10% share instead of 60%. Tab now types the word and a space, and a guess for the following word appears straight away, so Tab can be pressed again and again. Tests: the setting is saved and sets the share (App), Tab-after-Tab carries a sentence further than the strict setting (Core). Fast tier green.
+- **D79 checked in CI:** the suggestion's letter height equals the field's on Notepad, CKEditor and the spaced (Intercom-like) page, ratio 1.00 each.
+
 ## 2026-10-30 (night, early reload) — The model reloads before the first key after an idle unload
 
 - **D67 (5.6.b, 12.3, 12.1, 8.2):** after the idle unload the reload starts when focus moves into a field the app would correct (not a password, excluded, elevated or own window), or on the first key; never while paused. Focus only starts a load, never restarts one, and isn't activity while the model is loaded, so the idle unload still comes after the full idle time. New timings model.load, model.reloadWait, model.reloadKeyToFix. 13 unit tests, each shown failing with its guard removed. Fast tier green. Not measured with the real model (no GPU room beside the user's running copy).

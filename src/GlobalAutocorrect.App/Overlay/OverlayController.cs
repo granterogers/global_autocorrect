@@ -46,10 +46,15 @@ public sealed class OverlayController
         // 7.5: every key hides the suggestion; a fresh one is predicted from the new caret position, so it is never
         // drawn at a stale place.
         Hide();
+        StartPredict(k.Seq, k.Char);
+    }
+
+    private void StartPredict(long seq, char key)
+    {
         long gen = Interlocked.Increment(ref _generation);
         _ = Task.Run(() =>
         {
-            try { Predict(k.Seq, gen, k.Char); }
+            try { Predict(seq, gen, key); }
             catch (Exception e) { Why("failed " + e.GetType().Name, null); throw; }
         });
     }
@@ -116,7 +121,14 @@ public sealed class OverlayController
     {
         string text = _shown;
         Hide();
-        if (text.Length > 0) _host.AcceptSuggestion(text);
+        if (text.Length == 0) return;
+        // D80: the word and the space after it, as phone keyboards do, then straight away a guess at the next word, so
+        // Tab can be pressed again and again through an obvious sentence. A full stop typed next takes the space back
+        // (D55). No key reaches the hook while we type, so the guess starts from the Tab's place in the key order.
+        _host.AcceptSuggestion(text + " ", () =>
+        {
+            if (_host.Hook is { } hook && _host.Predictor is { Enabled: true } && !_host.Paused) StartPredict(hook.LatestKeySeq, ' ');
+        });
     }
 
     private void OnCorrected(CorrectionNotice n)

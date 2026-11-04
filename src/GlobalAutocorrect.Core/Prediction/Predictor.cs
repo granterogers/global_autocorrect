@@ -23,7 +23,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
     public double RunnerUpRatio { get; init; } = 2.5;
 
     /// <summary>A next word is shown only when it has at least this share of the candidates' score (D51).</summary>
-    public double MinNextShare { get; init; } = 0.6;
+    public double MinNextShare { get; set; } = 0.6;   // D80: 0.1 when "Always guess the next word" is on
     private const int ContextWindow = 400;
 
     /// <summary>

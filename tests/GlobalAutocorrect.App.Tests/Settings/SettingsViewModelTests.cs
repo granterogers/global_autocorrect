@@ -148,6 +148,19 @@ public class SettingsViewModelTests
         Assert.False(s.Settings.PredictionEnabled);
     }
 
+    /// <summary>D80: "Always guess the next word" is on by default, saved, and sets how sure a next-word guess must be.</summary>
+    [Fact]
+    public void R7_2_AlwaysGuessTheNextWord_IsSavedAndSetsTheShare_D80()
+    {
+        using var s = new FakeServices();
+        var vm = new PredictionViewModel(s);
+        Assert.True(vm.AlwaysSuggestNextWord);
+        Assert.Equal(0.1, s.Settings.NextWordShare);
+        vm.AlwaysSuggestNextWord = false;
+        Assert.False(s.Settings.AlwaysSuggestNextWord);
+        Assert.Equal(0.6, s.Settings.NextWordShare);
+    }
+
     // ---- 9.3.d Shortcuts -------------------------------------------------------------------------------------------------
 
     [Fact]
