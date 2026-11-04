@@ -16,6 +16,34 @@ public class TidyRulesTests
         Rules.Value.Find(typed) is { } f ? typed[..f.Start] + f.Replacement + typed[f.End..] : null;
 
     [Theory]
+    [InlineData("My colleague can join in tomorrow5th ", "My colleague can join in tomorrow 5th ")]   // the user's Intercom reply
+    [InlineData("on the21st ", "on the 21st ")]
+    [InlineData("Shall we say at1500 ", "Shall we say at 1500 ")]
+    [InlineData("see you on Friday12th ", "see you on Friday 12th ")]
+    [InlineData("call me by3pm ", "call me by 3pm ")]
+    [InlineData("due November5. ", "due November 5. ")]
+    [InlineData("on the 5thNovember ", "on the 5th November ")]
+    public void R4_3_D82_AWordAndANumberTypedTogetherGetTheirSpace(string typed, string expected) => Assert.Equal(expected, After(typed));
+
+    [Theory]
+    [InlineData("upgrade to Windows11 ")]   // names and codes keep their digits attached
+    [InlineData("the mp3 ")]
+    [InlineData("covid19 ")]
+    [InlineData("use office365 ")]
+    [InlineData("the tomorrow5rd ")]         // a wrong ordinal: not sure what was meant
+    [InlineData("ref abc123 ")]
+    [InlineData("the 5thxq ")]
+    public void R4_3_D82_NamesAndCodesWithDigitsAreLeftAlone(string typed) => Assert.Null(After(typed));
+
+    [Fact]
+    public void R4_3_D82_TheSpaceIsPutInWhileTyping_InTheField()
+    {
+        var h = new Simulated.Harness(options: new GlobalAutocorrect.Core.Engine.EngineOptions());   // spacing rules on, as installed
+        h.Type("My colleague can join in tomorrow5th November ");
+        Assert.Equal("My colleague can join in tomorrow 5th November ", h.Text);
+    }
+
+    [Theory]
     [InlineData("to see what the next stes . ", "to see what the next stes. ")]   // the user's Intercom reply
     [InlineData("thanks , ", "thanks, ")]
     [InlineData("really ? ", "really? ")]

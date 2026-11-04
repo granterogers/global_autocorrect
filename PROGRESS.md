@@ -4,6 +4,9 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 
 ## 2026-11-04 (later) — The app learns per program; daily publishing to the source
 
+- **D82 (4.3, 4.5.d; user report):** "tomorrow5th" → "tomorrow 5th" at the next space; codes like "Windows11" left alone. 15 tests.
+- **D81 daily task registered** with the user's yes: "Global Autocorrect - publish learning", daily at 18:00.
+
 - **D81 (4.6.d, 8.6, 6.5; user request):** per-program counts (written, failed checks, stuck, undos), fading daily. A field stuck disagreeing is given up on after 8 refused resyncs over 1.5 s instead of retried every tick (the Claude app logged 340 in a day); careful mode drops far-back AI fixes in programs that misbehave (rule `AppHealth.Decide`: written by the user, Normal until then). `scripts/publish-learning.ps1` commits this PC's counts and the rebuilt `assets/app-profiles.json` and pushes; `-Register` for a daily task, not yet registered (needs the user's yes). 4 tests. WhatsApp: its window showed only the title bar to UI Automation when opened from the tray; not yet tested with the self-chat open.
 
 ## 2026-11-04 — Always a next-word guess; Tab after Tab

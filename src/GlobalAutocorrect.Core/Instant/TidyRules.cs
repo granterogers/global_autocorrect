@@ -38,6 +38,7 @@ public sealed class TidyRules(ISpellChecker speller)
 
         return SpaceBeforePunctuation(typed, start, chunk)
             ?? MissingSpaceAfter(start, chunk)
+            ?? GluedNumber(start, chunk)   // D82
             ?? DoubleSpace(typed, start, chunk)
             ?? CapitalI(typed, start, chunk)
             ?? TwoCapitals(typed, start, chunk)
@@ -103,6 +104,51 @@ public sealed class TidyRules(ISpellChecker speller)
         int at = start + m.Groups[1].Length;
         string p = chunk[m.Groups[1].Length].ToString();
         return new TidyFix(at, at + 1, p, p + " ", "missing-space");
+    }
+
+    private static readonly Regex WordThenNumber = new(@"^(\p{L}{2,})(\d{1,4})(st|nd|rd|th|am|pm)?([.,;:!?]?)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    private static readonly Regex OrdinalThenWord = new(@"^(\d{1,2})(st|nd|rd|th)(\p{L}{3,})([.,;:!?]?)$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    /// <summary>D82: words that are followed by a plain number or a time ("at 1500", "November 5", "by 3pm").</summary>
+    private static readonly HashSet<string> NumberWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "at", "by", "on", "from", "until", "till", "before", "after", "around", "about", "today", "tomorrow", "tonight", "yesterday",
+        "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+        "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "page", "step", "room", "floor",
+    };
+
+    /// <summary>"1st", "2nd", "3rd", "4th", "11th", "21st": the suffix the number takes.</summary>
+    private static bool RightOrdinal(string digits, string suffix)
+    {
+        int n = int.Parse(digits, System.Globalization.CultureInfo.InvariantCulture);
+        string want = (n % 100) is 11 or 12 or 13 ? "th" : (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" };
+        return suffix.Equals(want, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // D82 (user report, Intercom: "tomorrow5th November"): a word and a number typed without the space between them.
+    // "tomorrow5th" → "tomorrow 5th", "at1500" → "at 1500", "5thNovember" → "5th November". Only a real word with a
+    // correct ordinal, or a word that comes before numbers and times (NumberWords) with any number: never codes and
+    // names like "Windows11", "mp3", "covid19" or "office365". The number itself is never changed (4.5.d).
+    private TidyFix? GluedNumber(int start, string chunk)
+    {
+        var m = WordThenNumber.Match(chunk);
+        if (m.Success)
+        {
+            string word = m.Groups[1].Value, digits = m.Groups[2].Value, suffix = m.Groups[3].Value;
+            bool ordinal = suffix.Length > 0 && suffix.ToLowerInvariant() is "st" or "nd" or "rd" or "th";
+            if (ordinal && !RightOrdinal(digits, suffix)) return null;   // "5rd": not sure what was meant
+            bool known = speller.IsValid(word) || speller.IsValid(word.ToLowerInvariant());
+            if (!NumberWords.Contains(word) && !(ordinal && word.Length >= 3 && known)) return null;
+            int at = start + word.Length;
+            return new TidyFix(at, at + 1, digits[..1], " " + digits[..1], "glued-number");
+        }
+        m = OrdinalThenWord.Match(chunk);
+        if (!m.Success || !RightOrdinal(m.Groups[1].Value, m.Groups[2].Value)) return null;
+        string after = m.Groups[3].Value;
+        if (!speller.IsValid(after) && !speller.IsValid(after.ToLowerInvariant())) return null;
+        int end = start + m.Groups[1].Length + m.Groups[2].Length;
+        return new TidyFix(end - 1, end, chunk[(end - 1 - start)..(end - start)], chunk[(end - 1 - start)..(end - start)] + " ", "glued-number");
     }
 
     // "with  the" → "with the": exactly two spaces after a letter or a comma-like mark (not after a full stop: two spaces
