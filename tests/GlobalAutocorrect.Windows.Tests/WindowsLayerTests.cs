@@ -90,7 +90,10 @@ public sealed class WindowsLayerTests
     public void R10_6_b_ReadsAWindowAroundTheCaretNotTheWholeDocument()
     {
         string reader = File.ReadAllText(Path.Combine(Repo(), "src", "GlobalAutocorrect.Windows", "Uia", "UiaReader.cs"));
-        Assert.DoesNotContain("DocumentRange", reader);
+        // D88 uses the field's range only as an end to move to; its own text is never read.
+        Assert.DoesNotMatch(@"DocumentRange\s*\??\.\s*GetText|field\s*\.\s*GetText", reader);
+        Assert.Matches(@"toStart\.GetText\(beforeChars \+ 1\)", reader);   // capped, not the field's whole start
+        Assert.Matches(@"toEnd\.GetText\(afterChars\)", reader);
         Assert.Contains("MoveEndpointByUnit", reader);
     }
 
@@ -282,6 +285,28 @@ public sealed class WindowsLayerTests
         // The frame of an app that only started a browser (this test's own process has no engine inside its window).
         Assert.False(HostedBrowser.HostsBrowserInside(Process.GetCurrentProcess().MainWindowHandle, Environment.ProcessId));
     }
+
+    /// <summary>D88, measured in WhatsApp: 400 back from the caret ran out of the 138-character box into the chat above
+    /// (10 objects, 25 line breaks), and 80 on ran into the send button (line breaks and objects).</summary>
+    [Fact]
+    public void R10_6_D88_TheTextAroundTheCaretIsTheFieldsOwn()
+    {
+        string chat = "See you then!\n￼ 13:54\n￼\n", box = "Thank you so much for reaching out";
+        var (b, a) = CaretWindow.InField(chat + box, "\n￼\n￼", box, "", 400);
+        Assert.Equal(box, b);
+        Assert.Equal("", a);
+
+        // The caret in the middle of the box: the rest of the box after it, nothing past the box.
+        (b, a) = CaretWindow.InField(chat + "Thank you", " so much\n￼", "Thank you", " so much", 400);
+        Assert.Equal(("Thank you", " so much"), (b, a));
+    }
+
+    [Theory]
+    [InlineData("the end of a long letter", "Dear Sam, the start of the letter")]   // field longer than the window: its start isn't the window's end
+    [InlineData("only a field", "only a field")]                                    // the field is the window already
+    [InlineData("only a field", null)]                                              // couldn't read the field: the window stays
+    public void R10_6_D88_OtherwiseTheUsualWindowStays(string before, string? fieldBefore) =>
+        Assert.Equal((before, " and on"), CaretWindow.InField(before, " and on", fieldBefore, null, 400));
 
     /// <summary>D83: Intercom's reply box is read empty when focus lands; the font must still be learnt once typing starts.</summary>
     [Fact]

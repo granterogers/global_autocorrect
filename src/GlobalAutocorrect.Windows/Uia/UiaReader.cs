@@ -111,6 +111,7 @@ public sealed class UiaReader
 
             string b = before.GetText(-1) ?? "";
             string a = after.GetText(-1) ?? "";
+            (b, a) = InField(caret, (p2 ?? p1) as IUIAutomationTextPattern, b, a, beforeChars, afterChars);   // D88
             string rid = string.Join('.', (int[]?)el.GetRuntimeId() ?? []);
             // Class and framework only change with the field: read them once per field, not on every read, so reads
             // stay as quick as they were (each is another call into the app).
@@ -170,6 +171,22 @@ public sealed class UiaReader
     /// </summary>
     private static bool IsUiaFailure(Exception e) => e is COMException or TimeoutException or UnauthorizedAccessException
         or InvalidOperationException or ArgumentException or InvalidCastException or NullReferenceException;
+
+    /// <summary>D88: the window either side of the caret, kept to the field's own text (<see cref="CaretWindow"/>).</summary>
+    private static (string, string) InField(IUIAutomationTextRange caret, IUIAutomationTextPattern? pattern, string b, string a, int beforeChars, int afterChars)
+    {
+        if (pattern is null) return (b, a);
+        try
+        {
+            var field = pattern.DocumentRange;
+            var toStart = caret.Clone();
+            toStart.MoveEndpointByRange(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, field, TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start);
+            var toEnd = caret.Clone();
+            toEnd.MoveEndpointByRange(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, field, TextPatternRangeEndpoint.TextPatternRangeEndpoint_End);
+            return CaretWindow.InField(b, a, toStart.GetText(beforeChars + 1), toEnd.GetText(afterChars), beforeChars);
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return (b, a); }
+    }
 
     private const int FontNameAttributeId = 40005;   // UIA_FontNameAttributeId
 
