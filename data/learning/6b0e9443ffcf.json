@@ -1,0 +1,23 @@
+{
+  "Updated": "2026-11-04",
+  "Apps": {
+    "chatgpt": {
+      "Writes": 11,
+      "VerifyFailures": 3,
+      "Stuck": 0,
+      "Undos": 0
+    },
+    "claude": {
+      "Writes": 18,
+      "VerifyFailures": 3,
+      "Stuck": 0,
+      "Undos": 0
+    },
+    "msedge": {
+      "Writes": 11,
+      "VerifyFailures": 0,
+      "Stuck": 0,
+      "Undos": 0
+    }
+  }
+}
