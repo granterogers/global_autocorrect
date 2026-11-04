@@ -39,6 +39,46 @@ public sealed class AppHealthTests : IDisposable
         Assert.Equal("I saw teh ", h.Text);                    // nothing was written into a field we can't read right
     }
 
+    /// <summary>D89, user request "if it happens once, it never happens again" (WhatsApp, 2026-11-04: one AI fix stepped
+    /// to with arrows landed wrong, and the rest of the message was left).</summary>
+    [Fact]
+    public void R4_6_d_D89_AnArrowFixThatWentWrongOnceIsRetypedFromThenOn()
+    {
+        var h = new Harness(model: s => s.Replace("went their", "went there"), latencyMs: 50);
+        var health = new AppHealth();
+        h.Engine.Health = health;
+        var learnt = new List<string>();
+        h.Engine.LearntFromMistake += learnt.Add;
+        h.Ed.AppName = "WhatsApp.Root";
+        h.Ed.ArrowsAppliedLate = true;
+
+        h.Type("We went their yesterday. ");
+        h.Wait(1500);
+        Assert.Equal(1, h.Counters.Desyncs);                                 // the first one went wrong, as in WhatsApp
+        Assert.Contains("arrows-failed", learnt);
+        Assert.True(health.RetypeIn("whatsapp.root"));
+
+        h.Type("They went their today. ");                                     // the app carries on from what the field shows
+        h.Wait(1500);
+        Assert.EndsWith("They went there today. ", h.Text);                  // retyped: no arrow keys to go wrong
+        Assert.Equal(1, h.Counters.Desyncs);
+    }
+
+    [Fact]
+    public void R4_6_d_D89_TheLessonFadesAfterAboutTwoWeeksAndIsShared()
+    {
+        var day = new DateOnly(2026, 11, 4);
+        var a = new AppHealth(Path.Combine(_dir, "apphealth.json"), () => day);
+        a.ArrowsFailed("WhatsApp.Root");
+        Assert.True(a.RetypeIn("WhatsApp.Root"));
+        Assert.False(a.RetypeIn("notepad"));
+        Assert.Contains("whatsapp.root", AppHealth.Combine([a.Local], day).Apps.Keys);   // one failure is enough to share
+        day = day.AddDays(12);
+        Assert.True(a.RetypeIn("WhatsApp.Root"));
+        day = day.AddDays(2);
+        Assert.False(a.RetypeIn("WhatsApp.Root"));
+    }
+
     [Fact]
     public void R4_6_d_D81_AReadThatOnlyLagsIsNotStuck()
     {

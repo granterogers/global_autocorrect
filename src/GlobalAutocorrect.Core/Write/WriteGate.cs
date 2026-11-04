@@ -192,10 +192,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // again rather than stepped over with Left/Right. Edge applied the arrow keys out of step with a key typed
         // straight after the batch, leaving "thed og" (found by E2E). No arrow keys, nothing to fall out of step.
         bool retype = caretDistance is > 0 and <= 3 && tail.All(c => c is ' ' or '\t' || char.IsPunctuation(c));
-        if (target.RetypeInsteadOfArrows && caretDistance > 0)
+        if ((target.RetypeInsteadOfArrows || Health?.RetypeIn(target.AppName) == true) && caretDistance > 0)
         {
-            // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. Never
-            // across a line break: retyping it means pressing Enter, and Enter sends the message in Teams.
+            // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. D89:
+            // so does any program where a fix stepped to with arrows has gone wrong (learnt, WhatsApp's editor). Never
+            // across a line break: retyping it means pressing Enter, and Enter sends the message in Teams and WhatsApp.
             if (tail.Contains('\n') || caretDistance > 300) { Drop(w, "retype-unsafe"); return false; }
             retype = true;
         }
@@ -218,6 +219,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         {
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
+            if (!retype && caretDistance > 0 && Health is not null && !Health.RetypeIn(target.AppName))
+            {
+                Health.ArrowsFailed(target.AppName);   // D89: this program's fixes are retyped from now on
+                ArrowsFailed?.Invoke(target.AppName);
+            }
             _queue.Clear();
             Desynced?.Invoke(win.TargetId);
             // D42: a mismatch after writing is usually the app's own doing (autocorrect, how it stores a line break), not
@@ -311,6 +317,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
     /// <summary>D84: a fix landed in the wrong case and was typed again (program name only).</summary>
     public event Action<string>? CaseRepaired;
+
+    /// <summary>D89: a fix stepped to with arrow keys failed its check; the program's fixes are retyped from now on.</summary>
+    public event Action<string>? ArrowsFailed;
 
     /// <summary>
     /// D84, user report "things are all uppercase": the fix landed, but in capitals it wasn't sent in (Shift or Caps Lock

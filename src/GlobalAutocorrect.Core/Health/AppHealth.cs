@@ -31,15 +31,21 @@ public sealed class AppStats
     /// <summary>Fixes the user undid (4.8).</summary>
     public double Undos { get; set; }
 
+    /// <summary>D89: fixes made by stepping back with the arrow keys whose check afterwards failed.</summary>
+    public double ArrowFailures { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
+        ArrowFailures = ArrowFailures + o.ArrowFailures,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by;
     }
+
+    internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures;
 }
 
 /// <summary>
@@ -98,8 +104,20 @@ public sealed class AppHealth
         return AppMode.Normal;
     }
 
+    /// <summary>
+    /// D89, user request "if it happens once, it never happens again": a fix stepped to with the arrow keys that went wrong
+    /// once in a program means its fixes are retyped from then on (delete back to the fix and type it and what followed
+    /// again, D46's way), which needs no arrow keys. The count fades like the others, so it lasts about two weeks
+    /// (0.9 a day down to 0.25) and is renewed whenever it happens again; shared through the shipped profiles.
+    /// </summary>
+    public bool RetypeIn(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).ArrowFailures >= RetypeAfter;
+
+    /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
+    public const double RetypeAfter = 0.25;
+
     public void Written(string app) => Note(app, s => s.Writes++);
     public void VerifyFailed(string app) => Note(app, s => s.VerifyFailures++);
+    public void ArrowsFailed(string app) => Note(app, s => s.ArrowFailures++);
     public void Stuck(string app) => Note(app, s => s.Stuck++);
     public void Undone(string app) => Note(app, s => s.Undos++);
 
@@ -176,7 +194,8 @@ public sealed class AppHealth
         var apps = new Dictionary<string, AppStats>(StringComparer.OrdinalIgnoreCase);
         foreach (var source in sources)
             foreach (var (k, v) in source) apps[k] = apps.TryGetValue(k, out var s) ? s.Plus(v) : v.Plus(new AppStats());
-        var kept = apps.Where(a => a.Value.Writes + a.Value.VerifyFailures + a.Value.Stuck + a.Value.Undos >= minEvents)
+        // D89: one arrow-key failure is worth sharing on its own (it is what makes another PC retype from the start).
+        var kept = apps.Where(a => a.Value.Events >= minEvents || a.Value.ArrowFailures >= RetypeAfter)
             .OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(a => a.Key.ToLowerInvariant(), a => Round(a.Value));
         return new ProfileFile(today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), kept);
@@ -185,6 +204,7 @@ public sealed class AppHealth
     private static AppStats Round(AppStats s) => new()
     {
         Writes = Math.Round(s.Writes, 1), VerifyFailures = Math.Round(s.VerifyFailures, 1), Stuck = Math.Round(s.Stuck, 1), Undos = Math.Round(s.Undos, 1),
+        ArrowFailures = Math.Round(s.ArrowFailures, 2),
     };
 
     /// <summary>This PC's counts (for publishing). A copy.</summary>

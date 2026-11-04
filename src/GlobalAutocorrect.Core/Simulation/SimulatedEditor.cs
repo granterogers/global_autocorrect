@@ -83,6 +83,10 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D46: like CKEditor 5 (Teams). Edits are retyped, and arrow keys in a write batch would be applied late.</summary>
     public bool RetypeInsteadOfArrows { get; set; }
 
+    /// <summary>D89: like WhatsApp's editor at times: arrow keys in a write batch take effect after the edit, so the
+    /// Backspaces and the replacement land at the caret instead of at the fix. The app isn't told; it has to learn it.</summary>
+    public bool ArrowsAppliedLate { get; set; }
+
     /// <summary>Left/Right presses our edits have sent while <see cref="RetypeInsteadOfArrows"/> was on: must stay 0.</summary>
     public int ArrowsSentToRetypeEditor { get; private set; }
 
@@ -146,7 +150,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         if (RetypeInsteadOfArrows && caretDistance > 0) ArrowsSentToRetypeEditor += caretDistance;
         // Exactly what the SendInput batch does: Left × d, Backspace × n, type, Right × d (10.7.a).
         int pos = Caret;
-        for (int i = 0; i < caretDistance && pos > 0; i++) pos -= LastElementLength(Text[..pos]);
+        for (int i = 0; i < caretDistance && pos > 0 && !ArrowsAppliedLate; i++) pos -= LastElementLength(Text[..pos]);
         int del = pos;
         for (int i = 0; i < deleteCount && del > 0; i++) del -= LastElementLength(Text[..del]);
         // D84: Shift or Caps Lock catching the app's keys, once.
