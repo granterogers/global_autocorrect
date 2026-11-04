@@ -106,6 +106,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D81: changes every read of the text before the caret, as an app that reports its field oddly (the Claude app).</summary>
     public Func<string, string>? DistortBefore { get; set; }
 
+    /// <summary>D84: the next edit lands in capitals, as when Shift or Caps Lock catches the app's keys.</summary>
+    public bool UppercaseNextEdit { get; set; }
+
     /// <summary>D81: the program name the field reports.</summary>
     public string AppName { get; set; } = "";
 
@@ -146,6 +149,8 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         for (int i = 0; i < caretDistance && pos > 0; i++) pos -= LastElementLength(Text[..pos]);
         int del = pos;
         for (int i = 0; i < deleteCount && del > 0; i++) del -= LastElementLength(Text[..del]);
+        // D84: Shift or Caps Lock catching the app's keys, once.
+        if (UppercaseNextEdit) { replacement = replacement.ToUpperInvariant(); UppercaseNextEdit = false; }
         LastEdit = new AppliedEdit(Text, del, Text[del..pos], replacement);
         Text = Text[..del] + replacement + Text[pos..];
         Caret = del + replacement.Length + (Caret - pos);

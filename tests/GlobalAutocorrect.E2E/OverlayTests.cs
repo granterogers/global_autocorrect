@@ -97,7 +97,14 @@ public sealed class OverlayTests
         }
         Assert.True(shown, $"7.1: no suggestion overlay appeared after \"{Typed}\"; {Facts()}");
         Assert.True(caretOrNull is { Height: > 0 }, $"UIA gave no caret rectangle; {Facts()}");
+        // D85: where Windows knows the caret (Notepad), that is the one on screen; Notepad's UIA box takes in the line above
+        // at 125% scaling (42 px against 22 px on the user's PC).
         var caret = caretOrNull!.Value;
+        if (systemCaret is { } sc && Math.Abs(sc.X - caret.X) <= 4 && sc.Top >= caret.Top - 2 && sc.Bottom <= caret.Bottom + 2 && sc.Height < caret.Height * 0.85)
+        {
+            caret = sc;
+            caretSource += ", narrowed to the system caret (D85)";
+        }
         int h = caret.Height;
 
         // The area around the caret's line, captured with the overlay and again without it.

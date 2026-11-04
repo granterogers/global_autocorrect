@@ -235,6 +235,21 @@ public sealed class WindowsLayerTests
     public void R7_6_D79_TheFieldsOwnFontSizeWinsWhenItFitsTheCaret(double caretDips, double fieldDips, double expected) =>
         Assert.Equal(expected, GlobalAutocorrect.Windows.Overlay.SuggestionOverlay.FontSizeFor(caretDips, 1.15, caretIsFontHeight: true, fieldFontDips: fieldDips), 2);
 
+    /// <summary>D85: measured on the user's PC at 125%: Notepad's UIA caret 42 px tall at y 229, its real caret 22 px at y 249.</summary>
+    [Fact]
+    public void R7_6_D85_TheSystemCaretWinsWhenUiaReportsATallerBoxForTheSameCaret()
+    {
+        var picked = SystemCaret.Pick((542, 229, 1, 42), (542, 249, 1, 22));
+        Assert.Equal((542.0, 249.0, 1.0, 22.0), picked);
+    }
+
+    [Theory]
+    [InlineData(300, 249, 22)]   // somewhere else on screen: a different caret (another window's), UIA stays
+    [InlineData(542, 229, 40)]   // the same height, near enough: UIA stays
+    [InlineData(542, 300, 22)]   // below UIA's box: not the same caret
+    public void R7_6_D85_OtherwiseUiaCaretStays(double sx, double sy, double sh) =>
+        Assert.Equal((542.0, 229.0, 1.0, 42.0), SystemCaret.Pick((542, 229, 1, 42), (sx, sy, 1, sh)));
+
     /// <summary>D83: Intercom's reply box is read empty when focus lands; the font must still be learnt once typing starts.</summary>
     [Fact]
     public void R7_6_D83_AFieldFirstReadEmptyStillGetsItsFontOnceThereIsText()

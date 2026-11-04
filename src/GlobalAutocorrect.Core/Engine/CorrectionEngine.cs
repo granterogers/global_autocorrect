@@ -56,6 +56,31 @@ public sealed class CorrectionEngine
     /// <summary>D81: a field was given up on as stuck (program name only).</summary>
     public event Action<string>? Stuck;
 
+    /// <summary>D84: changes that turned out to be mistakes, never made again.</summary>
+    public Health.MistakeMemory? Mistakes { get => _gate.Mistakes; set => _gate.Mistakes = value; }
+
+    /// <summary>D84: something was learnt from a mistake: "undone", "typed-back", "guard-..." or "case-repaired" (never text).</summary>
+    public event Action<string>? LearntFromMistake;
+
+    /// <summary>
+    /// D84: the user finished a word exactly where one of our recent fixes was, and it is the word as it was before the
+    /// fix: they typed it back. That fix was a mistake, as surely as an undo (4.8.c), and is treated the same way.
+    /// </summary>
+    private void NoticeTypedBack(FinishedWord fw)
+    {
+        foreach (var rec in _undo.Recent.ToArray())
+        {
+            if (rec.Generation != Session.Generation || rec.WordsStart != fw.Start) continue;
+            if (!string.Equals(fw.Word, rec.WordsBefore, StringComparison.OrdinalIgnoreCase) || string.Equals(fw.Word, rec.WordsAfter, StringComparison.Ordinal)) continue;
+            _undo.Recent.Remove(rec);
+            Mistakes?.Remember(rec.WordsBefore, rec.WordsAfter);
+            foreach (var w in UndoManager.WordsToLearn(rec)) _d.AddPersonalWord(w);   // as an undo does (4.8.c)
+            _d.Counters.Undo();
+            Health?.Undone(Target?.AppName ?? "");
+            LearntFromMistake?.Invoke("typed-back");
+        }
+    }
+
     /// <summary>After each verified write: underline it (4.7).</summary>
     public event Action<CorrectionNotice>? Corrected;
     public event Action<string>? Desynced;
@@ -94,6 +119,8 @@ public sealed class CorrectionEngine
         _gate.WriteDropped += (layer, reason) => WriteDropped?.Invoke(layer, reason);
         _gate.Mismatch += d => Mismatch?.Invoke(d);
         _gate.Stuck += app => Stuck?.Invoke(app);   // D81
+        _gate.CaseRepaired += _ => LearntFromMistake?.Invoke("case-repaired");   // D84
+        _gate.WriteDropped += (_, reason) => { if (reason.StartsWith("guard-", StringComparison.Ordinal) || reason == "known-mistake") LearntFromMistake?.Invoke(reason); };
         Session.Resynced += _gate.OnResynced;   // D74
     }
 
@@ -117,6 +144,7 @@ public sealed class CorrectionEngine
         if (k.Kind is KeyKind.FocusChange or KeyKind.Click) _targetOk = null;   // possibly a different field now
         if (Paused || Target is null) return;
 
+        if (effect.Word is { } typedBack && _undo.Recent.Count > 0) NoticeTypedBack(typedBack);   // D84: before it could be "fixed" again
         string? fix = null;
         if (effect.Word is { } fw && _o.InstantEnabled)
         {
@@ -286,6 +314,8 @@ public sealed class CorrectionEngine
             foreach (var w in UndoManager.WordsToLearn(rec)) _d.AddPersonalWord(w);   // 4.8.c
             _d.Counters.Undo();
             Health?.Undone(Target.AppName);   // D81: a fix the user didn't want
+            Mistakes?.Remember(rec.WordsBefore, rec.WordsAfter);   // D84: and never that change again
+            LearntFromMistake?.Invoke("undone");
             _undo.Clear();
         }
         return result;

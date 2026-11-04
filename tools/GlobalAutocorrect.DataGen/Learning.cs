@@ -24,6 +24,19 @@ internal static class Learning
             .Select(p => (IReadOnlyDictionary<string, AppStats>)p!.Apps);
         var combined = AppHealth.Combine(all, today);
         File.WriteAllText(outPath, AppHealth.ToJson(combined));
-        Console.WriteLine($"learning: this PC {mine.Apps.Count} programs, shipped profile {combined.Apps.Count} programs");
+
+        // D84: this PC's mistake fingerprints (never the words), and the shipped list of those enough PCs agree on.
+        string mistakesDir = Path.Combine(dir, "mistakes");
+        Directory.CreateDirectory(mistakesDir);
+        string localMistakes = Path.Combine(Path.GetDirectoryName(localPath)!, "mistakes.json");
+        var mem = new MistakeMemory(localMistakes);
+        mem.Load();
+        var json = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+        File.WriteAllText(Path.Combine(mistakesDir, pcId + ".json"),
+            System.Text.Json.JsonSerializer.Serialize(new MistakeMemory.File(new(mem.Local.OrderBy(m => m.Key, StringComparer.Ordinal).ToDictionary())), json));
+        var shared = MistakeMemory.Combine(Directory.GetFiles(mistakesDir, "*.json")
+            .Select(AppHealth.Read<MistakeMemory.File>).Where(f => f is not null).Select(f => (IReadOnlyDictionary<string, int>)f!.Mistakes));
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(outPath))!, "mistakes.json"), System.Text.Json.JsonSerializer.Serialize(shared, json));
+        Console.WriteLine($"learning: this PC {mine.Apps.Count} programs and {mem.Count} mistakes; shipped {combined.Apps.Count} programs and {shared.Mistakes.Count} mistakes");
     }
 }

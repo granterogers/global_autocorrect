@@ -37,7 +37,7 @@ if ($Register) {
 
 $data = Join-Path $env:APPDATA 'GlobalAutocorrect'
 $local = Join-Path $data 'apphealth.json'
-if (-not (Test-Path $local)) { "learning: nothing learned yet on this PC"; return }
+if (-not (Test-Path $local) -and -not (Test-Path (Join-Path $data 'mistakes.json'))) { "learning: nothing learned yet on this PC"; return }
 
 # A random id for this PC's file, so each PC replaces only its own counts. It says nothing about the PC or the user.
 $idFile = Join-Path $data 'install-id'
@@ -52,7 +52,7 @@ try {
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($branch -ne 'main') { Log "learning: on branch $branch, not main: nothing published"; return }
 
-    $paths = @('data/learning', 'assets/app-profiles.json')
+    $paths = @('data/learning', 'assets/app-profiles.json', 'assets/mistakes.json')   # D81, D84
     dotnet run --project tools/GlobalAutocorrect.DataGen -c Release -- learning --local $local --pc $pc --dir data/learning --out assets/app-profiles.json
     if ($LASTEXITCODE -ne 0) { throw "DataGen learning failed" }
 

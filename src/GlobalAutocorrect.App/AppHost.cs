@@ -96,6 +96,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>D81: per program, how fixes went (counts only), and so how carefully to write there.</summary>
     public AppHealth Health { get; } = new(Path.Combine(DataDir, "apphealth.json"));
+
+    /// <summary>D84: changes that were mistakes (fingerprints only), never made again.</summary>
+    public MistakeMemory Mistakes { get; } = new(Path.Combine(DataDir, "mistakes.json"));
     public Predictor? Predictor { get; private set; }
     public UiaWorker? Uia => _uia;
     public KeyboardHook? Hook => _hook;
@@ -129,6 +132,7 @@ public sealed class AppHost : IAsyncDisposable
         _ngram = NgramModel.FromAssets(AssetsDir);
         Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare };   // D80
         Health.Load(Path.Combine(AssetsDir, "app-profiles.json"));   // D81: this PC's counts plus what was learned elsewhere
+        Mistakes.Load(Path.Combine(AssetsDir, "mistakes.json"));     // D84: this PC's mistakes plus those shared by other PCs
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
@@ -210,9 +214,10 @@ public sealed class AppHost : IAsyncDisposable
             ObservePhrase: (a, b, w) => History.ObservePhrase(a, b, w, CurrentApp),   // D40, D57
             PairCount: _ngram is null ? null : _ngram.PairCount,    // D37, D38
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
-        { Paused = Settings.Paused, Health = Health };   // D81
+        { Paused = Settings.Paused, Health = Health, Mistakes = Mistakes };   // D81, D84
         engine.Corrected += n => Corrected?.Invoke(n);
         engine.Stuck += app => Diagnose($"stuck: app={app} (gave up on the field for this session, D81)");
+        engine.LearntFromMistake += kind => Diagnose($"mistake: {kind} app={Target?.LastSnapshot?.ProcessName ?? "?"} (D84, no text)");
         // D76: in normal use too, how the field differed from what was typed: kinds of character and lengths, never text
         // (8.6), at most 500 lines a run. Intercom disagreed 83 times in an afternoon; this says how.
         engine.Mismatch += d =>
@@ -313,6 +318,7 @@ public sealed class AppHost : IAsyncDisposable
             SaveTimings();
             History.Save();
             Health.Save();   // D81
+            Mistakes.Save();   // D84
             if (_llm is not null && _llm.Host.State == ServerState.Ready && _loop is not null)
                 _loop.Post(e => { if (e.TypicalAiLatencyMs > 0) TypicalLatencyMs = e.TypicalAiLatencyMs; });   // median of recent (9.3.a)
             if (ModelState != before) StateChanged?.Invoke();
@@ -325,6 +331,7 @@ public sealed class AppHost : IAsyncDisposable
         _maintenance?.Dispose();
         _daily.Save(_counters);
         Health.Save();   // D81
+            Mistakes.Save();   // D84
         try { History.Save(); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // keep the last few seconds of counts
         _hotkeys?.Dispose();
         _focus?.Dispose();

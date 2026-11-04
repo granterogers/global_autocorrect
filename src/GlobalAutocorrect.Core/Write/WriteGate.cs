@@ -167,6 +167,18 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (w.Start == 0 && StartsMidWord(win.Before, typed)) { Drop(w, "fragment"); return false; }
         if (w.WholeWord && !IsWholeWord(typed, w.Start, w.End)) { Drop(w, "no-longer-a-word"); return false; }   // D61
 
+        // D84: never the same mistake twice, and never a change that looks like one (capitals from nowhere, a doubled word).
+        if (w.Layer != Layer.Undo)
+        {
+            var (wordsBefore, wordsAfter) = WriteGuard.WholeWords(typed, w.Start, w.End, w.Replacement);
+            if (Mistakes?.IsKnown(wordsBefore, wordsAfter) == true) { Drop(w, "known-mistake"); return false; }
+            if (WriteGuard.Problem(wordsBefore, wordsAfter) is { } why)
+            {
+                Mistakes?.Remember(wordsBefore, wordsAfter);
+                Drop(w, "guard-" + why);
+                return false;
+            }
+        }
         int caretDistance = TextNorm.Elements(tail);
         // D81: in a program whose fixes have gone wrong, an AI fix far back or on an earlier line is not risked.
         if (w.Layer == Layer.Ai && (tail.Contains('\n') || caretDistance > CarefulReach) && Health?.ModeFor(target.AppName) == AppMode.Careful)
@@ -202,7 +214,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             session.Break(SessionBreakReason.FocusChange);
             return false;
         }
-        if (!target.Verify(expectedBefore, win.After))   // 4.6.d
+        if (!target.Verify(expectedBefore, win.After) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite))   // 4.6.d, D84
         {
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
@@ -292,6 +304,33 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(typed);
         int at = f.Length - t.Length - 1;
         return at >= 0 && t.Length > 0 && f.EndsWith(t, StringComparison.Ordinal) && char.IsLetterOrDigit(f[at]);
+    }
+
+    /// <summary>D84: changes that were mistakes, never made again. Null: none remembered.</summary>
+    public Health.MistakeMemory? Mistakes { get; set; }
+
+    /// <summary>D84: a fix landed in the wrong case and was typed again (program name only).</summary>
+    public event Action<string>? CaseRepaired;
+
+    /// <summary>
+    /// D84, user report "things are all uppercase": the fix landed, but in capitals it wasn't sent in (Shift or Caps Lock
+    /// caught our keys, or the app changed them). If the field shows exactly the expected text except for letter case,
+    /// and nothing was typed since, the same edit is sent again once and checked again.
+    /// </summary>
+    private bool RepairedCase(ITextTarget target, PendingWrite w, string expectedBefore, string after, bool retype, int caretDistance, string tail, long seqAtWrite)
+    {
+        if (keys.LatestKeySeq != seqAtWrite) return false;
+        var fresh = target.ReadWindow();
+        if (!fresh.CaretKnown) return false;
+        string b = TextNorm.Comparable(fresh.Before);
+        int n = Math.Min(expectedBefore.Length, TextNorm.Comparable(w.Replacement + tail).Length + 16);
+        string want = expectedBefore[^n..];
+        if (!b.EndsWith(want, StringComparison.OrdinalIgnoreCase) || b.EndsWith(want, StringComparison.Ordinal)) return false;
+        int replaced = TextNorm.Elements(w.Replacement);
+        bool sent = retype ? target.ApplyEdit(0, caretDistance + replaced, w.Replacement + tail) : target.ApplyEdit(caretDistance, replaced, w.Replacement);
+        if (!sent || !target.Verify(expectedBefore, after)) return false;
+        CaseRepaired?.Invoke(target.AppName);
+        return true;
     }
 
     /// <summary>D81: the field is stuck disagreeing with the record: drop what's queued, leave it alone this session, learn it.</summary>

@@ -2,6 +2,11 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 (night) — Learning from mistakes; suggestion size at 125%
+
+- **D84 (4.8.c, 4.5, 4.6.d, 8.6; user request):** undone or typed-back fixes and guard refusals are remembered as fingerprints and never made again; fixes landing in capitals are repaired at once; shared daily when two PCs agree. 19 tests.
+- **D85 (7.6; user report):** the system caret replaces Notepad's too-tall UIA caret box. Screen test on this PC at 125%: Notepad 1.92 → 1.00. The CKEditor and spaced pages timed out starting the test browser locally (CI covers them).
+
 ## 2026-11-04 (evening) — Suggestion size in Intercom, again
 
 - **D83 (7.6; user report):** the field's font is asked again once there's text before the caret; it was learnt from the empty box and kept. 2 tests.

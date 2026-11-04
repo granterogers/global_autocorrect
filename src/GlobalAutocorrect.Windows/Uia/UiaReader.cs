@@ -104,7 +104,10 @@ public sealed class UiaReader
             if (rid != _infoFor) { _infoFor = rid; _class = el.CurrentClassName ?? ""; _framework = el.CurrentFrameworkId ?? ""; }
             // D83: the font is read from the character before the caret, so not from an empty field: asked again later.
             if (_style.ShouldRead(rid, b)) _style.Store(FontName(caret), FontSize(caret));
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, CaretRect(caret), el.CurrentControlType, _style.Font, _class, _framework, _style.SizePt);
+            // D85: where Windows knows the caret too (Win32, WinUI), its height is the truth; Notepad's UIA caret wasn't.
+            var snapshotFramework = new UiaSnapshot(ReadStatus.Ok, "", "", "", 0, "", "", "", null, FrameworkId: _framework);
+            var caretRect = snapshotFramework.CaretIsFontHeight ? CaretRect(caret) : SystemCaret.Pick(CaretRect(caret), SystemCaret.Read(pid));   // Chromium: no system caret
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, caretRect, el.CurrentControlType, _style.Font, _class, _framework, _style.SizePt);
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
