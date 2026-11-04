@@ -2,6 +2,9 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 (release) — Version 1.0.0
+
+- **D86 (13.3, 13.1):** the user confirmed the RC on their PC and asked for 1.0. Tagged `v1.0.0`; every later pushed change is the next minor version and is released by GitHub Actions automatically. Builds carry the tag's version (`scripts/version.ps1`); About shows "Release".
 ## 2026-11-04 (night) — Learning from mistakes; suggestion size at 125%
 
 - **D84 (4.8.c, 4.5, 4.6.d, 8.6; user request):** undone or typed-back fixes and guard refusals are remembered as fingerprints and never made again; fixes landing in capitals are repaired at once; shared daily when two PCs agree. 19 tests.

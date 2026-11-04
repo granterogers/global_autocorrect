@@ -334,7 +334,7 @@ public class SettingsViewModelTests
             Assert.Equal("Gemma 4 E4B (recommended)", vm.Metrics.Model);
             Assert.Equal("29 October 2026", vm.Metrics.Date);
             Assert.Contains("200 holdout test messages", vm.Metrics.Caption);
-            Assert.Equal("Release candidate", vm.Channel);
+            Assert.Equal(vm.Version.Contains('-') ? "Release candidate" : "Release", vm.Channel);   // D86
             Assert.False(string.IsNullOrWhiteSpace(vm.Version));
             Assert.Contains(vm.Version, vm.VersionLine);
 

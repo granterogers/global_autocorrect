@@ -1,6 +1,6 @@
 # Global Autocorrect
 
-**Release candidate 1 — not yet confirmed on your PC (13.3).**
+**Version 1.** Confirmed on the user's PC and released as v1.0.0 (13.3, D86). Every change after that is released as the next version (v1.1.0, v1.2.0 and so on), and the app offers it under Settings › About.
 
 Global Autocorrect tidies up what you type, as you type, in almost any Windows app. It runs entirely on your laptop, using your NVIDIA GPU. No text ever leaves the machine.
 
@@ -50,7 +50,7 @@ It starts with Windows (you can turn that off in Settings) and lives in the syst
 
 ### Updates
 
-When the app starts, and once a day after that, it asks GitHub whether a newer version has been released (nothing about you or your typing is sent). If there is one, the tray says so once and **Settings › About** shows "Update available" with an **Install update** button. Nothing is installed until you click it. It then downloads the new zip, checks it against the checksum published with the release (and refuses if that doesn't match or is missing), and runs its installer, which closes the app, replaces it and starts the new version. While you're on a release candidate you're offered newer release candidates too; on a final release, only final releases. Turn off **Check for updates** on the About page to stop the checks.
+When the app starts, and once a day after that, it asks GitHub whether a newer version has been released (nothing about you or your typing is sent). If there is one, the tray says so once and **Settings › About** shows "Update available" with an **Install update** button. Nothing is installed until you click it. It then downloads the new zip, checks it against the checksum published with the release (and refuses if that doesn't match or is missing), and runs its installer, which closes the app, replaces it and starts the new version. While you're on a release candidate you're offered newer release candidates too; on a release (1.0.0 and later), only releases. Turn off **Check for updates** on the About page to stop the checks.
 
 ## Windows Defender
 
@@ -95,7 +95,7 @@ It prefers leaving a mistake to changing something you meant. That's why wrong c
 | Intercom, Claude.ai, ChatGPT in Edge | Not automated: they need your signed-in accounts. Their message boxes are rich web editors like the ones above | ⚠️ Please try: a typo, a "their/there" sentence, Ctrl+Alt+Z after a fix, Tab on a suggestion |
 | Outlook (classic) | Spike B could not put the cursor in the message body automatically | ⚠️ Not verified. Its message body is the same editor as Word, which passes |
 
-Note: the end-to-end results for this release candidate are in `e2e-results.txt` in this folder.
+Note: the end-to-end results for this release are in `e2e-results.txt` in this folder.
 
 ## Known limits
 
@@ -330,7 +330,7 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 12.10 | Recorded check | verify.ps1 5.8.g; README |
 | 13.1 | Recorded check | package zip contents; release checksum (D58): 6 test(s), e.g. `R13_1_AChecksumMismatchIsRefusedAndTheDownloadDeleted_D58` |
 | 13.2 | Tested | 1 test(s), e.g. `R13_2_ReadmeIsBritishAndSpeltCorrectly` |
-| 13.3 | Recorded check | no v1.0.0 tag (D1); release-candidate updates (D58): 9 test(s), e.g. `R13_3_AnEqualOrOlderVersionIsNeverOffered_D58` |
+| 13.3 | Tested | 9 test(s), e.g. `R13_3_AnEqualOrOlderVersionIsNeverOffered_D58` |
 | 13.4 | Tested | 3 test(s), e.g. `R13_4_AnUpdateIsShownAndInstalledOnlyWhenTheUserClicks_D58` |
 | 14.1 | Out of scope (14) | Out of scope |
 | 14.2 | Out of scope (14) | Out of scope |

@@ -702,7 +702,7 @@ Proof column: test name prefix (all tests whose name starts with it), or **Check
 | 12.10 | M5, M10 | Check: verify.ps1 5.8.g; README |
 | 13.1 | M10 | Check: package zip contents |
 | 13.2 | M10 | Check: README |
-| 13.3 | M10 | Check: no v1.0.0 tag (D1) |
+| 13.3 | M10 | Check: v1.0.0 tagged only once the user confirmed the RC on their PC (D1, D86) |
 | 13.4 | M10 | Check: timed setup + verify run |
 | 14.1 | — | Out of scope |
 | 14.2 | — | Out of scope |

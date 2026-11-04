@@ -1,24 +1,24 @@
 # Builds GlobalAutocorrect-<version>.zip and publishes it, with SHA256SUMS.txt for the app's update check (D58), as a GitHub Release (13.1, D35).
 # Runs the fast tier's unit tests only: the Model and E2E categories need the GPU, the model cache and the keyboard (11.1).
-# Trigger: by hand, or a pushed release-candidate tag (v*-rc*). The push hook's own tags are plain vX.Y.0 and never
-# match, so an ordinary push never publishes a release (D1, D35).
+# D86: from v1.0.0 on, every version tag the push hook makes (v1.1.0, v1.2.0, ...) is released, so each pushed change
+# reaches the app's "Install update" on every PC. The version is the tag's. The hook's old v0.N.0 tags never match.
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
-      final:
-        description: 'Allow a version without a pre-release suffix. Only once the user has confirmed it works on their PC (13.3).'
-        type: boolean
-        default: false
+      tag:
+        description: 'Version tag to publish again, such as v1.2.0'
+        required: true
+        type: string
   push:
-    tags: ['v*-rc*']
+    tags: ['v[1-9]*', 'v*-rc*']
 
 permissions:
   contents: write
 
 concurrency:
-  group: release
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -33,43 +33,51 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0   # the release notes list the commits since the previous release
+
+      - name: Version
+        id: version
+        run: |
+          $tag = if ('${{ inputs.tag }}') { '${{ inputs.tag }}' } else { $env:GITHUB_REF_NAME }
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?)$') { throw "$tag is not a version tag" }
+          $version = $Matches[1]
+          $pre = $version.Contains('-')
+          # The push hook sometimes tags one commit twice (v1.2.0 and v1.3.0): only the newest tag on a commit is released.
+          $sha = (git rev-parse HEAD).Trim()
+          $onCommit = git tag --points-at $sha | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.TrimStart('v') } | Select-Object -Last 1
+          $skip = (-not $pre) -and $onCommit -and $onCommit -ne $tag -and -not '${{ inputs.tag }}'
+          if ($skip) { Write-Host "${tag}: $onCommit is on the same commit and is released instead" }
+          # The previous release, for the notes.
+          $prev = git tag --merged "$sha~1" | Where-Object { $_ -match '^v[1-9]\d*\.\d+\.\d+$' } |
+            Sort-Object { [version]$_.TrimStart('v') } | Select-Object -Last 1
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "prev=$prev" >> $env:GITHUB_OUTPUT
+          "prerelease=$($pre.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          "skip=$($skip.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
       - uses: actions/setup-dotnet@v5
+        if: steps.version.outputs.skip != 'true'
         with:
           dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
 
-      - name: Version and tag
-        id: version
-        run: |
-          $proj = 'src/GlobalAutocorrect.App/GlobalAutocorrect.App.csproj'
-          $version = ([xml](Get-Content $proj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          $tag = "v$version"
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $tag) {
-            throw "tag $env:GITHUB_REF_NAME does not match the app version $version in $proj"
-          }
-          $pre = $version -match '-'
-          if (-not $pre -and '${{ inputs.final }}' -ne 'true') {
-            throw "version $version has no pre-release suffix: run by hand with 'final' ticked, and only after the user has confirmed it (13.3)"
-          }
-          # The push hook already owns v0.N.0; a release must never move one of its tags to another commit.
-          $remote = git ls-remote --tags origin "refs/tags/$tag"
-          if ($remote -and -not $remote.StartsWith($env:GITHUB_SHA)) {
-            throw "tag $tag already exists on another commit: bump <Version> in $proj"
-          }
-          "version=$version" >> $env:GITHUB_OUTPUT
-          "tag=$tag" >> $env:GITHUB_OUTPUT
-          "prerelease=$($pre.ToString().ToLower())" >> $env:GITHUB_OUTPUT
-
       - name: Trace check
+        if: steps.version.outputs.skip != 'true'
         run: pwsh -NoProfile -File scripts/trace-check.ps1
 
       - name: Restore
+        if: steps.version.outputs.skip != 'true'
         run: dotnet restore GlobalAutocorrect.slnx
 
       - name: Build
+        if: steps.version.outputs.skip != 'true'
         run: dotnet build GlobalAutocorrect.slnx -c Release --no-restore -v q
 
       - name: Test (Core, Llm, Windows, App)
+        if: steps.version.outputs.skip != 'true'
         run: |
           $ErrorActionPreference = 'Stop'
           $runs = @(
@@ -87,6 +95,7 @@ jobs:
       # package.ps1 ships the measured accuracy (6.6, 9.3.g). The eval needs the GPU, so CI uses the newest committed
       # holdout result instead of running it.
       - name: Measured accuracy
+        if: steps.version.outputs.skip != 'true'
         run: |
           $json = Get-ChildItem docs/metrics/holdout-*.json | Sort-Object Name | Select-Object -Last 1
           New-Item -ItemType Directory -Force artifacts | Out-Null
@@ -95,27 +104,36 @@ jobs:
           Write-Host "metrics: $($json.Name)"
 
       - name: Package
-        run: pwsh -NoProfile -File scripts/package.ps1
+        if: steps.version.outputs.skip != 'true'
+        run: pwsh -NoProfile -File scripts/package.ps1 -Version '${{ steps.version.outputs.version }}'
 
       - name: Publish release
+        if: steps.version.outputs.skip != 'true'
         run: |
           $tag = '${{ steps.version.outputs.tag }}'
+          $prev = '${{ steps.version.outputs.prev }}'
           $zip = "artifacts/GlobalAutocorrect-${{ steps.version.outputs.version }}.zip"
           # D58: the app's "Install update" refuses a zip whose SHA-256 isn't listed here (sha256sum format).
           $sums = 'artifacts/SHA256SUMS.txt'
           "$((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant())  $(Split-Path $zip -Leaf)" | Set-Content $sums -Encoding ascii
           Get-Content $sums
+          $range = if ($prev) { "$prev..HEAD" } else { 'HEAD~10..HEAD' }
+          $changes = (git log --no-merges --format='- %s' $range | Where-Object { $_ -notmatch 'Learned program profiles' }) -join "`n"
           $notes = @"
+          ## What's new
+          $changes
+
           Build: $(Get-Content artifacts/package/GlobalAutocorrect/build.txt)
 
-          Unzip, then run ``pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1``. The first install downloads the model and llama.cpp (about 5.5 GB, each file checked against its fingerprint). See README "Install".
+          **Already installed?** Settings › About › Install update, or wait for the tray notice.
+          **New install:** unzip, then run ``pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1``. The first install downloads the model and llama.cpp (about 5.5 GB, each file checked against its fingerprint). See README "Install".
           "@
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $zip $sums --clobber
           } else {
-            $flags = @('--title', "Global Autocorrect $tag", '--notes', $notes, '--target', $env:GITHUB_SHA)
-            if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' }
+            $flags = @('--title', "Global Autocorrect $tag", '--notes', $notes, '--verify-tag')
+            if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $flags += '--prerelease' } else { $flags += '--latest' }
             gh release create $tag $zip $sums @flags
           }
           if ($LASTEXITCODE -ne 0) { throw 'publishing the release failed' }

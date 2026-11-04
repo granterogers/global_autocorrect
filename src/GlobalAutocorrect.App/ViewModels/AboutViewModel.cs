@@ -91,8 +91,9 @@ public sealed partial class AboutViewModel : ObservableObject
     }
 
     public string AppName => TrayController.AppName;
-    public string Channel => "Release candidate";
-    /// <summary>The running app's version, such as "0.9.0-rc1" (D58 compares releases with it).</summary>
+    /// <summary>D86: a version with a suffix ("0.9.0-rc1", "1.2.0-dev") is a release candidate; 1.0.0 onwards are releases.</summary>
+    public string Channel => InstalledVersion.Contains('-') ? "Release candidate" : "Release";
+    /// <summary>The running app's version, such as "1.2.0" (D58 compares releases with it).</summary>
     public static string InstalledVersion { get; } = ReadVersion();
     public string Version => InstalledVersion;
     public MetricsSummary? Metrics { get; }
@@ -179,7 +180,7 @@ public sealed partial class AboutViewModel : ObservableObject
     {
         var asm = typeof(AboutViewModel).Assembly;
         string? v = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? asm.GetName().Version?.ToString();
-        if (string.IsNullOrWhiteSpace(v)) return "0.9.0-rc1";
+        if (string.IsNullOrWhiteSpace(v)) return "1.0.0";
         int plus = v.IndexOf('+');
         return plus >= 0 ? v[..plus] : v;
     }

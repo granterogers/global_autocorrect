@@ -1,20 +1,23 @@
 #Requires -Version 7
 <#
 .SYNOPSIS
-  Builds the release-candidate zip: the app, the setup and verify scripts, the README and the latest metrics (13.1).
+  Builds the release zip: the app, the setup and verify scripts, the README and the latest metrics (13.1).
+  -Version is the release's version (CI passes the tag's); without it, scripts/version.ps1 works it out (D86).
   Models and llama.cpp are not in the zip; setup downloads them with checksums (5.7, 11.4).
   The same files, unzipped, go to dist\GlobalAutocorrect in the repo; install.ps1 there installs or updates the app.
 #>
-param([string] $Out = (Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts'))
+param([string] $Out = (Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts'), [string] $Version = '')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $proj = Join-Path $repo 'src/GlobalAutocorrect.App/GlobalAutocorrect.App.csproj'
-$version = ([xml](Get-Content $proj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+$version = if ($Version) { $Version.TrimStart('v') } else { & (Join-Path $PSScriptRoot 'version.ps1') }
+if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$') { throw "'$version' is not a version" }
+Write-Host "version: $version"
 $stage = Join-Path $Out 'package/GlobalAutocorrect'
 Remove-Item (Join-Path $Out 'package') -Recurse -Force -ErrorAction SilentlyContinue
 
 # Framework-dependent: this is for the user's own PC, which has .NET 10 (3.2).
-dotnet publish $proj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -o (Join-Path $stage 'app') --nologo -v q
+dotnet publish $proj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false "-p:Version=$version" -o (Join-Path $stage 'app') --nologo -v q
 if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
 
 New-Item -ItemType Directory -Force (Join-Path $stage 'scripts') | Out-Null
