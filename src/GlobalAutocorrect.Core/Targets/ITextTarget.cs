@@ -26,6 +26,9 @@ public interface ITextTarget
     /// </summary>
     bool RetypeInsteadOfArrows => false;
 
+    /// <summary>D81: the program the field belongs to (process name, never text), for what the app learns per program.</summary>
+    string AppName => "";
+
     /// <summary>Re-reads and checks the field now shows <paramref name="expectedBefore"/> before the caret and <paramref name="expectedAfter"/> after it (4.6.d).</summary>
     bool Verify(string expectedBefore, string expectedAfter);
 }

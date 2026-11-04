@@ -20,6 +20,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>Latest successful read, for the overlay (caret rectangle) and the home page (app name).</summary>
     public UiaSnapshot? LastSnapshot { get; private set; }
 
+    /// <summary>D81: the program of the last read field.</summary>
+    public string AppName => LastSnapshot?.ProcessName ?? "";
+
     public TextWindow ReadWindow()
     {
         long started = Stopwatch.GetTimestamp();

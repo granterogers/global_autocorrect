@@ -50,6 +50,12 @@ public sealed class CorrectionEngine
     public string LastDropReason => _gate.LastDropReason;
     public CorrectionRecord? LastCorrection => _undo.Last;
 
+    /// <summary>D81: what the app learns per program and how carefully it writes there.</summary>
+    public Health.AppHealth? Health { get => _gate.Health; set => _gate.Health = value; }
+
+    /// <summary>D81: a field was given up on as stuck (program name only).</summary>
+    public event Action<string>? Stuck;
+
     /// <summary>After each verified write: underline it (4.7).</summary>
     public event Action<CorrectionNotice>? Corrected;
     public event Action<string>? Desynced;
@@ -87,6 +93,7 @@ public sealed class CorrectionEngine
         _gate.Desynced += id => { _undo.Clear(); Desynced?.Invoke(id); };
         _gate.WriteDropped += (layer, reason) => WriteDropped?.Invoke(layer, reason);
         _gate.Mismatch += d => Mismatch?.Invoke(d);
+        _gate.Stuck += app => Stuck?.Invoke(app);   // D81
         Session.Resynced += _gate.OnResynced;   // D74
     }
 
@@ -278,6 +285,7 @@ public sealed class CorrectionEngine
         {
             foreach (var w in UndoManager.WordsToLearn(rec)) _d.AddPersonalWord(w);   // 4.8.c
             _d.Counters.Undo();
+            Health?.Undone(Target.AppName);   // D81: a fix the user didn't want
             _undo.Clear();
         }
         return result;

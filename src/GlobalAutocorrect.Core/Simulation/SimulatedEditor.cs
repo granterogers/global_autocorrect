@@ -103,8 +103,15 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>How long after a key a read can still lag (D61).</summary>
     public int LagWindowMs { get; set; } = 150;
 
+    /// <summary>D81: changes every read of the text before the caret, as an app that reports its field oddly (the Claude app).</summary>
+    public Func<string, string>? DistortBefore { get; set; }
+
+    /// <summary>D81: the program name the field reports.</summary>
+    public string AppName { get; set; } = "";
+
     private TextWindow Report(string before, string after)
     {
+        if (DistortBefore is not null) before = DistortBefore(before);
         if (ReportsBlankLinesOnce)
         {
             before = System.Text.RegularExpressions.Regex.Replace(before, "\n{2,}", "\n");

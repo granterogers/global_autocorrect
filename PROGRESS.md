@@ -2,6 +2,10 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-04 (later) — The app learns per program; daily publishing to the source
+
+- **D81 (4.6.d, 8.6, 6.5; user request):** per-program counts (written, failed checks, stuck, undos), fading daily. A field stuck disagreeing is given up on after 8 refused resyncs over 1.5 s instead of retried every tick (the Claude app logged 340 in a day); careful mode drops far-back AI fixes in programs that misbehave (rule `AppHealth.Decide`: written by the user, Normal until then). `scripts/publish-learning.ps1` commits this PC's counts and the rebuilt `assets/app-profiles.json` and pushes; `-Register` for a daily task, not yet registered (needs the user's yes). 4 tests. WhatsApp: its window showed only the title bar to UI Automation when opened from the tray; not yet tested with the self-chat open.
+
 ## 2026-11-04 — Always a next-word guess; Tab after Tab
 
 - **D80 (7.1, 7.4, 9.3.c; user request):** new Prediction setting "Always guess the next word" (on by default): a next-word guess needs a 10% share instead of 60%. Tab now types the word and a space, and a guess for the following word appears straight away, so Tab can be pressed again and again. Tests: the setting is saved and sets the share (App), Tab-after-Tab carries a sentence further than the strict setting (Core). Fast tier green.

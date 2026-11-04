@@ -1,4 +1,5 @@
 using GlobalAutocorrect.Core.Engine;
+using GlobalAutocorrect.Core.Health;
 using GlobalAutocorrect.Core.Session;
 using GlobalAutocorrect.Core.Targets;
 using GlobalAutocorrect.Core.Telemetry;
@@ -53,6 +54,24 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     public bool IsDesynced(string targetId) => _desynced.TryGetValue(targetId, out long g) && g == session.Generation;
 
     private readonly Dictionary<string, List<long>> _verifyFailures = new(StringComparer.Ordinal);
+
+    /// <summary>D81: what the app learns per program, and how carefully it writes there. Null: always normal.</summary>
+    public AppHealth? Health { get; set; }
+
+    /// <summary>
+    /// D81: a field that disagrees with the typed record and can't be resynced this many times in a row, over at least
+    /// <see cref="StuckMs"/>, is stuck: the queue is dropped and the field left alone for the rest of the session. Before,
+    /// the gate retried every tick until the write expired (the Claude app: 340 identical mismatches in one day).
+    /// </summary>
+    public const int StuckLimit = 8;
+    public const long StuckMs = 1500;
+
+    /// <summary>D81: in a program in careful mode, an AI fix is written only this close to the caret and on its line.</summary>
+    public const int CarefulReach = 40;
+
+    private int _refusedResyncs;
+    private long _refusedSinceMs;
+    private long _refusedGeneration = -1;
 
     public void Enqueue(PendingWrite w) => _queue.Add(w);
 
@@ -126,11 +145,19 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             if (session.FieldBehind(win.Before)) return false;   // the app hasn't drawn the last keys yet: next tick
             // D42: the field changed in a way we didn't type (the app's own autocorrect, a paste). Start again from
             // what it shows instead of ending the session: this paragraph keeps being corrected.
-            counters.FieldMismatch();
-            Mismatch?.Invoke("write " + MismatchKind.Describe(session.Typed, win.Before));   // D74, D76: kinds of character only
-            session.Resync(win.Before);   // D61: refused if the read is behind the keys (next tick); D74: OnResynced keeps the queue
+            if (_refusedGeneration != session.Generation) { _refusedResyncs = 0; _refusedGeneration = session.Generation; }
+            if (_refusedResyncs == 0)   // D81: once per run of the same disagreement, not every tick
+            {
+                counters.FieldMismatch();
+                Mismatch?.Invoke("write " + MismatchKind.Describe(session.Typed, win.Before));   // D74, D76: kinds of character only
+            }
+            // D61: refused if the read is behind the keys (next tick); D74: OnResynced keeps the queue
+            if (session.Resync(win.Before)) _refusedResyncs = 0;
+            else if (++_refusedResyncs == 1) _refusedSinceMs = clock.NowMs;
+            else if (_refusedResyncs >= StuckLimit && clock.NowMs - _refusedSinceMs >= StuckMs) GiveUp(win.TargetId, target.AppName);
             return false;
         }
+        _refusedResyncs = 0;
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
         if (typed[w.Start..w.End] != w.Original) { Drop(w, "changed-on-read"); return false; }
         if (keys.LatestKeySeq != session.LastKeySeq) return false;   // a key slipped in during the read
@@ -141,6 +168,12 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (w.WholeWord && !IsWholeWord(typed, w.Start, w.End)) { Drop(w, "no-longer-a-word"); return false; }   // D61
 
         int caretDistance = TextNorm.Elements(tail);
+        // D81: in a program whose fixes have gone wrong, an AI fix far back or on an earlier line is not risked.
+        if (w.Layer == Layer.Ai && (tail.Contains('\n') || caretDistance > CarefulReach) && Health?.ModeFor(target.AppName) == AppMode.Careful)
+        {
+            Drop(w, "careful-app");
+            return false;
+        }
         int deleteCount = TextNorm.Elements(w.Original);
         long seqAtWrite = keys.LatestKeySeq;
         // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed
@@ -172,6 +205,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (!target.Verify(expectedBefore, win.After))   // 4.6.d
         {
             counters.Desync();
+            Health?.VerifyFailed(target.AppName);   // D81
             _queue.Clear();
             Desynced?.Invoke(win.TargetId);
             // D42: a mismatch after writing is usually the app's own doing (autocorrect, how it stores a line break), not
@@ -200,6 +234,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         session.ApplyOwnEdit(w.Start, w.End, w.Replacement);
         if (w.Layer == Layer.Instant) counters.Instant();
         else if (w.Layer == Layer.Ai) counters.Ai();
+        if (w.Layer != Layer.Undo) Health?.Written(target.AppName);   // D81
         // D64: what the user feels, from the key that finished the word or sentence to the fix being in the field.
         if (w.Layer is Layer.Instant or Layer.Ai && w.KeyAtMs >= 0)
             counters.Timings.Record(w.Layer == Layer.Instant ? "instant.keyToFix" : "ai.keyToFix", clock.NowMs - w.KeyAtMs);
@@ -258,6 +293,19 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         int at = f.Length - t.Length - 1;
         return at >= 0 && t.Length > 0 && f.EndsWith(t, StringComparison.Ordinal) && char.IsLetterOrDigit(f[at]);
     }
+
+    /// <summary>D81: the field is stuck disagreeing with the record: drop what's queued, leave it alone this session, learn it.</summary>
+    private void GiveUp(string targetId, string app)
+    {
+        foreach (var w in _queue.ToArray()) Drop(w, "stuck");
+        _desynced[targetId] = session.Generation;
+        _refusedResyncs = 0;
+        Health?.Stuck(app);
+        Stuck?.Invoke(app);
+    }
+
+    /// <summary>D81: a field was given up on as stuck (program name only).</summary>
+    public event Action<string>? Stuck;
 
     /// <summary>Why the last write was dropped (a reason code, never text): for tests and the diagnostics log.</summary>
     public string LastDropReason { get; private set; } = "";
