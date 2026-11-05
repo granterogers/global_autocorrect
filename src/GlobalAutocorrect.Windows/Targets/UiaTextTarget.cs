@@ -23,6 +23,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>D81: the program of the last read field.</summary>
     public string AppName => LastSnapshot?.ProcessName ?? "";
 
+    /// <summary>D92: names shown near the last read field.</summary>
+    public IReadOnlyList<string> NamesNearby => LastSnapshot?.Names ?? [];
+
     public TextWindow ReadWindow()
     {
         long started = Stopwatch.GetTimestamp();

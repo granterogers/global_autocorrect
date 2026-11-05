@@ -149,7 +149,7 @@ public sealed class CorrectionEngine
         string? fix = null;
         if (effect.Word is { } fw && _o.InstantEnabled)
         {
-            fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord);   // 4.3
+            fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby);   // 4.3, D92
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });

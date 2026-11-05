@@ -54,6 +54,7 @@ public sealed class AppHost : IAsyncDisposable
 
     private static readonly Lock DiagnoseLock = new();
     private int _mismatchLines;
+    private int _dropLines;   // D91
 
     /// <summary>D64: timings.json, typical and slowest-5% duration of each stage since the app started. Durations only.</summary>
     private void SaveTimings()
@@ -224,12 +225,17 @@ public sealed class AppHost : IAsyncDisposable
         {
             if (Interlocked.Increment(ref _mismatchLines) <= 500) Diagnose($"mismatch: app={Target?.LastSnapshot?.ProcessName ?? "?"} {d}");
         };
+        // D91: why a fix was not written, as a reason code (never text, 8.6), at most 500 lines a run: "Intercom still
+        // misses some" can then be answered from the log.
+        engine.WriteDropped += (layer, reason) =>
+        {
+            if (Interlocked.Increment(ref _dropLines) <= 500) Diagnose($"dropped: app={Target?.LastSnapshot?.ProcessName ?? "?"} {layer} {reason}");
+        };
         // Screen tests only (GA_E2E=1, synthetic text): each write as code points, so a CI failure shows what was written.
         // Never in normal use (8.6).
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1")
         {
             engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
-            engine.WriteDropped += (layer, reason) => Diagnose($"dropped: {layer} {reason}");
             engine.Session.Restarted += reason => Diagnose(
                 $"session: restart {reason} after [{(engine.Session.LastCharBeforeRestart is { } c ? ((int)c).ToString("X4") : "empty")}]");
         }

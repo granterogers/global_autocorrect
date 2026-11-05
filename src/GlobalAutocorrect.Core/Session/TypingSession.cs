@@ -127,7 +127,10 @@ public sealed class TypingSession
     public bool Resync(string fieldBefore)
     {
         string f = TextNorm.Normalise(fieldBefore);
-        if (_typed.Length > 0 && !EndsWithLastKey(f, _typed[^1])) return false;
+        // D91: an empty field after Enter is a message that was sent (Claude, Teams, Intercom clear the box), not a read
+        // behind the keys. Refusing it left the field "stuck" and the whole next message uncorrected (user report).
+        bool sent = f.Length == 0 && _typed.Length > 0 && _typed[^1] == '\n';
+        if (_typed.Length > 0 && !sent && !EndsWithLastKey(f, _typed[^1])) return false;
         string para = f[(f.LastIndexOf('\n') + 1)..];
         if (para.Length > MaxLength) para = para[^MaxLength..];
         LastCharBeforeRestart = _typed.Length > 0 ? _typed[^1] : null;

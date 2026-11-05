@@ -116,6 +116,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D81: the program name the field reports.</summary>
     public string AppName { get; set; } = "";
 
+    /// <summary>D92: names the app shows near the field.</summary>
+    public IReadOnlyList<string> NamesNearby { get; set; } = [];
+
     private TextWindow Report(string before, string after)
     {
         if (DistortBefore is not null) before = DistortBefore(before);

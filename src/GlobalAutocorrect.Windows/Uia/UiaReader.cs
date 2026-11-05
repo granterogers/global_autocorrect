@@ -21,7 +21,8 @@ public sealed record UiaSnapshot(
     string? FontName = null, // the field's font where the app reports it, so the suggestion can match it (7.6)
     string ClassName = "",   // D46: tells CKEditor 5 (Teams) apart, which needs fixes retyped rather than arrowed to
     string FrameworkId = "", // D53: UIA's UI framework (Win32, WPF, the Chromium engine...), not the app
-    double? FontSizePt = null)  // D79: the field's font size where the app reports it
+    double? FontSizePt = null,  // D79: the field's font size where the app reports it
+    IReadOnlyList<string>? Names = null)  // D92: names shown near the field (memory only, 8.6)
 {
     public bool CaretKnown => Status == ReadStatus.Ok;
 
@@ -45,6 +46,7 @@ public sealed class UiaReader
     private string _infoFor = "", _class = "", _framework = "";
     private readonly FieldStyleCache _style = new();   // D83
     private readonly HostedBrowser _hosted = new();    // D87
+    private readonly NearbyNames _nearby = new();      // D92
 
     public UiaReader(uint timeoutMs = 250)
     {
@@ -121,7 +123,7 @@ public sealed class UiaReader
             // D85: where Windows knows the caret too (Win32, WinUI), its height is the truth; Notepad's UIA caret wasn't.
             var snapshotFramework = new UiaSnapshot(ReadStatus.Ok, "", "", "", 0, "", "", "", null, FrameworkId: _framework);
             var caretRect = snapshotFramework.CaretIsFontHeight ? CaretRect(caret) : SystemCaret.Pick(CaretRect(caret), SystemCaret.Read(pid));   // Chromium: no system caret
-            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, caretRect, el.CurrentControlType, _style.Font, _class, _framework, _style.SizePt);
+            return new UiaSnapshot(ReadStatus.Ok, b, a, source, pid, proc, type, rid, caretRect, el.CurrentControlType, _style.Font, _class, _framework, _style.SizePt, _nearby.For(_uia, el, rid));
         }
         catch (Exception e) when (IsUiaFailure(e))
         {
