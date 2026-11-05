@@ -14,7 +14,7 @@ internal sealed class NearbyNames
     private const int NamePropertyId = 30005, BoundingRectanglePropertyId = 30001, ControlTypePropertyId = 30003;
     private const int TextControlTypeId = 50020;
     /// <summary>Up this many containers from the field, while the container holds at most <see cref="MaxLabels"/> labels.</summary>
-    private const int MaxLevels = 6, MaxLabels = 150;
+    private const int MaxLevels = 6, MaxLabels = 150, MaxSearchMs = 30;
 
     private string _for = "";
     private IReadOnlyList<string> _names = [];
@@ -39,7 +39,9 @@ internal sealed class NearbyNames
 
         List<string> labels = [];
         var at = field;
-        for (int level = 0; level < MaxLevels; level++)
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        // D94: each search is answered on the app's own thread, so stop going wider once it has taken this long.
+        for (int level = 0; level < MaxLevels && clock.ElapsedMilliseconds < MaxSearchMs; level++)
         {
             at = walker.GetParentElement(at);
             if (at is null) break;

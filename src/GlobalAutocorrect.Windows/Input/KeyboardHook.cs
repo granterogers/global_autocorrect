@@ -10,7 +10,8 @@ namespace GlobalAutocorrect.Windows.Input;
 public enum RawKind { Key, MouseDown, AcceptSuggestion }
 
 /// <summary>One event from the hook: timestamp and sequence only, no translation yet (10.3.a).</summary>
-public readonly record struct RawInput(RawKind Kind, uint Vk, uint Scan, uint Flags, bool IsDown, bool Injected, long Seq, long AtMs);
+/// <param name="HookDelayMs">D94: from Windows timestamping the key to this hook seeing it: how late keys reach every app.</param>
+public readonly record struct RawInput(RawKind Kind, uint Vk, uint Scan, uint Flags, bool IsDown, bool Injected, long Seq, long AtMs, int HookDelayMs = 0);
 
 /// <summary>
 /// Low-level keyboard and mouse hooks on a dedicated thread (10.3.a). The callback only timestamps, numbers and enqueues,
@@ -188,10 +189,11 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private void Enqueue(RawKind kind, KBDLLHOOKSTRUCT k, bool down, bool injected, long at)
     {
+        int delay = unchecked(Environment.TickCount - (int)k.time);   // D94
         // A swallowed Tab never reaches the app, so they don't advance the sequence the write gate compares.
         long seq = kind == RawKind.Key ? Interlocked.Increment(ref _seq) : Interlocked.Read(ref _seq);
         Interlocked.Exchange(ref _lastKeyAtMs, at);
-        _channel.Writer.TryWrite(new RawInput(kind, k.vkCode, k.scanCode, k.flags, down, injected, seq, at));
+        _channel.Writer.TryWrite(new RawInput(kind, k.vkCode, k.scanCode, k.flags, down, injected, seq, at, delay is >= 0 and < 60_000 ? delay : 0));
     }
 
     public void Dispose()

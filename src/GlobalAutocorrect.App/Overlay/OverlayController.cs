@@ -52,8 +52,13 @@ public sealed class OverlayController
     private void StartPredict(long seq, char key)
     {
         long gen = Interlocked.Increment(ref _generation);
-        _ = Task.Run(() =>
+        long keyAt = Environment.TickCount64;
+        _ = Task.Run(async () =>
         {
+            // D94: read the field only once typing pauses, never once per key of a burst.
+            await Task.Delay(FieldCatchUp.WaitForPauseMs);
+            if (_host.Hook is not { } hook || !FieldCatchUp.Paused(seq, hook.LatestKeySeq, Environment.TickCount64 - keyAt)
+                || gen != Interlocked.Read(ref _generation)) { Why("typing", null); return; }
             try { Predict(seq, gen, key); }
             catch (Exception e) { Why("failed " + e.GetType().Name, null); throw; }
         });

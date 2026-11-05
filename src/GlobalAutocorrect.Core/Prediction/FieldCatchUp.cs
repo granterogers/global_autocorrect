@@ -11,6 +11,17 @@ public static class FieldCatchUp
     /// <summary>Re-reads while the field lags: 6 × 25 ms, then no suggestion for this key.</summary>
     public const int Retries = 6, RetryDelayMs = 25;
 
+    /// <summary>
+    /// D94, user report "sometimes it takes ages for letters to appear": every read is answered on the typed-in app's own
+    /// thread, and a read per key (up to 7 with the retries above) slowed Edge and the Claude app while typing fast. The
+    /// suggestion is predicted only once typing pauses this long; a suggestion during a burst was hidden by the next key
+    /// anyway (7.5).
+    /// </summary>
+    public const int WaitForPauseMs = 90;
+
+    /// <summary>D94: a pause long enough to predict in: nothing typed since the key, <paramref name="sinceKeyMs"/> ago.</summary>
+    public static bool Paused(long keySeq, long latestSeq, long sinceKeyMs) => keySeq == latestSeq && sinceKeyMs >= WaitForPauseMs;
+
     /// <summary>True when the text before the caret ends with the character just typed.</summary>
     public static bool ShowsKey(string before, char key)
     {

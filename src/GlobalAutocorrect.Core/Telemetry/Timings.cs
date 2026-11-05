@@ -23,7 +23,16 @@ public sealed class Timings
             if (!_samples.TryGetValue(stage, out var q)) _samples[stage] = q = new Queue<double>();
             q.Enqueue(ms);
             if (q.Count > Keep) q.Dequeue();
+            _totals[stage] = _totals.GetValueOrDefault(stage) + 1;
         }
+    }
+
+    private readonly Dictionary<string, long> _totals = new(StringComparer.Ordinal);
+
+    /// <summary>D94: how many samples a stage has had since the app started (not capped at <see cref="Keep"/>).</summary>
+    public long Total(string stage)
+    {
+        lock (_gate) return _totals.GetValueOrDefault(stage);
     }
 
     public sealed record Summary(int Count, double P50, double P95, double Max);

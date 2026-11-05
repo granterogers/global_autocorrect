@@ -23,6 +23,9 @@ public sealed class EngineLoop : IDisposable
     public event Action<KeyInput>? KeyProcessed;
     public event Action? SuggestionAccepted;
 
+    /// <summary>D94: where to record how late keys reach the hook and this loop (durations only).</summary>
+    public GlobalAutocorrect.Core.Telemetry.Timings? Timings { get; init; }
+
     public EngineLoop(CorrectionEngine engine, KeyboardHook hook)
     {
         _engine = engine;
@@ -90,6 +93,11 @@ public sealed class EngineLoop : IDisposable
         switch (e.Kind)
         {
             case RawKind.Key:
+                if (e.IsDown && !e.Injected && !KeyboardHook.IsModifier(e.Vk) && Timings is { } t)   // D94
+                {
+                    t.Record("key.hookDelay", e.HookDelayMs);
+                    t.Record("key.toEngine", GlobalAutocorrect.Core.Engine.SystemClock.Instance.NowMs - e.AtMs);
+                }
                 foreach (var k in _translator.Translate(e))
                 {
                     _engine.OnInput(k);

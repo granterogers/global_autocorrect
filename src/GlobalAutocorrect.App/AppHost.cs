@@ -55,6 +55,7 @@ public sealed class AppHost : IAsyncDisposable
     private static readonly Lock DiagnoseLock = new();
     private int _mismatchLines;
     private int _dropLines;   // D91
+    private Diagnostics.PerfSampler? _perf;   // D94
 
     /// <summary>D64: timings.json, typical and slowest-5% duration of each stage since the app started. Durations only.</summary>
     private void SaveTimings()
@@ -149,7 +150,7 @@ public sealed class AppHost : IAsyncDisposable
         _hook = new KeyboardHook(untaggedInjectedIsPhysical: Environment.GetEnvironmentVariable("GA_E2E") == "1");
         _hook.Start();
 
-        _loop = new EngineLoop(BuildEngine(), _hook);
+        _loop = new EngineLoop(BuildEngine(), _hook) { Timings = _counters.Timings };   // D94
         _loop.SuggestionAccepted += () => SuggestionAcceptedByTab?.Invoke();
         // D67: after an idle unload, start reloading as soon as focus lands in a field the app corrects, or on the first key.
         _reload = new EarlyReload(_llm, SystemClock.Instance, () => Settings.Paused, UiaTextTarget.OwnWindowInForeground,
@@ -320,6 +321,8 @@ public sealed class AppHost : IAsyncDisposable
             var before = ModelState;
             if (_llm is not null) await _llm.MaintainAsync(CancellationToken.None);
             _hook?.CheckAlive();   // 12.6
+            _perf ??= new Diagnostics.PerfSampler(_counters.Timings, Diagnose);
+            _perf.Tick();   // D94
             _daily.Save(_counters);
             SaveTimings();
             History.Save();
