@@ -182,7 +182,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D90, user report (Intercom): a fix with an "@name" mention, or an object the field shows in its place, between it
         // and the caret is never written. Editors turn a mention into one block: a single Left or Backspace covers all of
         // it, so arrows land in the wrong place and retyping deletes the tag (and "@" opens the people picker again).
-        if (w.Layer != Layer.Undo && (tail.Contains('￼') || Text.Tokeniser.Tokenise(typed).Any(t => t.IsMention && t.End > w.Start)))
+        // D93: nor one that changes such an object itself (Intercom's mention reads as U+FFFC, without its "@").
+        if (w.Layer != Layer.Undo && (tail.Contains('￼') || w.Original.Contains('￼') || w.Replacement.Contains('￼')
+                                      || Text.Tokeniser.Tokenise(typed).Any(t => t.IsMention && t.End > w.Start)))
         {
             Drop(w, "mention-in-way");
             return false;

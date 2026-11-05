@@ -7,6 +7,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D90 (4.5.d, 4.6; user report):** an `@name` mention is never changed, removed, stepped over or retyped; a fix before one is left. 7 tests.
 - **D91 (4.6.d):** an empty box after Enter (message sent) restarts the record instead of leaving the field stuck; drop reasons logged as codes; this PC's Edge retype lesson (caused by D90) cleared. 2 tests.
 - **D92 (4.3, 8.6):** a misspelt name is fixed to the name the app shows near the field (Intercom's "Reply Christopher Moyer"); names in memory only. 13 tests.
+- **D93 (4.5.d):** an embedded object (Intercom's picked mention reads as U+FFFC, no "@") and the spaces beside it are never edited or deleted. 2 tests.
 ## 2026-11-04 (late) — WhatsApp
 
 - **D87 (10.6; user report):** WhatsApp's message box is read through the WebView2 engine it hosts (focus stopped at its WinUI frame before). 4 tests, one live against an app hosting an engine (skipped in CI). Tab E2E test updated to D80 (v1.1.0). v1.3.0: the engine's window is shown while WhatsApp is.

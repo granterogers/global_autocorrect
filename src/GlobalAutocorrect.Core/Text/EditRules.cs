@@ -36,6 +36,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
 
     public EditRuleSettings Settings => settings;
 
+    /// <summary>How UIA shows an embedded object in a field's text (a mention chip, an image, a link).</summary>
+    public const char ObjectChar = '￼';
+
     /// <summary>D37: corpus counts of a word pair and of a word, so a real word is split only when the pair is far more
     /// common ("anew" → "a new"), never otherwise ("inorganic" → "in organic"). Null: real words are never split.</summary>
     public Func<string, string, long>? PairCount { get; init; }
@@ -72,6 +75,12 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         {
             if (original.AsSpan(e.Start, e.End - e.Start).ContainsAny('\r', '\n') || e.Replacement.ContainsAny('\r', '\n'))
                 return RejectReason.CrossesLine;   // D8
+            // D93: an embedded object (U+FFFC: Intercom's @mention, an image, a link) is not stray punctuation. The model
+            // dropped it as one, and the write deleted the user's tag (user report, twice).
+            // Right next to one counts too: deleting the space after it joins the tag to the next word.
+            int from = Math.Max(0, Math.Min(e.Start, e.SpanStart) - 1), to = Math.Min(original.Length, Math.Max(e.End, e.SpanEnd) + 1);
+            if (original.AsSpan(from, to - from).Contains(ObjectChar) || e.Replacement.Contains(ObjectChar))
+                return RejectReason.TouchesProtectedToken;
             foreach (var t in origTokens)
             {
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;

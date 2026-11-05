@@ -44,6 +44,23 @@ public sealed class MentionTests
         Assert.Equal(0, h.Counters.Desyncs);
     }
 
+    /// <summary>D93, user report on v1.7.0 ("it was removed again"): Intercom's mention is an object, which the field
+    /// reads as U+FFFC without an "@". After a click, the paragraph was read in from the field (D43); the model dropped the
+    /// odd character as stray punctuation, and the write deleted the tag.</summary>
+    [Theory]
+    [InlineData("")]           // dropped
+    [InlineData("@Derek ")]    // replaced by text
+    public void R4_5_d_D93_AnObjectInTheFieldIsNeverRemovedOrReplaced(string becomes)
+    {
+        var h = new Harness(model: s => s.Replace("￼ ", becomes).Replace("Austrlian", "Australian"), latencyMs: 50);
+        h.Ed.Text = "￼ ";   // the mention, chosen from Intercom's list (a click: not typed)
+        h.Ed.Caret = 2;
+        h.Type("Another Austrlian client whose password isn't working. ");
+        h.Wait(1500);
+        Assert.StartsWith("￼ Another ", h.Text);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
     [Fact]
     public void R4_6_D90_AFixAfterAMentionIsStillWritten()
     {
