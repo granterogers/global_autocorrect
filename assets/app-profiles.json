@@ -1,23 +1,37 @@
 {
-  "Updated": "2026-11-04",
+  "Updated": "2026-11-05",
   "Apps": {
     "chatgpt": {
-      "Writes": 11,
-      "VerifyFailures": 3,
-      "Stuck": 0,
-      "Undos": 0
+      "Writes": 12.6,
+      "VerifyFailures": 2.7,
+      "Stuck": 1,
+      "Undos": 0,
+      "ArrowFailures": 0,
+      "RetypeFailures": 0
     },
     "claude": {
-      "Writes": 18,
-      "VerifyFailures": 3,
-      "Stuck": 0,
-      "Undos": 0
+      "Writes": 37.2,
+      "VerifyFailures": 11.5,
+      "Stuck": 3.7,
+      "Undos": 0,
+      "ArrowFailures": 0.9,
+      "RetypeFailures": 0
     },
     "msedge": {
-      "Writes": 11,
-      "VerifyFailures": 0,
+      "Writes": 56.7,
+      "VerifyFailures": 12,
       "Stuck": 0,
-      "Undos": 0
+      "Undos": 1,
+      "ArrowFailures": 1,
+      "RetypeFailures": 4
+    },
+    "whatsapp.root": {
+      "Writes": 8.1,
+      "VerifyFailures": 3.6,
+      "Stuck": 0,
+      "Undos": 0,
+      "ArrowFailures": 0.9,
+      "RetypeFailures": 0
     }
   }
 }
