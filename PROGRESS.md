@@ -2,6 +2,9 @@
 
 Newest first. Each entry: date, milestone, requirement IDs completed, checks, next task (2.5.b, 2.7).
 
+## 2026-11-05 — @mentions
+
+- **D90 (4.5.d, 4.6; user report):** an `@name` mention is never changed, removed, stepped over or retyped; a fix before one is left. 7 tests.
 ## 2026-11-04 (late) — WhatsApp
 
 - **D87 (10.6; user report):** WhatsApp's message box is read through the WebView2 engine it hosts (focus stopped at its WinUI frame before). 4 tests, one live against an app hosting an engine (skipped in CI). Tab E2E test updated to D80 (v1.1.0). v1.3.0: the engine's window is shown while WhatsApp is.

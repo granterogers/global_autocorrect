@@ -53,6 +53,8 @@ public static partial class Tokeniser
             if (IsWordStart(text, i))
             {
                 i++;
+                if (c == '@')   // D90: a mention keeps its dots ("@derek.rees"), so no part of it is a word of its own
+                    while (i < text.Length && (IsWordContinue(text, i) || (text[i] == '.' && i + 1 < text.Length && char.IsLetterOrDigit(text[i + 1])))) i++;
                 while (i < text.Length && IsWordContinue(text, i)) i++;
                 string w = text[s..i];
                 tokens.Add(new Token(TokenKind.Word, s, i, w, Classify(w)));
@@ -71,7 +73,8 @@ public static partial class Tokeniser
     {
         var flags = TokenFlags.None;
         if (w.Any(char.IsDigit)) flags |= TokenFlags.Number;
-        if (w.Contains('_') || w[0] is '#' or '@' || HasInnerCapital(w)) flags |= TokenFlags.CodeLike;
+        if (w[0] == '@') flags |= TokenFlags.Mention;   // D90
+        else if (w.Contains('_') || w[0] == '#' || HasInnerCapital(w)) flags |= TokenFlags.CodeLike;
         return flags;
     }
 

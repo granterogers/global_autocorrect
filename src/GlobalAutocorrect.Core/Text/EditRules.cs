@@ -77,7 +77,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;
                 // Run-together words like "nextFriday" look code-like; re-spacing them changes no characters, so it's allowed.
                 // Numbers, URLs and emails are never touched, not even their spacing (4.5.d).
-                bool hardProtected = (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email)) != 0;
+                bool hardProtected = (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.Mention)) != 0;   // D90
                 if (hardProtected || (t.IsProtected && e.Kind != EditKind.Spacing)) return RejectReason.TouchesProtectedToken;
                 if (isPersonalWord(t.Text)) return RejectReason.PersonalDictionary;
             }
@@ -258,7 +258,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         speller.IsValid(w) || isPersonalWord(w) || (w.Length > 2 && w.EndsWith("'s", StringComparison.OrdinalIgnoreCase) && speller.IsValid(w[..^2]));
 
     private static IEnumerable<string> ProtectedMultiset(IEnumerable<Token> tokens) =>
-        tokens.Where(t => t.IsWord && (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email)) != 0)
+        tokens.Where(t => t.IsWord && (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.Mention)) != 0)
               .Select(t => t.Text).Order(StringComparer.Ordinal);
 
     private static RuleResult Reject(IReadOnlyList<TextEdit> edits, RejectReason why) =>

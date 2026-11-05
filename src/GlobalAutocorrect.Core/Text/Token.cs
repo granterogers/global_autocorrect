@@ -10,6 +10,8 @@ public enum TokenFlags
     Url = 2,
     Email = 4,
     CodeLike = 8,
+    /// <summary>D90: "@name" tags someone. Never changed, and never stepped over or retyped (editors make it one block).</summary>
+    Mention = 16,
 }
 
 /// <summary>A slice of text. Start/End are UTF-16 offsets into the source string.</summary>
@@ -18,7 +20,9 @@ public readonly record struct Token(TokenKind Kind, int Start, int End, string T
     public int Length => End - Start;
 
     /// <summary>Numbers, URLs, emails and code-like tokens are never edited (4.3.c, 4.5.d).</summary>
-    public bool IsProtected => (Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.CodeLike)) != 0;
+    public bool IsProtected => (Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.CodeLike | TokenFlags.Mention)) != 0;
+
+    public bool IsMention => (Flags & TokenFlags.Mention) != 0;
 
     public bool IsWord => Kind == TokenKind.Word;
 }
