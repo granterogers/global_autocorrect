@@ -125,6 +125,9 @@ public sealed class AppHealth
         var s = StatsFor(app);
         return s.ArrowFailures >= RetypeAfter && s.ArrowFailures > s.RetypeFailures;
     }
+    /// <summary>D98: a fix stepped to with the arrow keys has gone wrong here recently (either way of writing may follow).</summary>
+    public bool ArrowsShaky(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).ArrowFailures >= RetypeAfter;
+
     /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
     public const double RetypeAfter = 0.25;
 

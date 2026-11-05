@@ -12,6 +12,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D95 (4.6.d):** retyping that fails is counted too, and a program retypes only while arrows have failed more (Edge went back to arrows); a failed check logs how the fix was written. 7 tests.
 - **D96 (4.4.d, 4.3):** Shift held into the second letter is fixed: "IT" → "It" at a sentence start (the model decides), "THe" → "The" at once; acronyms stay. 12 tests.
 - **D97 (10.6, 7.1, 9.3.a):** the app watches how slow each program is to read and does less there by itself (longer pause, shorter read) until it's quick again; Home shows it; low-latency GC. Claude scheduled check paused. 6 tests.
+- **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 ## 2026-11-04 (late) — WhatsApp
 
 - **D87 (10.6; user report):** WhatsApp's message box is read through the WebView2 engine it hosts (focus stopped at its WinUI frame before). 4 tests, one live against an app hosting an engine (skipped in CI). Tab E2E test updated to D80 (v1.1.0). v1.3.0: the engine's window is shown while WhatsApp is.

@@ -100,10 +100,26 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
         foreach (var w in _queue.OrderByDescending(w => w.Start).ToArray())
         {
-            if (!Ready(w, now)) continue;
+            if (!Ready(w, now) || !QuietEnough(w, target.AppName, now)) continue;
             return Execute(w, target);
         }
         return false;
+    }
+
+    /// <summary>D98: how long a fix that steps back over words waits without a key in a program whose fixes have gone wrong.</summary>
+    public const int ShakyAppGapMs = 600;
+
+    /// <summary>
+    /// D98, user report (Intercom note, "didn't catch that"): in a program where a fix stepped to with the arrow keys has
+    /// gone wrong, a fix with more than a few characters between it and the caret waits for a real pause, not a 150 ms gap
+    /// between two keys. Every such failure in Edge had the user typing during the check: Edge applies a long run of
+    /// arrow keys out of step with a key typed straight after it (D28), so the next key landed inside the fix. A short
+    /// tail is deleted and typed again (D28), with no arrow keys, and is not held back. No program is named (4.1.a).
+    /// </summary>
+    private bool QuietEnough(PendingWrite w, string app, long now)
+    {
+        if (w.Layer == Layer.Undo || Health is null || session.Typed.Length - w.End <= 3) return true;
+        return now - keys.LastKeyAtMs >= ShakyAppGapMs || !Health.ArrowsShaky(app);
     }
 
     private bool Ready(PendingWrite w, long now)
