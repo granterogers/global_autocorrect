@@ -129,6 +129,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             bool onlyFirstLetter = a[1..] == b[1..];
             // Sentence start: "the" → "The".
             if (sentenceStart && onlyFirstLetter && char.IsLower(a[0]) && char.IsUpper(b[0])) continue;
+            // D96: Shift held a key too long at a sentence start: "IT shouldn't" → "It shouldn't" (user report). "IT" is a
+            // word (information technology), so the model, which has the context, decides; only at a sentence start.
+            if (sentenceStart && Capitals.HeldShift(a) == b) continue;
             // A stray capital mid-sentence: "On" → "on".
             if (!sentenceStart && onlyFirstLetter && char.IsUpper(a[0]) && char.IsLower(b[0]) && speller.IsValid(b)) continue;
             // What was typed isn't a word as written: proper nouns and "i" ("london" → "London", "i" → "I"). The

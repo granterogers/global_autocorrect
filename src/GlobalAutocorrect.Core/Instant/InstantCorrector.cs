@@ -28,6 +28,10 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         if (word.Length < 2) return null;
         if (speller.IsValid(word)) return null;
         if (isPersonalWord(word)) return null;
+        // D96: "THe", "WHen", "LOndon": Shift held into the second letter. Not a word as typed, a word with one capital.
+        // ("IT" is a word, so it was returned above: the AI decides it from the context.)
+        if (word.Length >= 3 && Capitals.HeldShift(word) is { } meant
+            && (speller.IsValid(meant) || speller.IsValid(meant.ToLowerInvariant()))) return meant;
         if (names is { Count: > 0 })
         {
             if (names.Contains(word, StringComparer.OrdinalIgnoreCase)) return null;   // a name on screen is not a typo
