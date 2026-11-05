@@ -14,6 +14,9 @@ public interface IStatusSource
     double TypicalLatencyMs { get; }
     long CorrectionsToday { get; }
 
+    /// <summary>D97: programs the app is doing less in because reading their fields is slow.</summary>
+    IReadOnlyList<string> LightApps => [];
+
     /// <summary>Raised when any of the above may have changed. Can fire on any thread.</summary>
     event Action? StateChanged;
 }

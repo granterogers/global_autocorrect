@@ -104,6 +104,9 @@ public sealed class AppHost : IAsyncDisposable
     public Predictor? Predictor { get; private set; }
     public UiaWorker? Uia => _uia;
     public KeyboardHook? Hook => _hook;
+
+    /// <summary>D97: how long reads take per program; where they are slow the app does less.</summary>
+    public Core.Telemetry.ReadCost ReadCost { get; } = new();
     public event Action? SuggestionAcceptedByTab;
 
 
@@ -146,7 +149,14 @@ public sealed class AppHost : IAsyncDisposable
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
 
         _uia = new UiaWorker();
-        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings);
+        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings) { Cost = ReadCost };   // D97
+        ReadCost.Changed += (app, light, p90) =>
+        {
+            Diagnose($"adapt: app={app} {(light ? "light" : "normal")} readP90={p90:0} (D97, no text)");
+            StateChanged?.Invoke();
+        };
+        // D97: the hook thread is managed; avoid blocking full collections while the user types (keys wait on the hook).
+        System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
         _hook = new KeyboardHook(untaggedInjectedIsPhysical: Environment.GetEnvironmentVariable("GA_E2E") == "1");
         _hook.Start();
 

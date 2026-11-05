@@ -56,8 +56,10 @@ public sealed class OverlayController
         _ = Task.Run(async () =>
         {
             // D94: read the field only once typing pauses, never once per key of a burst.
-            await Task.Delay(FieldCatchUp.WaitForPauseMs);
-            if (_host.Hook is not { } hook || !FieldCatchUp.Paused(seq, hook.LatestKeySeq, Environment.TickCount64 - keyAt)
+            // D97: longer in a program whose reads are slow.
+            bool light = _host.Target?.LastSnapshot?.ProcessName is { } app && _host.ReadCost.IsLight(app);
+            await Task.Delay(FieldCatchUp.PauseFor(light));
+            if (_host.Hook is not { } hook || !FieldCatchUp.Paused(seq, hook.LatestKeySeq, Environment.TickCount64 - keyAt, light)
                 || gen != Interlocked.Read(ref _generation)) { Why("typing", null); return; }
             try { Predict(seq, gen, key); }
             catch (Exception e) { Why("failed " + e.GetType().Name, null); throw; }
@@ -69,13 +71,14 @@ public sealed class OverlayController
         var target = _host.Target;
         var hook = _host.Hook;
         if (target is null || hook is null) return;
-        if (!target.ReadWindow().CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
+        bool light = target.LastSnapshot?.ProcessName is { } app && _host.ReadCost.IsLight(app);   // D97
+        if (!target.ReadForSuggestion(light).CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
         // D59: a browser may not have drawn this key yet; predicting from that read suggested for the previous letter.
         for (int i = 0; i < FieldCatchUp.Retries && !FieldCatchUp.ShowsKey(target.LastSnapshot?.Before ?? "", key); i++)
         {
             Thread.Sleep(FieldCatchUp.RetryDelayMs);
             if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) { Why("stale", null); return; }
-            if (!target.ReadWindow().CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
+            if (!target.ReadForSuggestion(light).CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
         }
         if (!FieldCatchUp.ShowsKey(target.LastSnapshot?.Before ?? "", key)) { Why("field-behind", target.LastSnapshot?.Before); return; }
         if (target.LastSnapshot is not { CaretRect: { } caret } snap) { Why("no-caret-rect", target.LastSnapshot?.Before); return; }

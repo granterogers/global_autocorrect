@@ -20,6 +20,7 @@ public sealed partial class HomeViewModel : ObservableObject
     [ObservableProperty] private string _deviceText = "";
     [ObservableProperty] private string _latencyText = "";
     [ObservableProperty] private string _correctionsText = "0";
+    [ObservableProperty] private string _typingText = "";
 
     public HomeViewModel(ISettingsService settings, IStatusSource status)
     {
@@ -49,6 +50,7 @@ public sealed partial class HomeViewModel : ObservableObject
             ModelText = DescribeModel(_status.ModelState);
             DeviceText = DescribeDevice(_status.ModelState, _status.ModelInfo);
             LatencyText = DescribeLatency(_status.TypicalLatencyMs);
+            TypingText = DescribeTyping(_status.LightApps);   // D97
             CorrectionsText = _status.CorrectionsToday.ToString("N0", CultureInfo.GetCultureInfo("en-GB"));
         }
         finally { _loading = false; }
@@ -76,6 +78,11 @@ public sealed partial class HomeViewModel : ObservableObject
         var m = Regex.Match(device, @"\(([^)]+)\)");
         return (m.Success ? m.Groups[1].Value : device).Trim();
     }
+
+    /// <summary>D97: where the app is doing less so typing stays smooth, in plain words.</summary>
+    public static string DescribeTyping(IReadOnlyList<string> lightApps) => lightApps.Count == 0
+        ? "Typing: smooth everywhere"
+        : $"Doing less in {string.Join(", ", lightApps)} to keep typing smooth (slow to read)";
 
     public static string DescribeLatency(double ms) =>
         ms <= 0 ? "Typical clean-up time: —" : $"Typical clean-up time: {Math.Round(ms).ToString("0", CultureInfo.InvariantCulture)} ms";

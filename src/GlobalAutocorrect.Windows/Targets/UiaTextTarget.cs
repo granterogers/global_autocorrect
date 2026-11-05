@@ -26,11 +26,22 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>D92: names shown near the last read field.</summary>
     public IReadOnlyList<string> NamesNearby => LastSnapshot?.Names ?? [];
 
-    public TextWindow ReadWindow()
+    public TextWindow ReadWindow() => ReadWindow(400, 80);
+
+    /// <summary>D97: how long reads take per program, so the app can do less where they are slow. Null: not tracked.</summary>
+    public GlobalAutocorrect.Core.Telemetry.ReadCost? Cost { get; init; }
+
+    /// <summary>D97: in a program whose reads are slow, the suggestion reads only the last few words.</summary>
+    public TextWindow ReadForSuggestion(bool light) =>
+        ReadWindow(light ? GlobalAutocorrect.Core.Prediction.FieldCatchUp.LightBeforeChars : 400, light ? 0 : 80);
+
+    private TextWindow ReadWindow(int beforeChars, int afterChars)
     {
         long started = Stopwatch.GetTimestamp();
-        var s = worker.Invoke(r => r.Read(), UiaSnapshot.Fail(ReadStatus.Failed));
-        timings?.Record("read", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        var s = worker.Invoke(r => r.Read(beforeChars, afterChars), UiaSnapshot.Fail(ReadStatus.Failed));
+        double ms = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        timings?.Record("read", ms);
+        if (s is not null) Cost?.Record(s.ProcessName, ms);   // D97
         if (s is null) return TextWindow.Unavailable(TargetStatus.Unavailable);
         string id = $"{s.ProcessId}:{s.RuntimeId}";
         var status = s.Status switch

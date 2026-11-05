@@ -19,8 +19,13 @@ public static class FieldCatchUp
     /// </summary>
     public const int WaitForPauseMs = 90;
 
+    /// <summary>D97: in a program whose reads are slow (<see cref="Telemetry.ReadCost"/>), a longer pause, and a shorter read.</summary>
+    public const int LightWaitForPauseMs = 300, LightBeforeChars = 120;
+
+    public static int PauseFor(bool light) => light ? LightWaitForPauseMs : WaitForPauseMs;
+
     /// <summary>D94: a pause long enough to predict in: nothing typed since the key, <paramref name="sinceKeyMs"/> ago.</summary>
-    public static bool Paused(long keySeq, long latestSeq, long sinceKeyMs) => keySeq == latestSeq && sinceKeyMs >= WaitForPauseMs;
+    public static bool Paused(long keySeq, long latestSeq, long sinceKeyMs, bool light = false) => keySeq == latestSeq && sinceKeyMs >= PauseFor(light);
 
     /// <summary>True when the text before the caret ends with the character just typed.</summary>
     public static bool ShowsKey(string before, char key)

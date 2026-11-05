@@ -16,6 +16,7 @@ public sealed class AppHostServices(AppHost host) : ISettingsService, IStatusSou
     public ServerInfo? ModelInfo => host.ModelInfo;
     public double TypicalLatencyMs => host.TypicalLatencyMs;
     public long CorrectionsToday => host.CorrectionsToday;
+    public IReadOnlyList<string> LightApps => host.ReadCost.LightApps;   // D97
 
     // UpdateSettings, SetPaused and model changes all raise StateChanged, so one event serves both interfaces.
     public event Action? StateChanged

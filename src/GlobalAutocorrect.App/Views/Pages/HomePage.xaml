@@ -87,6 +87,17 @@
                             </ContentControl>
                             <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource TextBody}" Text="{Binding LatencyText}" />
                         </Grid>
+                        <!-- D97: what the app is doing to keep typing smooth -->
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ContentControl Style="{StaticResource IconBadge}" Width="32" Height="32">
+                                <ui:SymbolIcon Symbol="Keyboard24" FontSize="18" />
+                            </ContentControl>
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" Style="{StaticResource TextBody}" Text="{Binding TypingText}" />
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Grid>
