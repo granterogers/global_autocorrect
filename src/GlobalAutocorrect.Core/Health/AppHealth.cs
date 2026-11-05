@@ -34,18 +34,21 @@ public sealed class AppStats
     /// <summary>D89: fixes made by stepping back with the arrow keys whose check afterwards failed.</summary>
     public double ArrowFailures { get; set; }
 
+    /// <summary>D95: fixes retyped because of <see cref="ArrowFailures"/> whose check afterwards failed too.</summary>
+    public double RetypeFailures { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
-        ArrowFailures = ArrowFailures + o.ArrowFailures,
+        ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by;
     }
 
-    internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures;
+    internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures;
 }
 
 /// <summary>
@@ -110,14 +113,25 @@ public sealed class AppHealth
     /// again, D46's way), which needs no arrow keys. The count fades like the others, so it lasts about two weeks
     /// (0.9 a day down to 0.25) and is renewed whenever it happens again; shared through the shipped profiles.
     /// </summary>
-    public bool RetypeIn(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).ArrowFailures >= RetypeAfter;
-
+    /// <remarks>
+    /// D95: only while arrow keys have failed there more than retyping has. A browser is every site the user opens: one
+    /// site's editor going wrong once (Intercom's @mention, D90) made Edge retype every fix, and retyping then failed in
+    /// Intercom's emails, where arrow keys had mostly worked (user report "why not picking it up?"). Retyping that fails
+    /// too is counted, so a program goes back to the way that works. No program is named (4.1.a).
+    /// </remarks>
+    public bool RetypeIn(string app)
+    {
+        if (string.IsNullOrEmpty(app)) return false;
+        var s = StatsFor(app);
+        return s.ArrowFailures >= RetypeAfter && s.ArrowFailures > s.RetypeFailures;
+    }
     /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
     public const double RetypeAfter = 0.25;
 
     public void Written(string app) => Note(app, s => s.Writes++);
     public void VerifyFailed(string app) => Note(app, s => s.VerifyFailures++);
     public void ArrowsFailed(string app) => Note(app, s => s.ArrowFailures++);
+    public void RetypeFailed(string app) => Note(app, s => s.RetypeFailures++);   // D95
     public void Stuck(string app) => Note(app, s => s.Stuck++);
     public void Undone(string app) => Note(app, s => s.Undos++);
 
@@ -204,7 +218,7 @@ public sealed class AppHealth
     private static AppStats Round(AppStats s) => new()
     {
         Writes = Math.Round(s.Writes, 1), VerifyFailures = Math.Round(s.VerifyFailures, 1), Stuck = Math.Round(s.Stuck, 1), Undos = Math.Round(s.Undos, 1),
-        ArrowFailures = Math.Round(s.ArrowFailures, 2),
+        ArrowFailures = Math.Round(s.ArrowFailures, 2), RetypeFailures = Math.Round(s.RetypeFailures, 2),
     };
 
     /// <summary>This PC's counts (for publishing). A copy.</summary>

@@ -9,6 +9,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D92 (4.3, 8.6):** a misspelt name is fixed to the name the app shows near the field (Intercom's "Reply Christopher Moyer"); names in memory only. 13 tests.
 - **D93 (4.5.d):** an embedded object (Intercom's picked mention reads as U+FFFC, no "@") and the spaces beside it are never edited or deleted. 2 tests.
 - **D94 (7.1, 10.6, 8.6):** the suggestion reads the field only once typing pauses (was up to 7 reads per key, each on the typed-in app's thread); key delay, reads, memory, CPU and GC pauses logged as a `perf:` line. 5 tests.
+- **D95 (4.6.d):** retyping that fails is counted too, and a program retypes only while arrows have failed more (Edge went back to arrows); a failed check logs how the fix was written. 7 tests.
 ## 2026-11-04 (late) — WhatsApp
 
 - **D87 (10.6; user report):** WhatsApp's message box is read through the WebView2 engine it hosts (focus stopped at its WinUI frame before). 4 tests, one live against an app hosting an engine (skipped in CI). Tab E2E test updated to D80 (v1.1.0). v1.3.0: the engine's window is shown while WhatsApp is.

@@ -87,6 +87,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// Backspaces and the replacement land at the caret instead of at the fix. The app isn't told; it has to learn it.</summary>
     public bool ArrowsAppliedLate { get; set; }
 
+    /// <summary>D95: like Intercom's editor once retyped: a long burst of Backspaces loses all but this many.</summary>
+    public int? KeepsBackspacesUpTo { get; set; }
+
     /// <summary>Left/Right presses our edits have sent while <see cref="RetypeInsteadOfArrows"/> was on: must stay 0.</summary>
     public int ArrowsSentToRetypeEditor { get; private set; }
 
@@ -155,6 +158,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         int pos = Caret;
         for (int i = 0; i < caretDistance && pos > 0 && !ArrowsAppliedLate; i++) pos -= LastElementLength(Text[..pos]);
         int del = pos;
+        if (KeepsBackspacesUpTo is { } keep) deleteCount = Math.Min(deleteCount, keep);
         for (int i = 0; i < deleteCount && del > 0; i++) del -= LastElementLength(Text[..del]);
         // D84: Shift or Caps Lock catching the app's keys, once.
         if (UppercaseNextEdit) { replacement = replacement.ToUpperInvariant(); UppercaseNextEdit = false; }
