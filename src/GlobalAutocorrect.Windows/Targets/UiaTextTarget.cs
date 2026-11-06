@@ -92,11 +92,21 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         return sent;
     }
 
+    /// <summary>D99: the caret was left short of the user's place after a fix: step it back, if focus hasn't moved.</summary>
+    public bool MoveCaretRight(int count)
+    {
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
+        return count > 0 && pid == _lastPid && SendInputWriter.Tagged.MoveRight(count);
+    }
+
     /// <summary>D46: CKEditor 5 (Teams' message box) applies a burst of arrow keys after the edits that follow them.</summary>
     public bool RetypeInsteadOfArrows => LastSnapshot?.ClassName.Contains("ck-editor", StringComparison.Ordinal) == true;
 
     /// <summary>Characters the user may have typed after the edit while we wait for the app to show it.</summary>
     public const int MaxTypedDuringVerify = 64;
+
+    /// <summary>D99: how far short of the user's place the caret may be found and still be put back.</summary>
+    public const int MaxCaretShort = 300;
 
     public bool Verify(string expectedBefore, string expectedAfter)
     {
@@ -111,6 +121,8 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         string b = "", a = "";
         bool read = false, beforeOk = false;
         long started = Stopwatch.GetTimestamp();
+        int caretShortReads = 0;
+        string lastShort = "";
         // A heavy web app can take a while to show injected keys (found in Intercom): poll for up to about a second.
         for (int i = 0; i < 30; i++)
         {
@@ -118,6 +130,16 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             if (w.CaretKnown)
             {
                 read = true;
+                // D99: the fix is there but the caret stopped short and has stayed put for three reads: stop waiting, so
+                // the caller can put it back before the user's next key lands in the wrong place.
+                string now = w.Before + "\u0001" + w.After;
+                if (TextNorm.CaretShort(expectedBefore, w.Before, w.After, MaxCaretShort) > 0)
+                {
+                    caretShortReads = now == lastShort ? caretShortReads + 1 : 1;
+                    lastShort = now;
+                    if (caretShortReads >= 3) { diagnose?.Invoke(Describe(true, false, TextNorm.Comparable(w.Before), TextNorm.Comparable(w.After), e) + " caretShort=yes"); return false; }
+                }
+                else caretShortReads = 0;
                 b = TextNorm.Comparable(w.Before); a = TextNorm.Comparable(w.After);
                 int at = b.LastIndexOf(tail, StringComparison.Ordinal);
                 // Typing may go on after the fix, Enter included (a fast typist starts the next line straight away).

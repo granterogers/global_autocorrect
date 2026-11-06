@@ -90,6 +90,17 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D95: like Intercom's editor once retyped: a long burst of Backspaces loses all but this many.</summary>
     public int? KeepsBackspacesUpTo { get; set; }
 
+    /// <summary>D99: like Intercom's email editor: of the Right presses that end an edit batch, only this many move the caret.</summary>
+    public int? KeepsRightArrowsUpTo { get; set; }
+
+    /// <summary>D99: Right presses sent on their own, to put the caret back.</summary>
+    public bool MoveCaretRight(int count)
+    {
+        Caret = Math.Min(Text.Length, Caret + count);
+        CaretMoves += count;
+        return true;
+    }
+
     /// <summary>Left/Right presses our edits have sent while <see cref="RetypeInsteadOfArrows"/> was on: must stay 0.</summary>
     public int ArrowsSentToRetypeEditor { get; private set; }
 
@@ -164,7 +175,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         if (UppercaseNextEdit) { replacement = replacement.ToUpperInvariant(); UppercaseNextEdit = false; }
         LastEdit = new AppliedEdit(Text, del, Text[del..pos], replacement);
         Text = Text[..del] + replacement + Text[pos..];
-        Caret = del + replacement.Length + (Caret - pos);
+        Caret = del + replacement.Length + Math.Min(Caret - pos, KeepsRightArrowsUpTo ?? int.MaxValue);
         Edits++;
         CaretMoves += caretDistance * 2;
         return true;

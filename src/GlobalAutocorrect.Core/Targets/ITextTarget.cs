@@ -34,6 +34,10 @@ public interface ITextTarget
 
     /// <summary>Re-reads and checks the field now shows <paramref name="expectedBefore"/> before the caret and <paramref name="expectedAfter"/> after it (4.6.d).</summary>
     bool Verify(string expectedBefore, string expectedAfter);
+
+    /// <summary>D99: presses Right <paramref name="count"/> times (tagged, one batch), to put the caret back after a fix
+    /// whose Right presses the editor lost. False if nothing was sent.</summary>
+    bool MoveCaretRight(int count) => false;
 }
 
 /// <summary>Normalises the small differences editors introduce so typed text and field text compare fairly.</summary>
@@ -112,6 +116,26 @@ public static class TextNorm
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// D99, user report (Intercom email, "DWGfFile"): the fix landed but the caret stopped short of where it was, because
+    /// the editor lost some of the Right presses that step back over the text after the fix. Returns how many text
+    /// elements short (1 to <paramref name="maxShort"/>), or 0 if the field doesn't look like that. Only on one line:
+    /// how many presses cross a blank line differs between editors. Compared as <see cref="Comparable"/>.
+    /// </summary>
+    public static int CaretShort(string expectedBefore, string before, string after, int maxShort)
+    {
+        string e = Comparable(expectedBefore), b = Comparable(before), a = Comparable(after);
+        for (int k = 1; k <= Math.Min(maxShort, e.Length); k++)
+        {
+            string skipped = e[^k..], want = e[..^k];
+            if (skipped.Contains('\n')) return 0;
+            string probe = want.Length > 48 ? want[^48..] : want;
+            if (probe.Length > 0 && b.EndsWith(probe, StringComparison.Ordinal) && a.StartsWith(skipped, StringComparison.Ordinal))
+                return Elements(skipped);
+        }
+        return 0;
     }
 
     public static int Elements(string s) => s.Length == 0 ? 0 : new System.Globalization.StringInfo(s).LengthInTextElements;

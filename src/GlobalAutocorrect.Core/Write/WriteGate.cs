@@ -242,7 +242,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             session.Break(SessionBreakReason.FocusChange);
             return false;
         }
-        if (!target.Verify(expectedBefore, win.After) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite))   // 4.6.d, D84
+        if (!target.Verify(expectedBefore, win.After) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite)
+            && !RepairedCaret(target, expectedBefore, win.After, retype ? 0 : caretDistance, seqAtWrite))   // 4.6.d, D84, D99
         {
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
@@ -370,6 +371,26 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         bool sent = retype ? target.ApplyEdit(0, caretDistance + replaced, w.Replacement + tail) : target.ApplyEdit(caretDistance, replaced, w.Replacement);
         if (!sent || !target.Verify(expectedBefore, after)) return false;
         CaseRepaired?.Invoke(target.AppName);
+        return true;
+    }
+
+    /// <summary>D99: a fix landed but the caret was left short of the user's place (program name and count only).</summary>
+    public event Action<string, int>? CaretRepaired;
+
+    /// <summary>
+    /// D99, user report (Intercom email, "DWGfFile"): the fix landed, but the editor lost some of the Right presses that
+    /// step back to the user's place, so the caret sat inside the text and the next keys the user typed went there. If the
+    /// field shows exactly the expected text with the caret a few characters short, and nothing was typed since, the
+    /// missing Right presses are sent and the fix is checked again.
+    /// </summary>
+    private bool RepairedCaret(ITextTarget target, string expectedBefore, string after, int caretDistance, long seqAtWrite)
+    {
+        if (caretDistance == 0 || keys.LatestKeySeq != seqAtWrite) return false;
+        var fresh = target.ReadWindow();
+        if (!fresh.CaretKnown) return false;
+        int shortBy = TextNorm.CaretShort(expectedBefore, fresh.Before, fresh.After, caretDistance);
+        if (shortBy == 0 || keys.LatestKeySeq != seqAtWrite || !target.MoveCaretRight(shortBy) || !target.Verify(expectedBefore, after)) return false;
+        CaretRepaired?.Invoke(target.AppName, shortBy);
         return true;
     }
 

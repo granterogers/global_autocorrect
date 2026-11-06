@@ -63,6 +63,17 @@ public sealed class SendInputWriter(nuint tag)
 
     public bool Type(string text) => Send(BuildTyping(text));
 
+    /// <summary>D99: Right × <paramref name="count"/>, one batch, with held modifiers released around it as in an edit.</summary>
+    public bool MoveRight(int count)
+    {
+        var list = new List<INPUT>(count * 2 + 12);
+        var held = Releasable.Where(vk => IsKeyDown(vk)).ToArray();
+        foreach (var vk in held) list.Add(Modifier(vk, up: true));
+        for (int i = 0; i < count; i++) AddVk(list, VK_RIGHT);
+        foreach (var vk in held.Reverse()) list.Add(Modifier(vk, up: false));
+        return Send([.. list]);
+    }
+
     private void AddVk(List<INPUT> list, ushort vk)
     {
         ushort scan = (ushort)MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);

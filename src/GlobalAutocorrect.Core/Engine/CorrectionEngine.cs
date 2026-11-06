@@ -121,6 +121,7 @@ public sealed class CorrectionEngine
         _gate.Stuck += app => Stuck?.Invoke(app);   // D81
         _gate.CaseRepaired += _ => LearntFromMistake?.Invoke("case-repaired");   // D84
         _gate.ArrowsFailed += _ => LearntFromMistake?.Invoke("arrows-failed");   // D89
+        _gate.CaretRepaired += (_, n) => LearntFromMistake?.Invoke($"caret-repaired short={n}");   // D99
         _gate.WriteDropped += (_, reason) => { if (reason.StartsWith("guard-", StringComparison.Ordinal) || reason == "known-mistake") LearntFromMistake?.Invoke(reason); };
         Session.Resynced += _gate.OnResynced;   // D74
     }
