@@ -126,8 +126,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     {
         if (w.Layer == Layer.Undo) return true;   // the user asked for it and is waiting
         bool gap = now - keys.LastKeyAtMs >= options.WriteGapMs && !keys.ModifierHeld;   // 4.6.c
+        // D100, user report "why all caps? stop doing that" (Intercom: "REPRESENTATIVE Mickey"): the instant fix went out
+        // while Shift was down for the next word's capital, and was typed in capitals. Never while a modifier is held.
         if (w.Layer == Layer.Instant)
-            return (keys.LatestKeySeq == w.KeySeqAtDecision && now - keys.LastKeyAtMs >= options.InstantQuietMs) || gap;   // D6, D47: quiet since the word ended, or a gap
+            return !keys.ModifierHeld && ((keys.LatestKeySeq == w.KeySeqAtDecision && now - keys.LastKeyAtMs >= options.InstantQuietMs) || gap);   // D6, D47
 
         if (!gap) return false;
         // 4.6.a/b: while actively typing, the word being typed and the word before it are off limits.
@@ -227,6 +229,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             if (tail.Contains('\n') || caretDistance > 300) { Drop(w, "retype-unsafe"); return false; }
             retype = true;
         }
+        // D100: Shift (or Ctrl, Alt) pressed during the read: wait for it to be let go, next tick.
+        if (w.Layer != Layer.Undo && keys.ModifierHeld) return false;
         bool sent = retype
             ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail)
             : target.ApplyEdit(caretDistance, deleteCount, w.Replacement);
