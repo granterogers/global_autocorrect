@@ -159,9 +159,21 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         int end = before.Length;
         while (end > 0 && before[end - 1] == '\n' && end > typedStart) end--;
         int paraStart = end == 0 ? 0 : before.LastIndexOf('\n', end - 1) + 1;
+        // D101: a paragraph finished with Enter while a request was in flight (or a read lagged) was never sent: the follow-up
+        // request saw the caret in the next paragraph. Any of the last few paragraphs whose final text the AI hasn't seen
+        // goes first; the current one follows as soon as that answer is in.
+        if (_checkedGeneration != session.Generation || _checked.Count > 200) { _checked.Clear(); _checkedGeneration = session.Generation; }
+        bool earlier = false;
+        if (EarlierUnchecked(before, paraStart) is { } older)
+        {
+            (paraStart, end) = older;
+            earlier = true;
+            _rerun = true;
+        }
+        _checked.Add(before[paraStart..end]);
         int ctxStart = paraStart + SentenceSplitter.StartOfLastSentences(before[paraStart..end], options.ContextSentences);   // 4.4.b
         ctxStart = Math.Max(ctxStart, paraStart);
-        string ctx = before[ctxStart..];
+        string ctx = earlier ? before[ctxStart..end] : before[ctxStart..];
         if (ctx.Trim().Length == 0 || before.Length <= Math.Max(ctxStart, typedStart)) return;
 
         counters.AiRequest();
@@ -250,6 +262,34 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
     /// <summary>Latency of the last completed request (6.3.d, 9.3.a).</summary>
     public double LastLatencyMs { get; private set; }
+
+    // D101: paragraphs as the AI last saw them, this session.
+    private readonly HashSet<string> _checked = new(StringComparer.Ordinal);
+    private long _checkedGeneration = -1;
+
+    /// <summary>How many paragraphs before the caret's own are looked back over for one the AI hasn't seen (D101).</summary>
+    public const int ParagraphsLookedBack = 3;
+
+    /// <summary>D101: [start, end) of the latest of the few paragraphs before <paramref name="currentStart"/> whose text, as it
+    /// stands, was never sent to the AI. Null if they all were.</summary>
+    private (int Start, int End)? EarlierUnchecked(string typed, int currentStart)
+    {
+        int end = currentStart, seen = 0;
+        while (end > 0 && seen < ParagraphsLookedBack)
+        {
+            while (end > 0 && typed[end - 1] == '\n') end--;
+            if (end == 0) break;
+            int start = typed.LastIndexOf('\n', end - 1) + 1;
+            string p = typed[start..end];
+            if (p.Trim().Length > 0)
+            {
+                seen++;
+                if (!_checked.Contains(p) && p.Any(char.IsLetter)) return (start, end);
+            }
+            end = start;
+        }
+        return null;
+    }
 
     private bool TakeRerun()
     {
