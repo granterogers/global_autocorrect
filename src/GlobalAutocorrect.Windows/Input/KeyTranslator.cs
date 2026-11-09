@@ -14,7 +14,7 @@ public sealed class KeyTranslator
     private readonly char[] _buf = new char[8];
     private bool _lShift, _rShift, _lCtrl, _rCtrl, _lAlt, _rAlt, _lWin, _rWin, _caps;
 
-    public KeyTranslator() => _caps = (GetKeyState(VK_CAPITAL) & 1) != 0;
+    public KeyTranslator() => _caps = Write.SendInputWriter.CapsLockOn();   // D108: as the app in front sees it
 
     private bool Shift => _lShift || _rShift;
     private bool Ctrl => _lCtrl || _rCtrl;

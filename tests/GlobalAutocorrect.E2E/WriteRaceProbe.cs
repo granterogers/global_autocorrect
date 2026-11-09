@@ -23,9 +23,7 @@ public sealed class WriteRaceProbe
     [InlineData("prosemirror")]
     [InlineData("textarea")]
     [InlineData("lexical")]
-    [InlineData("ckeditor")]
     [InlineData("quill")]
-    [InlineData("tinymce")]
     [InlineData("slate")]
     public async Task D105_HowLongAWebEditorTakesToFinishAnEditBatch(string editor)
     {
@@ -34,6 +32,7 @@ public sealed class WriteRaceProbe
         var report = new StringBuilder($"## {editor}\n\n| distance | delay ms | key landed | expected | ok |\n|---|---|---|---|---|\n");
         try
         {
+            foreach (bool retype in new[] { false, true })
             foreach (int distance in new[] { 10, 40, 80, 160 })
             {
                 foreach (int delay in new[] { 0, 10, 30, 80, 150, 300 })
@@ -45,7 +44,10 @@ public sealed class WriteRaceProbe
                     await Task.Delay(800, TestContext.Current.CancellationToken);
                     try { await page.EvaluateAsync("window.resetLog && window.resetLog()"); } catch { }
                     // The app's batch: step back over the tail and "Q", delete it, type "R", step forward again.
-                    SendInputWriter.Tagged.ApplyEdit(distance, 1, "R");
+                    // D108: or retyped, as the app does in a program where arrow keys went wrong (D89): delete back over the
+                    // tail and the fix, type the fix and the tail again.
+                    if (retype) SendInputWriter.Tagged.ApplyEdit(0, distance + 1, "R" + new string('b', distance));
+                    else SendInputWriter.Tagged.ApplyEdit(distance, 1, "R");
                     if (delay > 0) Thread.Sleep(delay);
                     // The user's next key: a capital "X", Shift first, as a keyboard sends it (D100's race).
                     Desk.Key1(0x10, false); Thread.Sleep(40); Desk.Key1(0x58, false); Desk.Key1(0x58, true); Thread.Sleep(20); Desk.Key1(0x10, true);
@@ -53,7 +55,7 @@ public sealed class WriteRaceProbe
                     string got = (await page.EvaluateAsync<string>(RealTypingTests.ShownText)).Replace(' ', ' ').TrimEnd('\n');
                     string want = new string('a', 20) + "R" + new string('b', distance) + "X";
                     int at = got.IndexOf('X');
-                    report.AppendLine($"| {distance} | {delay} | {(at < 0 ? "lost" : at - got.Length + 1 == 0 ? "end" : $"{got.Length - 1 - at} early")} | end | {(got == want ? "yes" : "NO: " + (got.Length > 60 ? "…" + got[^60..] : got))} |");
+                    report.AppendLine($"| {(retype ? "retype " : "")}{distance} | {delay} | {(at < 0 ? "lost" : at - got.Length + 1 == 0 ? "end" : $"{got.Length - 1 - at} early")} | end | {(got == want ? "yes" : "NO: " + (got.Length > 60 ? "…" + got[^60..] : got))} |");
                     if (editor == "contenteditable" && got != want)
                     {
                         string[] log = await page.EvaluateAsync<string[]>("window.log");

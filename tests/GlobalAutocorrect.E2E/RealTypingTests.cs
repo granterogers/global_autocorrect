@@ -98,16 +98,32 @@ public sealed class RealTypingTests
         return sb.ToString();
     }
 
-    public static TheoryData<string> Editors =>
-        ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate"];
+    /// <summary>
+    /// Every editor in 4.1, or (D108) only those in GA_RT_EDITORS, comma-separated, each run GA_RT_REPEAT times: a run
+    /// is named "lexical-2", so its logs are kept apart.
+    /// </summary>
+    public static TheoryData<string> Editors
+    {
+        get
+        {
+            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate"];
+            var only = Environment.GetEnvironmentVariable("GA_RT_EDITORS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            int repeat = int.TryParse(Environment.GetEnvironmentVariable("GA_RT_REPEAT"), out int r) && r > 1 ? r : 1;
+            var data = new TheoryData<string>();
+            foreach (var e in only is { Length: > 0 } ? only : all)
+                for (int i = 1; i <= repeat; i++) data.Add(repeat > 1 ? $"{e}-{i}" : e);
+            return data;
+        }
+    }
 
     [Theory]
     [MemberData(nameof(Editors))]
-    public async Task R4_1_D104_TypingOnWithoutStoppingEveryFixLandsAndNothingIsDamaged(string editor)
+    public async Task R4_1_D104_TypingOnWithoutStoppingEveryFixLandsAndNothingIsDamaged(string run)
     {
         Desk.RequireIdle();
+        string editor = run.Contains('-') && int.TryParse(run[(run.LastIndexOf('-') + 1)..], out _) ? run[..run.LastIndexOf('-')] : run;
         using var llm = new MockLlm(Oracle);
-        using var app = new AppUnderTest(llm, label: $"realtyping-{editor}");
+        using var app = new AppUnderTest(llm, label: $"realtyping-{run}");
         var script = Messages.Value;
         string text;
         if (editor == "wpf")
@@ -147,7 +163,7 @@ public sealed class RealTypingTests
         long desyncs = app.Desyncs;   // 11.3.d: before the text
         var score = Score(script, text);
         string verifyFails = VerifyFailures(app);
-        Report(editor, score, desyncs, verifyFails);
+        Report(run, score, desyncs, verifyFails);
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed * 20 <= score.NeedFix,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");

@@ -186,10 +186,16 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             Thread.Sleep(35);
         }
         diagnose?.Invoke(Describe(read, beforeOk, b, a, e));
+        // D108: screen tests only (GA_E2E=1, synthetic text, never the user's): what was expected next to what the field
+        // showed, as code points, so a failure can be traced to where the fix or the keys went.
+        if (Environment.GetEnvironmentVariable("GA_E2E") == "1")
+            diagnose?.Invoke($"verify-detail: expected=[{Codes(e.Length > 60 ? e[^60..] : e)}] got=[{Codes(b.Length > 76 ? b[^76..] : b)}] after=[{Codes(a.Length > 20 ? a[..20] : a)}]");
         return false;
     }
 
     private string _beforeWrite = "";
+
+    private static string Codes(string s) => string.Join(' ', s.Select(c => ((int)c).ToString("X4")));
 
     /// <summary>What kind of mismatch, for the diagnostics log: never the text itself (8.6).</summary>
     private string Describe(bool read, bool beforeOk, string b, string a, string expected)

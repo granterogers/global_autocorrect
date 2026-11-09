@@ -90,7 +90,7 @@ public sealed class SendInputWriter(nuint tag)
     private void AddUnicode(List<INPUT> list, string text)
     {
         nint hkl = GetKeyboardLayout(GetWindowThreadProcessId(GetForegroundWindow(), out _));
-        bool caps = (GetKeyState(VK_CAPITAL) & 1) != 0;
+        bool caps = CapsLockOn();
         foreach (char c in text)
         {
             short scan = VkKeyScanExW(c, hkl);
@@ -109,6 +109,21 @@ public sealed class SendInputWriter(nuint tag)
             list.Add(Key(vk, sc, KEYEVENTF_KEYUP));
             if (shift) list.Add(Key(VK_SHIFT, (ushort)MapVirtualKeyW(VK_SHIFT, MAPVK_VK_TO_VSC), KEYEVENTF_KEYUP));
         }
+    }
+
+    /// <summary>
+    /// D108, user report (Intercom: "why the capitals?", "WE RECOMMEND YOU TO MIGRATE FROM OEM TO"): Caps Lock as the
+    /// app being typed into sees it. GetKeyState answers for the calling thread's input state, which only moves on as
+    /// that thread reads keyboard messages. The engine thread never does, so it could report Caps Lock on long after the
+    /// user turned it off (after typing "OEM" and "BSB"), and a retyped tail of 39 letters went in as capitals. Attached
+    /// to the foreground thread's input for the call, it reads that thread's current state.
+    /// </summary>
+    public static bool CapsLockOn()
+    {
+        uint target = GetWindowThreadProcessId(GetForegroundWindow(), out _), me = GetCurrentThreadId();
+        bool attached = target != 0 && target != me && AttachThreadInput(me, target, true);
+        try { return (GetKeyState(VK_CAPITAL) & 1) != 0; }
+        finally { if (attached) AttachThreadInput(me, target, false); }
     }
 
     private INPUT Key(ushort vk, ushort scan, uint flags) => new()

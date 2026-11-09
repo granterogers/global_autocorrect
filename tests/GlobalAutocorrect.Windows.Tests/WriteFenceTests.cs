@@ -42,3 +42,4 @@ public sealed class WriteFenceTests
         Assert.False(WriteFence.Swallow(now, 10, false));
     }
 }
+
