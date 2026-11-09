@@ -218,9 +218,22 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>When the brain in use was last changed (shown on the About page).</summary>
     public DateTimeOffset? BrainUpdated => _brain?.Current.UpdatedAt is { } d && d != DateTimeOffset.MinValue ? d : null;
 
+    /// <summary>D103: this PC's random id in the brain (written by scripts/publish-learning.ps1), or null if it never published.</summary>
+    private static string? InstallId()
+    {
+        try
+        {
+            string path = Path.Combine(DataDir, "install-id");
+            string? id = File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+            return Brain.IsPcId(id) ? id : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     private void UseBrain(BrainFile b)
     {
-        Health.UseShipped(b.Apps, b.Write);
+        // D103: only what other PCs learnt: this PC's own lessons are already in its local counts.
+        Health.UseShipped(Brain.LearntElsewhere(b, InstallId(), DateOnly.FromDateTime(DateTime.Now)), b.Write);
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
     }

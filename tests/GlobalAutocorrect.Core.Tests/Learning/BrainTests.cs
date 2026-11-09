@@ -38,6 +38,7 @@ public sealed class BrainTests : IDisposable
         Assert.Equal(Count("write"), b.Write.Count);
         Assert.Equal(Count("mistakes"), b.Mistakes.Count);
         Assert.Equal(Count("apps"), b.Apps.Count);
+        Assert.Equal(Count("pcs"), b.Pcs.Count);
         foreach (var (name, value) in b.Tuning)
             Assert.InRange(value, Brain.Knobs[name].Min, Brain.Knobs[name].Max);
     }
@@ -64,6 +65,29 @@ public sealed class BrainTests : IDisposable
         Assert.Equal(800, tuned.ShakyAppGapMs);
         var user = new AppSettings { LookBackWhenPaused = false }.ToEngineOptions(tuned);
         Assert.Equal(0, user.RevisitAfterMs);   // the user turned look-back off; the brain can't turn it on
+    }
+
+    [Fact]
+    public void R4_6_d_D103_APcLeavesItsOwnPublishedCountsOutSoNothingIsCountedTwice()
+    {
+        var b = Brain.Parse("""
+            { "format": 1, "apps": { "notepad": { "arrowFailures": 2 } },
+              "pcs": { "mine1234": { "notepad": { "arrowFailures": 1 } },
+                       "other567": { "notepad": { "arrowFailures": 1 }, "winword": { "writes": 9 } },
+                       "bad id!": { "notepad": { "writes": 1 } } } }
+            """)!;
+        Assert.Equal(["mine1234", "other567"], b.Pcs.Keys.Order());
+        var today = new DateOnly(2026, 11, 9);
+        var elsewhere = Brain.LearntElsewhere(b, "mine1234", today);
+        Assert.Equal(1, elsewhere["notepad"].ArrowFailures);
+        Assert.Equal(9, elsewhere["winword"].Writes);
+        Assert.Equal(2, Brain.LearntElsewhere(b, null, today)["notepad"].ArrowFailures);   // never published: everything
+
+        // The only PC that published gets nothing back from the brain: what it learnt is all in its own counts.
+        var onlyMine = Brain.Parse("""{ "format": 1, "pcs": { "mine1234": { "notepad": { "arrowFailures": 1 } } } }""")!;
+        Assert.Empty(Brain.LearntElsewhere(onlyMine, "mine1234", today));
+        // A brain from before D103 (no per-PC counts) gives its total.
+        Assert.Equal(2, Brain.LearntElsewhere(b with { Pcs = [] }, "mine1234", today)["notepad"].ArrowFailures);
     }
 
     [Fact]

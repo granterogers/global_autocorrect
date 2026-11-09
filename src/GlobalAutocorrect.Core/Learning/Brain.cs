@@ -34,6 +34,13 @@ public sealed record BrainFile
     /// <summary>Per program, how fixes are written there whatever the counts say: "retype" or "arrows".</summary>
     public Dictionary<string, string> Write { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// D103: each publishing PC's own counts (its random install id → per program), so a PC can leave its own out and
+    /// count only what was learnt elsewhere: its own lessons are already in its local counts. <see cref="Apps"/> is their
+    /// total, for builds before D103 and for a reader of the file.
+    /// </summary>
+    public Dictionary<string, Dictionary<string, AppStats>> Pcs { get; init; } = new(StringComparer.Ordinal);
+
     [JsonIgnore]
     public DateTimeOffset UpdatedAt =>
         DateTimeOffset.TryParse(Updated, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d) ? d : DateTimeOffset.MinValue;
@@ -98,7 +105,24 @@ public static class Brain
             Mistakes = Collect(b.Mistakes, m => m.Key.Length == 16 && m.Key.All(char.IsAsciiHexDigitLower), StringComparer.Ordinal),
             Tuning = Collect(b.Tuning, t => Knobs.ContainsKey(t.Key) && double.IsFinite(t.Value), StringComparer.OrdinalIgnoreCase),
             Write = Collect(b.Write, w => w.Key.Length is > 0 and <= 64 && w.Value is not null && WriteModes.Contains(w.Value), StringComparer.OrdinalIgnoreCase),
+            Pcs = Collect(b.Pcs, p => IsPcId(p.Key) && p.Value is not null, StringComparer.Ordinal)
+                .ToDictionary(p => p.Key, p => Collect(p.Value, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase), StringComparer.Ordinal),
         };
+    }
+
+    /// <summary>A PC's random install id: 4–64 letters, digits and dashes (it says nothing about the PC or the user).</summary>
+    public static bool IsPcId(string? id) =>
+        id is { Length: >= 4 and <= 64 } && id.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
+
+    /// <summary>
+    /// D103: the per-program counts learnt on PCs other than <paramref name="myPcId"/>, combined as the published total is
+    /// (<see cref="AppHealth.Combine"/>). A brain without per-PC counts gives its total.
+    /// </summary>
+    public static IReadOnlyDictionary<string, AppStats> LearntElsewhere(BrainFile b, string? myPcId, DateOnly today)
+    {
+        if (b.Pcs.Count == 0) return b.Apps;
+        var others = b.Pcs.Where(p => p.Key != myPcId).Select(p => (IReadOnlyDictionary<string, AppStats>)p.Value);
+        return AppHealth.Combine(others, today).Apps;
     }
 
     /// <summary>The entries that pass <paramref name="keep"/>; of two keys that differ only in case, the later wins.</summary>

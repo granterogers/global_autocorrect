@@ -10,7 +10,7 @@
       "RetypeFailures": 0
     },
     "claude": {
-      "Writes": 42.5,
+      "Writes": 47.5,
       "VerifyFailures": 8.9,
       "Stuck": 2.4,
       "Undos": 0,
@@ -42,7 +42,7 @@
       "RetypeFailures": 1.46
     },
     "whatsapp.root": {
-      "Writes": 13.3,
+      "Writes": 14.3,
       "VerifyFailures": 2.4,
       "Stuck": 0,
       "Undos": 0.7,

@@ -13,18 +13,20 @@ internal static class Learning
 {
     public static void Publish(string localPath, string pcId, string dir, string brainPath)
     {
-        if (pcId.Length is < 4 or > 64 || pcId.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-'))
+        if (!Brain.IsPcId(pcId))
             throw new ArgumentException("--pc must be a short id of letters, digits and dashes");
         var today = DateOnly.FromDateTime(DateTime.Now);
         Directory.CreateDirectory(dir);
         var mine = AppHealth.Combine([AppHealth.ReadLocal(localPath, today)], today);
         File.WriteAllText(Path.Combine(dir, pcId + ".json"), AppHealth.ToJson(mine));
 
-        var all = Directory.GetFiles(dir, "*.json")
-            .Select(AppHealth.Read<AppHealth.ProfileFile>)
-            .Where(p => p is not null)
-            .Select(p => (IReadOnlyDictionary<string, AppStats>)p!.Apps);
-        var combined = AppHealth.Combine(all, today);
+        // D103: each PC's counts, by its id, so a PC can leave its own out when it loads the brain.
+        var pcs = Directory.GetFiles(dir, "*.json")
+            .Select(f => (Id: Path.GetFileNameWithoutExtension(f), File: AppHealth.Read<AppHealth.ProfileFile>(f)))
+            .Where(p => p.File is not null && Brain.IsPcId(p.Id))
+            .OrderBy(p => p.Id, StringComparer.Ordinal)
+            .ToDictionary(p => p.Id, p => new Dictionary<string, AppStats>(p.File!.Apps, StringComparer.OrdinalIgnoreCase), StringComparer.Ordinal);
+        var combined = AppHealth.Combine(pcs.Values.Select(v => (IReadOnlyDictionary<string, AppStats>)v), today);
 
         // D84: this PC's mistake fingerprints (never the words), and the shared list of those enough PCs agree on.
         string mistakesDir = Path.Combine(dir, "mistakes");
@@ -39,7 +41,7 @@ internal static class Learning
             .Select(AppHealth.Read<MistakeMemory.File>).Where(f => f is not null).Select(f => (IReadOnlyDictionary<string, int>)f!.Mistakes));
 
         var old = Brain.Read(brainPath) ?? new BrainFile();
-        var next = old with { Apps = combined.Apps, Mistakes = shared.Mistakes };
+        var next = old with { Apps = combined.Apps, Mistakes = shared.Mistakes, Pcs = pcs };
         if (Brain.ToJson(next with { Updated = "" }) != Brain.ToJson(old with { Updated = "" }))
             next = next with { Updated = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture) };
         else next = old;
