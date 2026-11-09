@@ -115,6 +115,34 @@ public sealed class ModelDownloader(string assetsDir, string cacheDir, HttpMessa
         return Convert.ToHexStringLower(await SHA256.HashDataAsync(f, ct));
     }
 
+    /// <summary>
+    /// D106, user request "label the llama server so it's clear it's part of the autocorrect app": llama-server runs as a
+    /// copy named <see cref="ServerName"/>.exe next to it, so the taskbar and Task Manager say Global Autocorrect, not
+    /// llama-server. The copy is refreshed when the original changes. The CUDA copy gets its own high-performance GPU
+    /// setting, which Windows keeps per program file (5.8.d). If the copy can't be made, the original is run.
+    /// </summary>
+    public static string Labelled(string serverExe, bool gpu)
+    {
+        try
+        {
+            if (!File.Exists(serverExe)) return serverExe;
+            string copy = Path.Combine(Path.GetDirectoryName(serverExe)!, ServerName + ".exe");
+            var src = new FileInfo(serverExe);
+            var dst = new FileInfo(copy);
+            if (!dst.Exists || dst.Length != src.Length || dst.LastWriteTimeUtc != src.LastWriteTimeUtc)
+            {
+                File.Copy(serverExe, copy, overwrite: true);
+                File.SetLastWriteTimeUtc(copy, src.LastWriteTimeUtc);
+            }
+            if (gpu) SetHighPerformanceGpu(copy);
+            return copy;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException) { return serverExe; }
+    }
+
+    /// <summary>D106: the model server's program name, as Windows shows it.</summary>
+    public const string ServerName = "GlobalAutocorrect-AI";
+
     private static void SetHighPerformanceGpu(string exe)
     {
         using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\DirectX\UserGpuPreferences");

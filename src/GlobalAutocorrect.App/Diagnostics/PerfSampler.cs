@@ -36,7 +36,7 @@ internal sealed class PerfSampler(Timings timings, Action<string> log)
     {
         using var me = Process.GetCurrentProcess();
         double model = 0;
-        foreach (var p in Process.GetProcessesByName("llama-server"))
+        foreach (var p in Process.GetProcessesByName("llama-server").Concat(Process.GetProcessesByName(Models.ModelDownloader.ServerName)))   // D106
         {
             try { model += p.PrivateMemorySize64; } catch (InvalidOperationException) { }
             p.Dispose();

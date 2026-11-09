@@ -152,9 +152,10 @@ public sealed class AppHost : IAsyncDisposable
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
-            Path.Combine(CacheDir, "llama", build, "cuda", "llama-server.exe"),
+            // D106: run as GlobalAutocorrect-AI.exe, so Windows shows the model server as part of this app.
+            Models.ModelDownloader.Labelled(Path.Combine(CacheDir, "llama", build, "cuda", "llama-server.exe"), gpu: true),
             Path.Combine(CacheDir, "models", Settings.Model),
-            Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"),
+            Models.ModelDownloader.Labelled(Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"), gpu: false),
             CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel),
             ExtraArgs: ServerFlags.LookupDecoding));   // D56
         _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
