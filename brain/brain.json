@@ -1,35 +1,35 @@
 {
   "format": 1,
-  "updated": "2026-11-09T13:42:00Z",
+  "updated": "2026-11-09T18:00:04Z",
   "apps": {
     "chatgpt": {
       "writes": 14.1,
-      "verifyFailures": 2.5,
-      "stuck": 3.6,
+      "verifyFailures": 3.5,
+      "stuck": 4.6,
       "undos": 0,
       "arrowFailures": 0.73,
       "retypeFailures": 0
     },
     "claude": {
-      "writes": 47.5,
-      "verifyFailures": 8.9,
-      "stuck": 2.4,
-      "undos": 0,
-      "arrowFailures": 0.59,
-      "retypeFailures": 1.39
+      "writes": 137.5,
+      "verifyFailures": 18.9,
+      "stuck": 3.4,
+      "undos": 1,
+      "arrowFailures": 5.59,
+      "retypeFailures": 6.39
     },
     "msedge": {
-      "writes": 59.1,
-      "verifyFailures": 14.1,
+      "writes": 95.1,
+      "verifyFailures": 20.1,
       "stuck": 0.7,
       "undos": 0.7,
       "arrowFailures": 5.47,
-      "retypeFailures": 3.35
+      "retypeFailures": 5.35
     },
     "msedgewebview2": {
       "writes": 0,
       "verifyFailures": 0,
-      "stuck": 6.1,
+      "stuck": 7.1,
       "undos": 0,
       "arrowFailures": 0,
       "retypeFailures": 0
@@ -43,12 +43,12 @@
       "retypeFailures": 1.46
     },
     "whatsapp.root": {
-      "writes": 14.3,
-      "verifyFailures": 2.4,
+      "writes": 21.3,
+      "verifyFailures": 3.4,
       "stuck": 0,
-      "undos": 0.7,
+      "undos": 1.7,
       "arrowFailures": 0.59,
-      "retypeFailures": 0
+      "retypeFailures": 1
     }
   },
   "mistakes": {},
@@ -60,32 +60,32 @@
     "6b0e9443ffcf": {
       "chatgpt": {
         "writes": 14.1,
-        "verifyFailures": 2.5,
-        "stuck": 3.6,
+        "verifyFailures": 3.5,
+        "stuck": 4.6,
         "undos": 0,
         "arrowFailures": 0.73,
         "retypeFailures": 0
       },
       "claude": {
-        "writes": 47.5,
-        "verifyFailures": 8.9,
-        "stuck": 2.4,
-        "undos": 0,
-        "arrowFailures": 0.59,
-        "retypeFailures": 1.39
+        "writes": 137.5,
+        "verifyFailures": 18.9,
+        "stuck": 3.4,
+        "undos": 1,
+        "arrowFailures": 5.59,
+        "retypeFailures": 6.39
       },
       "msedge": {
-        "writes": 59.1,
-        "verifyFailures": 14.1,
+        "writes": 95.1,
+        "verifyFailures": 20.1,
         "stuck": 0.7,
         "undos": 0.7,
         "arrowFailures": 5.47,
-        "retypeFailures": 3.35
+        "retypeFailures": 5.35
       },
       "msedgewebview2": {
         "writes": 0,
         "verifyFailures": 0,
-        "stuck": 6.1,
+        "stuck": 7.1,
         "undos": 0,
         "arrowFailures": 0,
         "retypeFailures": 0
@@ -99,12 +99,12 @@
         "retypeFailures": 1.46
       },
       "whatsapp.root": {
-        "writes": 14.3,
-        "verifyFailures": 2.4,
+        "writes": 21.3,
+        "verifyFailures": 3.4,
         "stuck": 0,
-        "undos": 0.7,
+        "undos": 1.7,
         "arrowFailures": 0.59,
-        "retypeFailures": 0
+        "retypeFailures": 1
       }
     }
   }

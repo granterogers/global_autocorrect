@@ -3,32 +3,32 @@
   "Apps": {
     "chatgpt": {
       "Writes": 14.1,
-      "VerifyFailures": 2.5,
-      "Stuck": 3.6,
+      "VerifyFailures": 3.5,
+      "Stuck": 4.6,
       "Undos": 0,
       "ArrowFailures": 0.73,
       "RetypeFailures": 0
     },
     "claude": {
-      "Writes": 47.5,
-      "VerifyFailures": 8.9,
-      "Stuck": 2.4,
-      "Undos": 0,
-      "ArrowFailures": 0.59,
-      "RetypeFailures": 1.39
+      "Writes": 137.5,
+      "VerifyFailures": 18.9,
+      "Stuck": 3.4,
+      "Undos": 1,
+      "ArrowFailures": 5.59,
+      "RetypeFailures": 6.39
     },
     "msedge": {
-      "Writes": 59.1,
-      "VerifyFailures": 14.1,
+      "Writes": 95.1,
+      "VerifyFailures": 20.1,
       "Stuck": 0.7,
       "Undos": 0.7,
       "ArrowFailures": 5.47,
-      "RetypeFailures": 3.35
+      "RetypeFailures": 5.35
     },
     "msedgewebview2": {
       "Writes": 0,
       "VerifyFailures": 0,
-      "Stuck": 6.1,
+      "Stuck": 7.1,
       "Undos": 0,
       "ArrowFailures": 0,
       "RetypeFailures": 0
@@ -42,12 +42,12 @@
       "RetypeFailures": 1.46
     },
     "whatsapp.root": {
-      "Writes": 14.3,
-      "VerifyFailures": 2.4,
+      "Writes": 21.3,
+      "VerifyFailures": 3.4,
       "Stuck": 0,
-      "Undos": 0.7,
+      "Undos": 1.7,
       "ArrowFailures": 0.59,
-      "RetypeFailures": 0
+      "RetypeFailures": 1
     }
   }
 }
