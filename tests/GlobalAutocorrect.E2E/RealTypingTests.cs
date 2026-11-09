@@ -44,6 +44,11 @@ public sealed class RealTypingTests
             string noisy = doc.RootElement.GetProperty("noisy").GetString()!, clean = doc.RootElement.GetProperty("clean").GetString()!;
             string[] n = noisy.Split(' '), c = clean.Split(' ');
             if (noisy == clean || n.Length != c.Length || noisy.Length is < 60 or > 150 || n.Any(w => w.Length == 0)) continue;
+            // Only typos inside words (or a space moved by one), so each typed word lines up with the word it should be:
+            // "att end training day n" has the right word count for "attend the training day in" but doesn't line up.
+            var ops = doc.RootElement.GetProperty("ops").EnumerateArray().Select(o => o.GetString()).ToList();
+            if (ops.Any(o => o is not ("neighbour" or "double" or "swap" or "drop" or "misplace" or "apostrophe" or "lowercase"))) continue;
+            if (n.Zip(c).Any(p => p.First != p.Second && Distance(p.First, p.Second) > 2)) continue;
             var mine = new Dictionary<string, string>(StringComparer.Ordinal);
             bool clash = false;
             for (int i = 0; i < n.Length && !clash; i++)
@@ -60,6 +65,19 @@ public sealed class RealTypingTests
         }
         Assert.Equal(4, lines.Count);
         return new Script(lines, fixes);
+    }
+
+    /// <summary>Levenshtein distance, case-insensitive (capitals are a fix of their own, not a misalignment).</summary>
+    private static int Distance(string a, string b)
+    {
+        a = a.ToLowerInvariant(); b = b.ToLowerInvariant();
+        var d = new int[a.Length + 1, b.Length + 1];
+        for (int i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (int i = 1; i <= a.Length; i++)
+            for (int j = 1; j <= b.Length; j++)
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+        return d[a.Length, b.Length];
     }
 
     /// <summary>The model stand-in: every word it knows the answer for is fixed, the rest kept, spacing and lines as sent.</summary>
@@ -81,7 +99,7 @@ public sealed class RealTypingTests
     }
 
     public static TheoryData<string> Editors =>
-        ["notepad", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate"];
+        ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate"];
 
     [Theory]
     [MemberData(nameof(Editors))]
@@ -92,8 +110,16 @@ public sealed class RealTypingTests
         using var app = new AppUnderTest(llm, label: $"realtyping-{editor}");
         var script = Messages.Value;
         string text;
-        if (editor == "notepad")
+        if (editor == "wpf")
         {
+            using var box = new DesktopTests.WpfBox();
+            TypeLikeAPerson(script, seed: 1);
+            text = Settle(() => box.Text);
+        }
+        else if (editor == "notepad")
+        {
+            // Windows Sandbox has no Notepad; the WPF box stands in for a plain desktop field there.
+            if (!File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "notepad.exe"))) Assert.Skip("No Notepad here (Windows Sandbox).");
             using var uia = new UIA3Automation();
             var (_, doc, close) = DesktopTests.OpenNotepad(uia);
             try
@@ -109,7 +135,7 @@ public sealed class RealTypingTests
             try
             {
                 TypeLikeAPerson(script, seed: 1);
-                text = Settle(() => page.EvaluateAsync<string>("window.getText()").GetAwaiter().GetResult());
+                text = Settle(() => page.EvaluateAsync<string>(ShownText).GetAwaiter().GetResult());
             }
             finally
             {
@@ -127,6 +153,19 @@ public sealed class RealTypingTests
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
     }
 
+    /// <summary>
+    /// The text as the editor shows it, line breaks included. Some pages' getText() joins paragraphs with nothing between
+    /// them (ProseMirror's textContent), which made four lines read as one.
+    /// </summary>
+    internal const string ShownText = """
+        () => {
+          const t = document.querySelector('textarea'); if (t) return t.value;
+          const f = document.querySelector('#ed_ifr'); if (f) return f.contentDocument.body.innerText;
+          const e = document.querySelector('.ProseMirror, .ck-editor__editable, .ql-editor, [data-slate-editor], [contenteditable=true]');
+          return e ? e.innerText : window.getText();
+        }
+        """;
+
     private sealed record Result(int NeedFix, int Fixed, int Missed, List<string> Damaged);
 
     /// <summary>
@@ -135,7 +174,8 @@ public sealed class RealTypingTests
     /// </summary>
     private static Result Score(Script script, string text)
     {
-        var got = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace(' ', ' ')
+        // An editor's own smart quotes (ProseMirror turns ' into ’) are the editor's doing, not damage.
+        var got = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace(' ', ' ').Replace('’', '\'').Replace('‘', '\'')
             .Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).ToList();
         int need = 0, fixedCount = 0, missed = 0;
         var damaged = new List<string>();

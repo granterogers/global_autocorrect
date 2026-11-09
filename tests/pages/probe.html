@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><title>GA test: probe</title><style>body{font:16px "Segoe UI",sans-serif;margin:24px} #ed{display:block;width:720px;min-height:160px;padding:8px;border:1px solid #888;outline:none;white-space:pre-wrap}</style></head>
+<body><div id="ed" contenteditable="true" spellcheck="false"></div><script>
+// D105 probe: the order in which the editor handles keys, with the caret offset when each typed character went in.
+const ed = document.getElementById('ed');
+window.log = [];
+const t0 = performance.now();
+function caret() { const s = getSelection(); if (!s.rangeCount) return -1; const r = s.getRangeAt(0).cloneRange(); r.selectNodeContents(ed); r.setEnd(s.anchorNode, s.anchorOffset); return r.toString().length; }
+ed.addEventListener('keydown', e => window.log.push(`${(performance.now() - t0).toFixed(1)} down ${e.key} at ${caret()}`));
+ed.addEventListener('beforeinput', e => window.log.push(`${(performance.now() - t0).toFixed(1)} input ${e.inputType} ${JSON.stringify(e.data)} at ${caret()}`));
+window.getText = () => ed.innerText;
+window.resetLog = () => { window.log = []; };
+ed.focus();
+</script></body></html>

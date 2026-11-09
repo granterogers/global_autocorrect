@@ -107,6 +107,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         KBDLLHOOKSTRUCT k;
         unsafe { k = *(KBDLLHOOKSTRUCT*)lParam; }   // direct read: no marshalling on the hot path
         if (k.dwExtraInfo == InjectionTag.Value) return CallNextHookEx(_kb, nCode, wParam, lParam);   // ours (10.7.b)
+        // D105: a fenced edit batch: swallowed whole if a key or a held modifier got to the app after the gate's last look.
+        if (WriteFence.IsFenced(k.dwExtraInfo))
+            return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq), ModifierForFence()) ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
         bool injected = (k.flags & LLKHF_INJECTED) != 0 && !_untaggedInjectedIsPhysical;
         bool down = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;
@@ -153,8 +156,18 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
     /// <summary>Modifiers as this hook has seen them: exact about order, unlike Windows' own key state (4.8.a).</summary>
     public bool ModifiersDown => _ctrl || _alt || _shift || _win;
 
+    private int _modifierChangedTick;
+
+    /// <summary>
+    /// D105: a modifier the user holds, for the fence. This hook's record is exact about order, but a key-up it never saw
+    /// would leave it stuck and block every fix, so it counts only if Windows agrees or it changed in the last half second.
+    /// </summary>
+    private bool ModifierForFence() =>
+        (_ctrl || _alt || _shift || _win) && (ModifierHeld || unchecked(Environment.TickCount - Volatile.Read(ref _modifierChangedTick)) < 500);
+
     private void TrackModifier(uint vk, bool down)
     {
+        if (IsModifier(vk)) Volatile.Write(ref _modifierChangedTick, Environment.TickCount);
         switch (vk)
         {
             case VK_CONTROL or VK_LCONTROL or VK_RCONTROL: _ctrl = down; break;

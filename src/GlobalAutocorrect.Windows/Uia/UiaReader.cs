@@ -67,6 +67,9 @@ public sealed class UiaReader
         try
         {
             pid = el.CurrentProcessId;
+            // D105: UI Automation reported process 0 for Edge's focused field in Windows Sandbox, which read as the "Idle"
+            // process, taken as elevated, so nothing was corrected. The field has focus, so its window is in front.
+            if (pid == 0) { GlobalAutocorrect.Windows.Native.NativeMethods.GetWindowThreadProcessId(GlobalAutocorrect.Windows.Native.NativeMethods.GetForegroundWindow(), out uint fg); pid = (int)fg; }
             proc = ProcessName(pid);
             type = el.CurrentLocalizedControlType ?? "";
             if (el.CurrentIsPassword != 0) return UiaSnapshot.Fail(ReadStatus.Password, pid, proc, type);   // 8.3

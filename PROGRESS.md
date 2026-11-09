@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D105 (4.6.c, 10.7.b, 2.8):** screen tests run in Windows Sandbox (muted, hidden, tray icon); edit batches are fenced so a key already on its way can no longer put a fix in the wrong place or run it with Shift held. Real typing: WPF, textarea, contenteditable 9/9, nothing damaged. Lexical still open. 5 tests.
 - **D104 (0.2, 4.1, 11.3):** careful mode removed; new real-typing screen test (types on without stopping, real Shift presses, 9 editors) and `scripts/realtyping.ps1` to run it when the user is away. First run pending.
 - **D103 (4.6.d):** a PC no longer counts its own lessons twice: the brain keeps each PC's counts apart and the app leaves its own out. 1 test.
 - **D102 (4.6.d, 9.3.g):** the app's learning and tuning are now a downloadable "brain" (`brain/brain.json`), checked for every 15 minutes and applied without a reinstall; the daily learning task runs with no window. 6 tests.

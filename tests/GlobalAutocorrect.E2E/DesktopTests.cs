@@ -212,7 +212,7 @@ public sealed class DesktopTests
     /// A plain WPF TextBox in a window of the test process: a desktop field with no autocorrect of its own, so what it
     /// shows is only what the user typed and what the app changed.
     /// </summary>
-    private sealed class WpfBox : IDisposable
+    internal sealed class WpfBox : IDisposable
     {
         private readonly System.Windows.Window _window;
         private readonly System.Windows.Controls.TextBox _box;

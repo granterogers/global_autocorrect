@@ -28,6 +28,8 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
 
     public TextWindow ReadWindow() => ReadWindow(400, 80);
 
+    private string _lastStatus = "";
+
     /// <summary>D97: how long reads take per program, so the app can do less where they are slow. Null: not tracked.</summary>
     public GlobalAutocorrect.Core.Telemetry.ReadCost? Cost { get; init; }
 
@@ -53,6 +55,10 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             _ => TargetStatus.Unavailable,
         };
         if (status == TargetStatus.Ok && gate?.Invoke(s) is { } blocked) status = blocked;
+        // D105: why a field is left alone, once per change (program name and a status, never text): in Windows Sandbox
+        // the screen tests made no fixes at all, and nothing said why.
+        string why = $"{s.ProcessName} {status}";
+        if (why != _lastStatus) { _lastStatus = why; if (status != TargetStatus.Ok) diagnose?.Invoke($"read: app={s.ProcessName} status={status} (D105)"); }
         if (status != TargetStatus.Ok) return TextWindow.Unavailable(status, id);
         _lastPid = s.ProcessId;
         LastSnapshot = s;
@@ -90,6 +96,33 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         bool sent = SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
         timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         return sent;
+    }
+
+    public bool LastEditBlocked { get; private set; }
+
+    /// <summary>
+    /// D105: the edit batch, fenced: the hook lets it through only if no key reached the app since the gate's last look
+    /// (<see cref="GlobalAutocorrect.Windows.Input.WriteFence"/>). Waits up to 150 ms for the hook's verdict; with no verdict (no hook) it counts as sent.
+    /// </summary>
+    public bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq)
+    {
+        LastEditBlocked = false;
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
+        if (pid != _lastPid) return false;
+        _beforeWrite = LastSnapshot?.Before ?? "";
+        long started = Stopwatch.GetTimestamp();
+        nuint tag = GlobalAutocorrect.Windows.Input.WriteFence.Arm(expectedKeySeq);
+        bool sent = new SendInputWriter(tag).ApplyEdit(caretDistance, deleteCount, replacement);
+        timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        if (!sent) return false;
+        for (int i = 0; i < 150 && GlobalAutocorrect.Windows.Input.WriteFence.Blocked(tag) is null; i++) Thread.Sleep(1);
+        if (GlobalAutocorrect.Windows.Input.WriteFence.Blocked(tag) == true)
+        {
+            LastEditBlocked = true;
+            diagnose?.Invoke($"write blocked: app={LastSnapshot?.ProcessName ?? "?"} a key reached the app first (D105, no text)");
+            return false;
+        }
+        return true;
     }
 
     /// <summary>D99: the caret was left short of the user's place after a fix: step it back, if focus hasn't moved.</summary>

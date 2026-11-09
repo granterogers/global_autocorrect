@@ -21,6 +21,15 @@ public interface ITextTarget
     bool ApplyEdit(int caretDistance, int deleteCount, string replacement);
 
     /// <summary>
+    /// D105: the same batch, applied only if no key reached the app after the key count <paramref name="expectedKeySeq"/>
+    /// the gate checked (the hook swallows it otherwise, and <see cref="LastEditBlocked"/> says so).
+    /// </summary>
+    bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq) => ApplyEdit(caretDistance, deleteCount, replacement);
+
+    /// <summary>D105: the last fenced edit was swallowed because a key got in first: nothing changed, try again later.</summary>
+    bool LastEditBlocked => false;
+
+    /// <summary>
     /// D46: the editor handles a burst of arrow keys late (CKEditor 5, Teams' message box: it moves its own cursor from
     /// the browser's selection events, which arrive after the backspaces), so fixes delete back and retype instead.
     /// </summary>

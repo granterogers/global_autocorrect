@@ -204,7 +204,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
-        long seqAtWrite = keys.LatestKeySeq;
         // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed
         // again rather than stepped over with Left/Right. Edge applied the arrow keys out of step with a key typed
         // straight after the batch, leaving "thed og" (found by E2E). No arrow keys, nothing to fall out of step.
@@ -223,9 +222,20 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
         // D100: Shift (or Ctrl, Alt) pressed during the read: wait for it to be let go, next tick.
         if (w.Layer != Layer.Undo && keys.ModifierHeld) return false;
-        bool sent = retype
-            ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail)
-            : target.ApplyEdit(caretDistance, deleteCount, w.Replacement);
+        // D105: the last look for a key, right before sending: the checks above (mistakes, words, mentions) take long
+        // enough for a key to arrive, and a key that reaches the app before the batch puts the whole fix one place off
+        // ("oe has" fixed to "oerhas", real-typing test). Edge itself never reorders a batch and later keys (probe).
+        if (keys.LatestKeySeq != session.LastKeySeq) return false;
+        long seqAtWrite = keys.LatestKeySeq;
+        bool sent = w.Layer == Layer.Undo
+            ? (retype ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail) : target.ApplyEdit(caretDistance, deleteCount, w.Replacement))
+            // D105: fenced: applied only if no key got to the app after this look (undo runs with Ctrl held, so it isn't).
+            : retype
+                ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail, seqAtWrite)
+                : target.ApplyEdit(caretDistance, deleteCount, w.Replacement, seqAtWrite);
+        // D105: a key seen between that look and the send most likely reached the app first (logged with the outcome).
+        bool raced = keys.LatestKeySeq != seqAtWrite;
+        if (!sent && target.LastEditBlocked) return false;   // nothing reached the app: the next tick tries again
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
         string before = TextNorm.Comparable(win.Before);
@@ -244,7 +254,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
             // D95: which way the failed fix was written (no text), so a report like "not picking it up" can be answered.
-            WriteDropped?.Invoke(w.Layer, $"verify-failed {(retype ? "retype" : "arrows")} distance={caretDistance} lines={tail.Count(c => c == '\n')}");
+            WriteDropped?.Invoke(w.Layer, $"verify-failed {(retype ? "retype" : "arrows")} distance={caretDistance} lines={tail.Count(c => c == '\n')}{(raced ? " raced" : "")}");
             if (!retype && caretDistance > 0 && Health is not null && !Health.RetypeIn(target.AppName))
             {
                 Health.ArrowsFailed(target.AppName);   // D89: this program's fixes are retyped from now on

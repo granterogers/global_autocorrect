@@ -93,6 +93,19 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D99: like Intercom's email editor: of the Right presses that end an edit batch, only this many move the caret.</summary>
     public int? KeepsRightArrowsUpTo { get; set; }
 
+    /// <summary>D105: how many fenced edits the hook swallows (a key got to the app first) before letting one through.</summary>
+    public int BlockFencedEdits { get; set; }
+
+    public bool LastEditBlocked { get; private set; }
+
+    /// <summary>D105: a fenced edit: swallowed whole while <see cref="BlockFencedEdits"/> lasts, else applied as usual.</summary>
+    public bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq)
+    {
+        LastEditBlocked = BlockFencedEdits > 0;
+        if (LastEditBlocked) { BlockFencedEdits--; return false; }
+        return ApplyEdit(caretDistance, deleteCount, replacement);
+    }
+
     /// <summary>D99: Right presses sent on their own, to put the caret back.</summary>
     public bool MoveCaretRight(int count)
     {
