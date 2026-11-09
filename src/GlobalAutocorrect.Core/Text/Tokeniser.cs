@@ -9,7 +9,9 @@ namespace GlobalAutocorrect.Core.Text;
 /// </summary>
 public static partial class Tokeniser
 {
-    [GeneratedRegex(@"\G(?:(?:https?://|www\.)\S+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})", RegexOptions.CultureInvariant)]
+    // D107: also any scheme (ftp://, file://…) and a link pasted without one, "example.co.uk/path": a domain followed by
+    // a slash. A bare "word.Word" stays a word, since a missing space after a full stop is a typo to fix.
+    [GeneratedRegex(@"\G(?:(?:[A-Za-z][A-Za-z0-9+.-]*://|www\.)\S+|[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/\S*|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})", RegexOptions.CultureInvariant)]
     private static partial Regex UrlOrEmail();
 
     public static IReadOnlyList<Token> Tokenise(string text)

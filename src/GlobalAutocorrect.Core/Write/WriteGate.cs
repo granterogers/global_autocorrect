@@ -141,6 +141,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     {
         string typed = session.Typed;
         if (w.End > typed.Length || typed[w.Start..w.End] != w.Original) { Drop(w, "text-moved"); return false; }
+        // D107 (4.2): never a fix inside text that came with a paste (read in as context only).
+        if (w.Layer != Layer.Undo && w.Start < Math.Min(session.ProtectedEnd, typed.Length)) { Drop(w, "pasted"); return false; }
         string tail = typed[w.End..];
         // D39 (was D8, "never"): a fix may reach back over a couple of line breaks the user typed in this session
         // ("...the popup." Enter Enter "Apologies"): every editor tested moves over a paragraph break in one Left, and the

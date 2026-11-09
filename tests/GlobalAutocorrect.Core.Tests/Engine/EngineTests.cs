@@ -319,14 +319,15 @@ public sealed class EngineTests
     // ---- Only the user's own typing (4.2, 14.4) ----------------------------------------------------
 
     [Fact]
-    public void R4_2_PastedTextInTheParagraphIsCorrectedToo_D43()
+    public void R4_2_PastedTextInTheParagraphIsLeftAsPasted_D107()
     {
-        // User: "you should be seeing everything". Pasted text in the paragraph is corrected along with what was typed.
+        // D43 corrected pasted text with the paragraph ("you should be seeing everything"); D107, after a hyperlink was
+        // broken, the user chose "never touch pasted text" (4.2). It is still read as context for what is typed after.
         var h = new Harness(model: s => s.Replace("teh", "the"));
         h.Engine.OnInput(h.Ed.Paste("I saw teh cat. "));
         h.Type("Then left. ");
         h.Wait(3000);
-        Assert.StartsWith("I saw the cat. ", h.Text);
+        Assert.StartsWith("I saw teh cat. ", h.Text);
     }
 
     [Fact]

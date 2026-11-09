@@ -68,6 +68,8 @@ public sealed class TypingSession
         _typed.Clear();
         Generation++;
         LastBreak = reason;
+        Unprotect();
+        _afterPaste = reason == SessionBreakReason.Paste;   // D107: what is read in next comes with the paste
         Restarted?.Invoke(reason);
     }
 
@@ -137,6 +139,11 @@ public sealed class TypingSession
         string old = _typed.ToString();
         long oldGeneration = Generation;
         _typed.Clear().Append(para);
+        // D107: the pasted part stays protected while it is still in the paragraph read; right after a paste, everything
+        // before what was typed since is the paste's.
+        if (_afterPaste && para.EndsWith(old, StringComparison.Ordinal) && para.Length > old.Length) Protect(para[..^old.Length], para.Length - old.Length);
+        else if (_protected.Length > 0 && para.IndexOf(_protected, StringComparison.Ordinal) is var k and >= 0) ProtectedEnd = k + _protected.Length;
+        else Unprotect();
         Generation++;
         LastBreak = SessionBreakReason.Resync;
         Restarted?.Invoke(SessionBreakReason.Resync);
@@ -162,7 +169,34 @@ public sealed class TypingSession
         int extra = para.Length - t.Length;
         if (extra <= 0 || !para.EndsWith(t, StringComparison.Ordinal) || para.Length > MaxLength) return 0;
         _typed.Insert(0, para[..extra]);
+        if (_afterPaste) Protect(para[..extra], extra);   // D107
+        else if (ProtectedEnd > 0) ProtectedEnd += extra;
         return extra;
+    }
+
+    // ---- D107: pasted text is context, never corrected (4.2) -------------------------------------------------------
+
+    /// <summary>
+    /// D107, user report "you also screwed up pasting a hyperlink... don't do that": the front of the record that was read
+    /// in from the field after a paste (D43). The AI sees it as context, but no fix may start before this (4.2: text
+    /// inserted by paste is never corrected). Kept across resyncs while the same text is still there.
+    /// </summary>
+    public int ProtectedEnd { get; private set; }
+
+    private string _protected = "";
+    private bool _afterPaste;
+
+    private void Protect(string text, int end)
+    {
+        _protected = text;
+        ProtectedEnd = end;
+        _afterPaste = false;
+    }
+
+    private void Unprotect()
+    {
+        _protected = "";
+        ProtectedEnd = 0;
     }
 
     /// <summary>[start, end) of the last two words (the word being typed and the one before it), for 4.6.a.</summary>
