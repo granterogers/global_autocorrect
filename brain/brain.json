@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "updated": "2026-11-09T12:56:55Z",
+  "updated": "2026-11-09T12:59:26Z",
   "apps": {
     "chatgpt": {
       "writes": 14.1,
@@ -52,6 +52,8 @@
     }
   },
   "mistakes": {},
-  "tuning": {},
+  "tuning": {
+    "WriteGapMs": 150
+  },
   "write": {}
 }
