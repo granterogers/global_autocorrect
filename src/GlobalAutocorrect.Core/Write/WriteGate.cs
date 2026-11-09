@@ -216,6 +216,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. D89:
             // so does any program where a fix stepped to with arrows has gone wrong (learnt, WhatsApp's editor). Never
             // across a line break: retyping it means pressing Enter, and Enter sends the message in Teams and WhatsApp.
+            // D109 tried retyping across a line break with Shift+Enter: in CKEditor a 131-character retype that included one
+            // came out with capitals and "<" for ",", so fixes on an earlier line stay skipped there (a miss, never damage).
             if (target.RetypeInsteadOfArrows && (tail.Contains('\n') || caretDistance > options.RetypeMaxDistance)) { Drop(w, "retype-unsafe"); return false; }
             // D101, user report "if I press a new line it stops correcting": a program that only learnt to retype (D89)
             // dropped every fix on an earlier line. Arrow keys work there often enough, and D99 puts a caret left short

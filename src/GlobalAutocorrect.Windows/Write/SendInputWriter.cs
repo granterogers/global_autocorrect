@@ -93,6 +93,17 @@ public sealed class SendInputWriter(nuint tag)
         bool caps = CapsLockOn();
         foreach (char c in text)
         {
+            if (c == '\n')
+            {
+                // D109: a line break in retyped text is Shift+Enter, a new line without sending in chat editors (Enter
+                // sends in Teams). VkKeyScan gives Ctrl+Enter for "\n", which some editors take as "send".
+                ushort shiftScan = (ushort)MapVirtualKeyW(VK_SHIFT, MAPVK_VK_TO_VSC), enterScan = (ushort)MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
+                list.Add(Key(VK_SHIFT, shiftScan, 0));
+                list.Add(Key(VK_RETURN, enterScan, 0));
+                list.Add(Key(VK_RETURN, enterScan, KEYEVENTF_KEYUP));
+                list.Add(Key(VK_SHIFT, shiftScan, KEYEVENTF_KEYUP));
+                continue;
+            }
             short scan = VkKeyScanExW(c, hkl);
             byte vk = (byte)(scan & 0xFF), mods = (byte)((scan >> 8) & 0xFF);
             if (scan == -1 || (mods & 0x06) != 0)   // no key, or needs Ctrl/Alt (AltGr): fall back to a Unicode packet

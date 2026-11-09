@@ -175,8 +175,8 @@ public sealed class RealTypingTests
     /// </summary>
     internal const string ShownText = """
         () => {
+          if (document.querySelector('#ed_ifr')) return window.getText();   // TinyMCE first: it hides an empty textarea
           const t = document.querySelector('textarea'); if (t) return t.value;
-          const f = document.querySelector('#ed_ifr'); if (f) return f.contentDocument.body.innerText;
           const e = document.querySelector('.ProseMirror, .ck-editor__editable, .ql-editor, [data-slate-editor], [contenteditable=true]');
           return e ? e.innerText : window.getText();
         }

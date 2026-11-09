@@ -66,7 +66,7 @@ public static class TextNorm
                     if (i + 1 < s.Length && s[i + 1] == '\n') i++;
                     break;
                 case ' ': sb.Append(' '); break;
-                case '​' or '﻿': break;
+                case '\u200B' or '\uFEFF' or '\u2060': break;   // zero-width space, BOM, word joiner (D109: CKEditor puts U+2060 by a soft line break)
                 case '‘' or '’': sb.Append('\''); break;
                 case '“' or '”': sb.Append('"'); break;
                 default: sb.Append(c); break;

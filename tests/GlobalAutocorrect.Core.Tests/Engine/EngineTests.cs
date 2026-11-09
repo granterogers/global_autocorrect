@@ -607,7 +607,8 @@ public sealed class EngineTests
     [Fact]
     public void R10_7_a_InCkEditorAFixIsNeverRetypedAcrossALineBreak_D46()
     {
-        // Retyping a line break means pressing Enter, and Enter sends the message in Teams: such a fix is skipped.
+        // Retyping a line break means pressing Enter, and Enter sends the message in Teams: such a fix is skipped. D109
+        // tried Shift+Enter instead, but a long retype with one in it damaged text in CKEditor, so the skip stays.
         var h = new Harness(model: FixTheir, latencyMs: 300);
         h.Ed.RetypeInsteadOfArrows = true;
         h.Type("i went their yesterday\nand more");
