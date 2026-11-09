@@ -9,7 +9,7 @@ internal static class Program
           GlobalAutocorrect.DataGen freq --words <words.txt> --assets <assetsDir> --out <freq_en_GB.txt>
           GlobalAutocorrect.DataGen ngram --sentences <sentences.txt> --assets <assetsDir> --out <ngram.bin> [--min-count <int>]
           GlobalAutocorrect.DataGen userstyle --tuning <tuning.jsonl> --out <userstyle.jsonl> --seed <int> --per-kind <int>
-          GlobalAutocorrect.DataGen learning --local <apphealth.json> --pc <id> --dir <data/learning> --out <app-profiles.json>
+          GlobalAutocorrect.DataGen learning --local <apphealth.json> --pc <id> --dir <data/learning> --out <brain/brain.json>
         """;
 
     private static int Main(string[] args)

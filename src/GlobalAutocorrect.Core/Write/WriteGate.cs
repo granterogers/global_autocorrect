@@ -106,9 +106,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         return false;
     }
 
-    /// <summary>D98: how long a fix that steps back over words waits without a key in a program whose fixes have gone wrong.</summary>
-    public const int ShakyAppGapMs = 600;
-
     /// <summary>
     /// D98, user report (Intercom note, "didn't catch that"): in a program where a fix stepped to with the arrow keys has
     /// gone wrong, a fix with more than a few characters between it and the caret waits for a real pause, not a 150 ms gap
@@ -119,7 +116,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     private bool QuietEnough(PendingWrite w, string app, long now)
     {
         if (w.Layer == Layer.Undo || Health is null || session.Typed.Length - w.End <= 3) return true;
-        return now - keys.LastKeyAtMs >= ShakyAppGapMs || !Health.ArrowsShaky(app);
+        return now - keys.LastKeyAtMs >= options.ShakyAppGapMs || !Health.ArrowsShaky(app);
     }
 
     private bool Ready(PendingWrite w, long now)
@@ -226,11 +223,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. D89:
             // so does any program where a fix stepped to with arrows has gone wrong (learnt, WhatsApp's editor). Never
             // across a line break: retyping it means pressing Enter, and Enter sends the message in Teams and WhatsApp.
-            if (target.RetypeInsteadOfArrows && (tail.Contains('\n') || caretDistance > 300)) { Drop(w, "retype-unsafe"); return false; }
+            if (target.RetypeInsteadOfArrows && (tail.Contains('\n') || caretDistance > options.RetypeMaxDistance)) { Drop(w, "retype-unsafe"); return false; }
             // D101, user report "if I press a new line it stops correcting": a program that only learnt to retype (D89)
             // dropped every fix on an earlier line. Arrow keys work there often enough, and D99 puts a caret left short
             // back, so the fix is stepped to instead.
-            retype = !(tail.Contains('\n') || caretDistance > 300);
+            retype = !(tail.Contains('\n') || caretDistance > options.RetypeMaxDistance);
         }
         // D100: Shift (or Ctrl, Alt) pressed during the read: wait for it to be let go, next tick.
         if (w.Layer != Layer.Undo && keys.ModifierHeld) return false;

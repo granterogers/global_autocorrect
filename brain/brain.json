@@ -1,0 +1,57 @@
+{
+  "format": 1,
+  "updated": "2026-11-09T12:56:55Z",
+  "apps": {
+    "chatgpt": {
+      "writes": 14.1,
+      "verifyFailures": 2.5,
+      "stuck": 3.6,
+      "undos": 0,
+      "arrowFailures": 0.73,
+      "retypeFailures": 0
+    },
+    "claude": {
+      "writes": 42.5,
+      "verifyFailures": 8.9,
+      "stuck": 2.4,
+      "undos": 0,
+      "arrowFailures": 0.59,
+      "retypeFailures": 1.39
+    },
+    "msedge": {
+      "writes": 59.1,
+      "verifyFailures": 14.1,
+      "stuck": 0.7,
+      "undos": 0.7,
+      "arrowFailures": 5.47,
+      "retypeFailures": 3.35
+    },
+    "msedgewebview2": {
+      "writes": 0,
+      "verifyFailures": 0,
+      "stuck": 6.1,
+      "undos": 0,
+      "arrowFailures": 0,
+      "retypeFailures": 0
+    },
+    "notepad": {
+      "writes": 18.8,
+      "verifyFailures": 3.6,
+      "stuck": 0,
+      "undos": 0,
+      "arrowFailures": 1.46,
+      "retypeFailures": 1.46
+    },
+    "whatsapp.root": {
+      "writes": 13.3,
+      "verifyFailures": 2.4,
+      "stuck": 0,
+      "undos": 0.7,
+      "arrowFailures": 0.59,
+      "retypeFailures": 0
+    }
+  },
+  "mistakes": {},
+  "tuning": {},
+  "write": {}
+}

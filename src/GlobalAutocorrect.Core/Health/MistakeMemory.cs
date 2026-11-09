@@ -72,6 +72,13 @@ public sealed class MistakeMemory
         }
     }
 
+    /// <summary>D102: takes a new brain's shared fingerprints while running. This PC's own are kept.</summary>
+    public void UseShipped(IEnumerable<string> fingerprints)
+    {
+        var s = new HashSet<string>(fingerprints, StringComparer.Ordinal);
+        lock (_lock) _shipped = s;
+    }
+
     public void Save()
     {
         if (_path is null) return;

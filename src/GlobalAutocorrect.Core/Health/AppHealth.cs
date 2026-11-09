@@ -69,6 +69,7 @@ public sealed class AppHealth
     private readonly Func<DateOnly> _today;
     private Dictionary<string, AppStats> _local = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, AppStats> _shipped = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _write = new(StringComparer.OrdinalIgnoreCase);   // D102
     private DateOnly _day;
     private bool _dirty;
 
@@ -122,11 +123,32 @@ public sealed class AppHealth
     public bool RetypeIn(string app)
     {
         if (string.IsNullOrEmpty(app)) return false;
+        if (WriteRule(app) is { } rule) return rule == "retype";   // D102: the brain says how to write here
         var s = StatsFor(app);
         return s.ArrowFailures >= RetypeAfter && s.ArrowFailures > s.RetypeFailures;
     }
     /// <summary>D98: a fix stepped to with the arrow keys has gone wrong here recently (either way of writing may follow).</summary>
-    public bool ArrowsShaky(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).ArrowFailures >= RetypeAfter;
+    public bool ArrowsShaky(string app) =>
+        !string.IsNullOrEmpty(app) && (WriteRule(app) == "retype" || StatsFor(app).ArrowFailures >= RetypeAfter);
+
+    /// <summary>D102: "retype" or "arrows" when the brain says how to write in <paramref name="app"/>, else null.</summary>
+    private string? WriteRule(string app)
+    {
+        lock (_lock) return _write.TryGetValue(app, out var r) ? r.ToLowerInvariant() : null;
+    }
+
+    /// <summary>
+    /// D102: takes a new brain's profiles (what other PCs learned) and per-program write rules, while running. This PC's
+    /// own counts are kept.
+    /// </summary>
+    public void UseShipped(IReadOnlyDictionary<string, AppStats> apps, IReadOnlyDictionary<string, string>? write = null)
+    {
+        lock (_lock)
+        {
+            _shipped = new Dictionary<string, AppStats>(apps, StringComparer.OrdinalIgnoreCase);
+            _write = write is null ? new(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(write, StringComparer.OrdinalIgnoreCase);
+        }
+    }
 
     /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
     public const double RetypeAfter = 0.25;

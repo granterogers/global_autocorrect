@@ -40,6 +40,15 @@ public sealed record EngineOptions
     /// <summary>4.4.b: current sentence plus up to two before it.</summary>
     public int ContextSentences { get; init; } = 3;
 
+    /// <summary>D98: in a program whose arrow-key fixes went wrong recently, a fix far behind the caret waits this long without a key.</summary>
+    public int ShakyAppGapMs { get; init; } = 600;
+
+    /// <summary>D101: how many earlier paragraphs are looked back over for lines the AI hasn't seen yet.</summary>
+    public int ParagraphsLookedBack { get; init; } = 3;
+
+    /// <summary>D89/D101: a fix further back than this is never retyped (too much to delete and type again).</summary>
+    public int RetypeMaxDistance { get; init; } = 300;
+
     public bool InstantEnabled { get; init; } = true;
 
     /// <summary>D55: spacing and punctuation fixed by the instant layer (space before ".", two spaces, "i", sentence starts).</summary>

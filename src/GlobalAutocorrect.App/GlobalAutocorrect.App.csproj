@@ -22,5 +22,7 @@
     <None Include="..\..\assets\**\*" Exclude="..\..\assets\icons\src\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="..\..\assets\icons\app.ico" Link="assets\icons\app.ico" />
     <None Include="..\..\scripts\manifest.json" Link="assets\manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- D102: the brain shipped with the build; the app downloads newer ones from the repository while running. -->
+    <None Include="..\..\brain\brain.json" Link="assets\brain.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,4 @@
+# D102: pushes that change only these paths are data, not a new version. The version-on-push hook doesn't tag them,
+# so no release is built: running copies download brain/brain.json themselves within 15 minutes.
+brain/
+data/learning/

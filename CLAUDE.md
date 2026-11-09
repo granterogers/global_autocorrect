@@ -35,6 +35,12 @@ Core tests only: `dotnet test tests/GlobalAutocorrect.Core.Tests`
 
   The user gives feedback and expects to find it fixed in the running app without doing anything. If a step fails, say
   so: don't push failing code, and leave the previous install running.
+- **Prefer the brain over a rebuild (D102).** If a fix can be made in `brain/brain.json` (a `tuning` value from
+  `Brain.Knobs`, a per-program `write` rule of "retype" or "arrows"), make it there: bump `updated` (UTC ISO 8601), run
+  `pwsh ./check.ps1 fast` (it checks the file loads and every entry is known), commit and plain `git push`. The hook
+  doesn't tag pushes that only touch paths in `.versionignore`, so no release or deploy is needed. Every running copy
+  downloads the brain within 15 minutes. Code changes still follow the four steps above. If a fix needs a new kind of
+  value, add it to the brain in code once (a release), then tune it from the brain afterwards.
 - Requirement IDs (e.g. `4.5.a`) go in test names (`R4_5_a_...`), commit messages and PROGRESS.md.
 - Never log or persist typed text (8.6). Counts and error types only.
 - Models and llama.cpp zips are cached outside the repo in `%LOCALAPPDATA%\GlobalAutocorrect\cache` (11.4).

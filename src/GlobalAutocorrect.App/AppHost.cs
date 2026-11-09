@@ -5,6 +5,8 @@ using GlobalAutocorrect.Core.Dictionary;
 using GlobalAutocorrect.Core.Engine;
 using GlobalAutocorrect.Core.Health;
 using GlobalAutocorrect.Core.Instant;
+using GlobalAutocorrect.Core.Learning;
+using System.Net.Http;
 using GlobalAutocorrect.Core.Prediction;
 using GlobalAutocorrect.Core.Session;
 using GlobalAutocorrect.Core.Settings;
@@ -136,8 +138,17 @@ public sealed class AppHost : IAsyncDisposable
         _suggester = SymSpellSuggester.FromAssets(AssetsDir);
         _ngram = NgramModel.FromAssets(AssetsDir);
         Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare };   // D80
-        Health.Load(Path.Combine(AssetsDir, "app-profiles.json"));   // D81: this PC's counts plus what was learned elsewhere
-        Mistakes.Load(Path.Combine(AssetsDir, "mistakes.json"));     // D84: this PC's mistakes plus those shared by other PCs
+        Health.Load();     // D81: this PC's counts; what was learned elsewhere comes from the brain (D102)
+        Mistakes.Load();   // D84: this PC's mistakes; those shared by other PCs come from the brain (D102)
+        _brain = new BrainMonitor(Path.Combine(DataDir, "brain.json"), Path.Combine(AssetsDir, "brain.json"), FetchBrainAsync,
+            () => Settings.CheckForUpdates && Environment.GetEnvironmentVariable("GA_E2E") != "1", Diagnose);
+        UseBrain(_brain.LoadLocal());
+        _brain.Changed += b =>
+        {
+            UseBrain(b);
+            if (_ui is not null) _ui.Post(_ => RetuneEngine(), null);
+            else RetuneEngine();
+        };
 
         string build = JsonDocument.Parse(File.ReadAllText(Path.Combine(AssetsDir, "manifest.json"))).RootElement.GetProperty("llama").GetProperty("build").GetString()!;
         var host = new LlamaServerHost(new ServerOptions(
@@ -194,7 +205,48 @@ public sealed class AppHost : IAsyncDisposable
         var every = Environment.GetEnvironmentVariable("GA_E2E") == "1" ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(5);
         _maintenance = new Timer(_ => _ = MaintainAsync(), null, every, every);
         if (!Settings.Paused && !MockedModel) _ = _llm.StartAsync().ContinueWith(_ => StateChanged?.Invoke(), TaskScheduler.Default);
+        _brain.Start(TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(Brain.CheckEveryMinutes));   // D102
         await Task.CompletedTask;
+    }
+
+    // ---- D102: the brain, downloaded and applied while running -------------------------------------------------------
+
+    private BrainMonitor? _brain;
+    private IReadOnlyDictionary<string, double>? _tuning;
+    private readonly HttpClient _brainHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
+
+    /// <summary>When the brain in use was last changed (shown on the About page).</summary>
+    public DateTimeOffset? BrainUpdated => _brain?.Current.UpdatedAt is { } d && d != DateTimeOffset.MinValue ? d : null;
+
+    private void UseBrain(BrainFile b)
+    {
+        Health.UseShipped(b.Apps, b.Write);
+        Mistakes.UseShipped(b.Mistakes.Keys);
+        _tuning = b.Tuning;
+    }
+
+    /// <summary>The engine is rebuilt only when the brain changed a value it runs with; on the UI thread, like a settings change.</summary>
+    private void RetuneEngine()
+    {
+        if (_loop is null) return;
+        if (Settings.ToEngineOptions(Brain.Tune(new EngineOptions(), _tuning)) != _engineOptions) _loop.Replace(BuildEngine());
+        StateChanged?.Invoke();
+    }
+
+    private async Task<BrainDownload?> FetchBrainAsync(string? etag, CancellationToken ct)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, Brain.Url);
+            request.Headers.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("GlobalAutocorrect", "1"));
+            if (etag is not null) request.Headers.TryAddWithoutValidation("If-None-Match", etag);
+            using var response = await _brainHttp.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified) return new BrainDownload(true, null, etag);
+            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > Brain.MaxBytes) return null;
+            string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            return new BrainDownload(false, body, response.Headers.ETag?.Tag);
+        }
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException or IOException) { return null; }
     }
 
     /// <summary>
@@ -217,7 +269,7 @@ public sealed class AppHost : IAsyncDisposable
 
     private CorrectionEngine BuildEngine()
     {
-        _engineOptions = Settings.ToEngineOptions(new EngineOptions());
+        _engineOptions = Settings.ToEngineOptions(Brain.Tune(new EngineOptions(), _tuning));   // D102
         var engine = new CorrectionEngine(_engineOptions, new EngineDeps(
             SystemClock.Instance, _hook!, _speller!, _suggester!, ModelClient(),
             Dictionary.Contains, Dictionary.Add, _counters,
@@ -279,7 +331,7 @@ public sealed class AppHost : IAsyncDisposable
             bool exclusionsChanged = !(old.ExcludedApps ?? AppExclusions.Defaults).SequenceEqual(s.ExcludedApps ?? AppExclusions.Defaults);
             if (exclusionsChanged && _uia is not null)
                 Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings);
-            var options = s.ToEngineOptions(new EngineOptions());
+            var options = s.ToEngineOptions(Brain.Tune(new EngineOptions(), _tuning));   // D102
             if (options != _engineOptions) _loop.Replace(BuildEngine());   // BuildEngine records the new options
             if (exclusionsChanged)
             {
@@ -348,6 +400,8 @@ public sealed class AppHost : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _maintenance?.Dispose();
+        _brain?.Dispose();
+        _brainHttp.Dispose();
         _daily.Save(_counters);
         Health.Save();   // D81
             Mistakes.Save();   // D84

@@ -267,15 +267,12 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     private readonly HashSet<string> _checked = new(StringComparer.Ordinal);
     private long _checkedGeneration = -1;
 
-    /// <summary>How many paragraphs before the caret's own are looked back over for one the AI hasn't seen (D101).</summary>
-    public const int ParagraphsLookedBack = 3;
-
     /// <summary>D101: [start, end) of the latest of the few paragraphs before <paramref name="currentStart"/> whose text, as it
     /// stands, was never sent to the AI. Null if they all were.</summary>
     private (int Start, int End)? EarlierUnchecked(string typed, int currentStart)
     {
         int end = currentStart, seen = 0;
-        while (end > 0 && seen < ParagraphsLookedBack)
+        while (end > 0 && seen < options.ParagraphsLookedBack)
         {
             while (end > 0 && typed[end - 1] == '\n') end--;
             if (end == 0) break;
