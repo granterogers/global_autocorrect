@@ -1,52 +1,52 @@
 {
-  "Updated": "2026-11-06",
+  "Updated": "2026-11-09",
   "Apps": {
     "chatgpt": {
-      "Writes": 19.3,
-      "VerifyFailures": 3.4,
-      "Stuck": 4.9,
+      "Writes": 14.1,
+      "VerifyFailures": 2.5,
+      "Stuck": 3.6,
       "Undos": 0,
-      "ArrowFailures": 1,
+      "ArrowFailures": 0.73,
       "RetypeFailures": 0
     },
     "claude": {
-      "Writes": 51.3,
-      "VerifyFailures": 11.2,
-      "Stuck": 3.3,
+      "Writes": 42.5,
+      "VerifyFailures": 8.9,
+      "Stuck": 2.4,
       "Undos": 0,
-      "ArrowFailures": 0.81,
-      "RetypeFailures": 0.9
+      "ArrowFailures": 0.59,
+      "RetypeFailures": 1.39
     },
     "msedge": {
-      "Writes": 77.6,
-      "VerifyFailures": 19.4,
-      "Stuck": 1,
-      "Undos": 0.9,
-      "ArrowFailures": 7.5,
-      "RetypeFailures": 4.6
+      "Writes": 58.1,
+      "VerifyFailures": 14.1,
+      "Stuck": 0.7,
+      "Undos": 0.7,
+      "ArrowFailures": 5.47,
+      "RetypeFailures": 3.35
     },
     "msedgewebview2": {
       "Writes": 0,
       "VerifyFailures": 0,
-      "Stuck": 7.3,
+      "Stuck": 6.1,
       "Undos": 0,
       "ArrowFailures": 0,
       "RetypeFailures": 0
     },
     "notepad": {
-      "Writes": 25.8,
-      "VerifyFailures": 5,
+      "Writes": 18.8,
+      "VerifyFailures": 3.6,
       "Stuck": 0,
       "Undos": 0,
-      "ArrowFailures": 2,
-      "RetypeFailures": 2
+      "ArrowFailures": 1.46,
+      "RetypeFailures": 1.46
     },
     "whatsapp.root": {
-      "Writes": 15.3,
-      "VerifyFailures": 3.2,
+      "Writes": 13.3,
+      "VerifyFailures": 2.4,
       "Stuck": 0,
-      "Undos": 0,
-      "ArrowFailures": 0.81,
+      "Undos": 0.7,
+      "ArrowFailures": 0.59,
       "RetypeFailures": 0
     }
   }
