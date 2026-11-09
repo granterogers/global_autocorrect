@@ -77,6 +77,9 @@ public static class Desk
         Thread.Sleep(150);
     }
 
+    /// <summary>D104: one key going down or up on its own, untagged, as a physical keyboard sends it.</summary>
+    public static void Key1(ushort vk, bool up) => SendInputWriter.Send([Key(vk, up)]);
+
     private static INPUT Key(ushort vk, bool up) => new()
     {
         type = INPUT_KEYBOARD,

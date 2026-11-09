@@ -66,8 +66,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     public const int StuckLimit = 8;
     public const long StuckMs = 1500;
 
-    /// <summary>D81: in a program in careful mode, an AI fix is written only this close to the caret and on its line.</summary>
-    public const int CarefulReach = 40;
 
     private int _refusedResyncs;
     private long _refusedSinceMs;
@@ -205,12 +203,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             return false;
         }
         int caretDistance = TextNorm.Elements(tail);
-        // D81: in a program whose fixes have gone wrong, an AI fix far back or on an earlier line is not risked.
-        if (w.Layer == Layer.Ai && (tail.Contains('\n') || caretDistance > CarefulReach) && Health?.ModeFor(target.AppName) == AppMode.Careful)
-        {
-            Drop(w, "careful-app");
-            return false;
-        }
         int deleteCount = TextNorm.Elements(w.Original);
         long seqAtWrite = keys.LatestKeySeq;
         // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed

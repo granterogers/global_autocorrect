@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D104 (0.2, 4.1, 11.3):** careful mode removed; new real-typing screen test (types on without stopping, real Shift presses, 9 editors) and `scripts/realtyping.ps1` to run it when the user is away. First run pending.
 - **D103 (4.6.d):** a PC no longer counts its own lessons twice: the brain keeps each PC's counts apart and the app leaves its own out. 1 test.
 - **D102 (4.6.d, 9.3.g):** the app's learning and tuning are now a downloadable "brain" (`brain/brain.json`), checked for every 15 minutes and applied without a reinstall; the daily learning task runs with no window. 6 tests.
 - **D101 (4.4.a, 4.6.c):** earlier lines are no longer lost after Enter: paragraphs the AI never saw in their final form are sent before the current one, and programs that learnt to retype step to fixes on earlier lines with arrows instead of dropping them. 2 tests.

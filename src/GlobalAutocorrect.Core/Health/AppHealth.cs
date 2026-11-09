@@ -3,16 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace GlobalAutocorrect.Core.Health;
 
-/// <summary>How the app writes in one program (D81).</summary>
-public enum AppMode
-{
-    /// <summary>Every fix the rules allow.</summary>
-    Normal,
-
-    /// <summary>The program has surprised us: only fixes close to the caret, on the caret's own line.</summary>
-    Careful,
-}
-
 /// <summary>
 /// D81: what happened when the app wrote in one program, as counts only (8.6: never text, never which words). Counts fade
 /// by <see cref="AppHealth.DailyFade"/> each day, so old trouble is forgotten as a program behaves again.
@@ -54,8 +44,8 @@ public sealed class AppStats
 /// <summary>
 /// D81, user request "keep a record of what's being changed, notice when something strange happens and correct for it,
 /// so it improves over time, for all users". Each install keeps, per program (process name), how its fixes went
-/// (<see cref="AppStats"/>, counts only) and decides from that how carefully to write there (<see cref="ModeFor"/>).
-/// The shipped profiles (<c>assets/app-profiles.json</c>) are the same counts learned on other PCs and published to the
+/// (<see cref="AppStats"/>, counts only) and decides from that how to write there (<see cref="RetypeIn"/>). D104: no
+/// "careful mode": every fix the spec allows is written everywhere. The brain's profiles (D102) are the same counts learned on other PCs and published to the
 /// source (scripts/publish-learning.ps1), so a new install starts from what earlier ones learned; its own experience is
 /// added on top and can outweigh them either way.
 /// </summary>
@@ -80,14 +70,7 @@ public sealed class AppHealth
         _day = _today();
     }
 
-    /// <summary>What a write in <paramref name="app"/> should do now: the shipped profile plus this PC's own counts.</summary>
-    public AppMode ModeFor(string app)
-    {
-        if (string.IsNullOrEmpty(app)) return AppMode.Normal;
-        return Decide(StatsFor(app));
-    }
-
-    /// <summary>The shipped and local counts together, for <see cref="ModeFor"/> and tests.</summary>
+    /// <summary>The shipped and local counts together.</summary>
     public AppStats StatsFor(string app)
     {
         lock (_lock)
@@ -96,16 +79,6 @@ public sealed class AppHealth
             var local = _local.GetValueOrDefault(app) ?? new AppStats();
             return _shipped.TryGetValue(app, out var s) ? s.Plus(local) : local.Plus(new AppStats());
         }
-    }
-
-    /// <summary>
-    /// D81: whether a program's fixes have gone wrong often enough to write there carefully. <paramref name="s"/> holds
-    /// faded counts (recent days weigh most), shipped and local together.
-    /// </summary>
-    public static AppMode Decide(AppStats s)
-    {
-        // TODO(human): decide when a program should be written to carefully.
-        return AppMode.Normal;
     }
 
     /// <summary>
