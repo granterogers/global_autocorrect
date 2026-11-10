@@ -55,6 +55,7 @@ set GA_E2E=1
 set CI=true
 set GA_REPO=C:\ga\repo
 set GA_E2E_APP=C:\ga\app
+set GA_PROBE=1
 set GA_RT_EDITORS=$Editors
 set GA_RT_REPEAT=$Repeat
 powershell -NoProfile -Command "Set-WinUserLanguageList -LanguageList en-GB -Force; Set-WinDefaultInputMethodOverride -InputTip '0809:00000809'" > C:\ga\out\setup.log 2>&1

@@ -27,7 +27,7 @@ public sealed class WriteRaceProbe
     [InlineData("slate")]
     public async Task D105_HowLongAWebEditorTakesToFinishAnEditBatch(string editor)
     {
-        if (!Desk.IsCi) Assert.Skip("Runs only in Windows Sandbox (CI=true): it types on the screen.");
+        if (!Desk.IsCi || Environment.GetEnvironmentVariable("GA_PROBE") != "1") Assert.Skip("Runs only in Windows Sandbox (CI=true): it types on the screen.");
         var (browser, page, pw) = await BrowserTests.Open(editor == "contenteditable" ? "probe" : editor);
         var report = new StringBuilder($"## {editor}\n\n| distance | delay ms | key landed | expected | ok |\n|---|---|---|---|---|\n");
         try
@@ -81,7 +81,7 @@ public sealed class WriteRaceProbe
     [Fact]
     public async Task D105_WhatUiAutomationSeesInTheBrowser()
     {
-        if (!Desk.IsCi) Assert.Skip("Runs only in Windows Sandbox (CI=true).");
+        if (!Desk.IsCi || Environment.GetEnvironmentVariable("GA_PROBE") != "1") Assert.Skip("Runs only in Windows Sandbox (CI=true).");
         var (browser, page, pw) = await BrowserTests.Open("textarea");
         var report = new StringBuilder("## UI Automation in the browser\n\n");
         try
@@ -117,7 +117,7 @@ public sealed class WriteRaceProbe
     [Fact]
     public void D105_HowAWpfBoxHandlesAShiftRightAfterAnEditBatch()
     {
-        if (!Desk.IsCi) Assert.Skip("Runs only in Windows Sandbox (CI=true): it types on the screen.");
+        if (!Desk.IsCi || Environment.GetEnvironmentVariable("GA_PROBE") != "1") Assert.Skip("Runs only in Windows Sandbox (CI=true): it types on the screen.");
         using var box = new DesktopTests.WpfBox();
         var report = new StringBuilder("## wpf\n\n| distance | delay ms | ok |\n|---|---|---|\n");
         try

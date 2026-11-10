@@ -106,7 +106,7 @@ public sealed class RealTypingTests
     {
         get
         {
-            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate"];
+            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate", "intercom", "chat"];   // D113: Intercom and Claude/ChatGPT stand-ins
             var only = Environment.GetEnvironmentVariable("GA_RT_EDITORS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             int repeat = int.TryParse(Environment.GetEnvironmentVariable("GA_RT_REPEAT"), out int r) && r > 1 ? r : 1;
             var data = new TheoryData<string>();
@@ -164,7 +164,9 @@ public sealed class RealTypingTests
         var score = Score(script, text);
         string verifyFails = VerifyFailures(app);
         Report(run, score, desyncs, verifyFails);
-        Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed * 20 <= score.NeedFix,
+        // D109: CKEditor must be retyped, so fixes on an earlier line are skipped there by design (a miss, never damage).
+        int allowedMisses = editor == "ckeditor" ? score.NeedFix / 2 : score.NeedFix / 20;
+        Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
     }
@@ -175,6 +177,7 @@ public sealed class RealTypingTests
     /// </summary>
     internal const string ShownText = """
         () => {
+          if (window.sent) return window.getText();   // D113: chat: the messages sent, then the box
           if (document.querySelector('#ed_ifr')) return window.getText();   // TinyMCE first: it hides an empty textarea
           const t = document.querySelector('textarea'); if (t) return t.value;
           const e = document.querySelector('.ProseMirror, .ck-editor__editable, .ql-editor, [data-slate-editor], [contenteditable=true]');

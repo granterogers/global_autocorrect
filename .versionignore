@@ -2,3 +2,8 @@
 # so no release is built: running copies download brain/brain.json themselves within 15 minutes.
 brain/
 data/learning/
+# D113: pushes that change only tests and CI need no release.
+tests/
+.github/
+DECISIONS.md
+PROGRESS.md

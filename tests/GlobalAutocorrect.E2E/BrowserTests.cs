@@ -33,7 +33,7 @@ public sealed class BrowserTests
         // #ed, CKEditor 5 replaces #ed with its own editor UI, and TinyMCE edits inside an iframe it puts after #ed.
         string target = page switch
         {
-            "prosemirror" => ".ProseMirror",
+            "prosemirror" or "intercom" or "chat" => ".ProseMirror",   // D113
             "ckeditor" => ".ck-editor__editable",
             "quill" => ".ql-editor",
             "tinymce" => "#ed_ifr",

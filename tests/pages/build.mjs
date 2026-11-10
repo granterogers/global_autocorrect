@@ -12,6 +12,7 @@ await build({
     quill: 'src/quill.js',
     tinymce: 'src/tinymce.js',
     slate: 'src/slate.jsx',
+    chatbox: 'src/chatbox.js',   // D113: intercom.html and chat.html
   },
   outdir: 'dist',
   bundle: true,
