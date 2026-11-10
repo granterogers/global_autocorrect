@@ -25,6 +25,8 @@ public sealed class WriteRaceProbe
     [InlineData("lexical")]
     [InlineData("quill")]
     [InlineData("slate")]
+    [InlineData("intercom")]
+    [InlineData("chat")]
     public async Task D105_HowLongAWebEditorTakesToFinishAnEditBatch(string editor)
     {
         if (!Desk.IsCi || Environment.GetEnvironmentVariable("GA_PROBE") != "1") Assert.Skip("Runs only in Windows Sandbox (CI=true): it types on the screen.");
@@ -32,10 +34,10 @@ public sealed class WriteRaceProbe
         var report = new StringBuilder($"## {editor}\n\n| distance | delay ms | key landed | expected | ok |\n|---|---|---|---|---|\n");
         try
         {
-            foreach (bool retype in new[] { false, true })
+            foreach (string how in new[] { "arrows", "retype", "unicode" })
             foreach (int distance in new[] { 10, 40, 80, 160 })
             {
-                foreach (int delay in new[] { 0, 10, 30, 80, 150, 300 })
+                foreach (int delay in new[] { 0, 10, 30, 80 })
                 {
                     // A fresh line of known text: "aaaa…" with one "Q" to fix, `distance` characters before the end.
                     Desk.Keys(0x11, 0x41); Desk.Keys(0x2E);   // Ctrl+A, Delete
@@ -46,7 +48,9 @@ public sealed class WriteRaceProbe
                     // The app's batch: step back over the tail and "Q", delete it, type "R", step forward again.
                     // D108: or retyped, as the app does in a program where arrow keys went wrong (D89): delete back over the
                     // tail and the fix, type the fix and the tail again.
-                    if (retype) SendInputWriter.Tagged.ApplyEdit(0, distance + 1, "R" + new string('b', distance));
+                    // D114: "unicode" retypes as Unicode packets, which a Shift pressed mid-batch can't change.
+                    if (how == "unicode") new SendInputWriter(GlobalAutocorrect.Windows.Input.InjectionTag.Value) { TypeAsUnicode = true }.ApplyEdit(0, distance + 1, "R" + new string('b', distance));
+                    else if (how == "retype") SendInputWriter.Tagged.ApplyEdit(0, distance + 1, "R" + new string('b', distance));
                     else SendInputWriter.Tagged.ApplyEdit(distance, 1, "R");
                     if (delay > 0) Thread.Sleep(delay);
                     // The user's next key: a capital "X", Shift first, as a keyboard sends it (D100's race).
@@ -55,7 +59,7 @@ public sealed class WriteRaceProbe
                     string got = (await page.EvaluateAsync<string>(RealTypingTests.ShownText)).Replace(' ', ' ').TrimEnd('\n');
                     string want = new string('a', 20) + "R" + new string('b', distance) + "X";
                     int at = got.IndexOf('X');
-                    report.AppendLine($"| {(retype ? "retype " : "")}{distance} | {delay} | {(at < 0 ? "lost" : at - got.Length + 1 == 0 ? "end" : $"{got.Length - 1 - at} early")} | end | {(got == want ? "yes" : "NO: " + (got.Length > 60 ? "…" + got[^60..] : got))} |");
+                    report.AppendLine($"| {how} {distance} | {delay} | {(at < 0 ? "lost" : at - got.Length + 1 == 0 ? "end" : $"{got.Length - 1 - at} early")} | end | {(got == want ? "yes" : "NO: " + (got.Length > 60 ? "…" + got[^60..] : got))} |");
                     if (editor == "contenteditable" && got != want)
                     {
                         string[] log = await page.EvaluateAsync<string[]>("window.log");

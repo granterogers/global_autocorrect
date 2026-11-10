@@ -21,6 +21,12 @@ public sealed class SendInputWriter(nuint tag)
     /// release opens the Start menu, and AI writes already wait while it is held.</summary>
     private static readonly ushort[] Releasable = [VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU];
 
+    /// <summary>
+    /// D114: type every character as a Unicode packet, never a key press with Shift. A packet's character doesn't depend
+    /// on Shift, so a Shift the user presses while the editor is still applying the batch can't turn it into capitals.
+    /// </summary>
+    public bool TypeAsUnicode { get; init; }
+
     /// <summary>Physical key state; replaceable in tests.</summary>
     public Func<int, bool> IsKeyDown { get; init; } = vk => IsDown(vk);
 
@@ -102,6 +108,12 @@ public sealed class SendInputWriter(nuint tag)
                 list.Add(Key(VK_RETURN, enterScan, 0));
                 list.Add(Key(VK_RETURN, enterScan, KEYEVENTF_KEYUP));
                 list.Add(Key(VK_SHIFT, shiftScan, KEYEVENTF_KEYUP));
+                continue;
+            }
+            if (TypeAsUnicode)
+            {
+                list.Add(Key(0, c, KEYEVENTF_UNICODE));
+                list.Add(Key(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP));
                 continue;
             }
             short scan = VkKeyScanExW(c, hkl);

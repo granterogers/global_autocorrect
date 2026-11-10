@@ -7,6 +7,11 @@ name: E2E
 
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: 'D114: run only the write-race probe (how editors apply a fix while Shift goes down)'
+        type: boolean
+        default: false
   push:
     branches: [main, ci-e2e]
   workflow_call:
@@ -130,6 +135,7 @@ jobs:
         timeout-minutes: 35
         env:
           GA_E2E: '1'
+          GA_PROBE: ${{ inputs.probe && '1' || '' }}
           MSBUILDDISABLENODEREUSE: '1'
         run: |
           pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes 30 `
@@ -172,4 +178,6 @@ jobs:
             artifacts/screens/
             artifacts/timings/
             artifacts/diagnostics/
+            artifacts/probe/
+            artifacts/realtyping/
           if-no-files-found: warn
