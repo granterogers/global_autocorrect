@@ -41,6 +41,9 @@ public interface IServerProcess : IDisposable
     bool HasExited { get; }
     IReadOnlyList<string> Log { get; }
     void Kill();
+
+    /// <summary>D112: hands the process's pages back to Windows (see <see cref="LlamaServerHost.TrimMemory"/>).</summary>
+    void TrimMemory() { }
 }
 
 /// <summary>
@@ -140,6 +143,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
                 BaseAddress = address;
                 Info = ParseInfo(proc.Log, cpuFallback);
                 State = ServerState.Ready;
+                TrimMemory();   // D112
                 return true;
             }
             await Task.Delay(200, ct).ConfigureAwait(false);
@@ -169,6 +173,19 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
 
     [GeneratedRegex(@"offloaded (\d+)/(\d+) layers to GPU")]
     private static partial Regex OffloadLine();
+
+    /// <summary>
+    /// D112, user request "cut memory": once the model is on the GPU, the copy of its file the server read while loading
+    /// (about 3.5 GB of the E4B model's 4.5 GB working set, and most of the private part) is not needed again. Windows is
+    /// told it may take those pages back (EmptyWorkingSet); anything still used, such as the per-layer embedding rows
+    /// read from the file on demand, comes back from the file cache in microseconds. Measured with E2B: working set
+    /// 2,568 → 59 MB, replies 355 → 360 ms. Never done to the app's own process: its keyboard hook must not wait on a page.
+    /// </summary>
+    public void TrimMemory()
+    {
+        try { _proc?.TrimMemory(); }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+    }
 
     private void StopCore()
     {
@@ -242,5 +259,9 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
         public IReadOnlyList<string> Log { get { lock (_log) return [.. _log]; } }
         public void Kill() => _p.Kill(entireProcessTree: true);
         public void Dispose() => _p.Dispose();
+        public void TrimMemory() { if (!_p.HasExited) EmptyWorkingSet(_p.Handle); }
+
+        [System.Runtime.InteropServices.DllImport("psapi.dll")]
+        private static extern bool EmptyWorkingSet(nint process);
     }
 }

@@ -38,7 +38,7 @@ internal sealed class PerfSampler(Timings timings, Action<string> log)
         double model = 0;
         foreach (var p in Process.GetProcessesByName("llama-server").Concat(Process.GetProcessesByName(Models.ModelDownloader.ServerName)))   // D106
         {
-            try { model += p.PrivateMemorySize64; } catch (InvalidOperationException) { }
+            try { model += p.WorkingSet64; } catch (InvalidOperationException) { }   // D112: as Task Manager shows it; "private bytes" counted the mapped model file (~5 GB)
             p.Dispose();
         }
         var mem = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };

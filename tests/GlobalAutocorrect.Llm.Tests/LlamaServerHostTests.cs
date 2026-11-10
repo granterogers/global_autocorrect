@@ -14,6 +14,8 @@ public sealed class LlamaServerHostTests
         public IReadOnlyList<string> Log { get; } = log;
         public void Kill() => HasExited = true;
         public void Dispose() { }
+        public int Trims { get; private set; }
+        public void TrimMemory() => Trims++;
     }
 
     private static readonly string[] GpuLog =
@@ -40,6 +42,17 @@ public sealed class LlamaServerHostTests
                     return p;
                 },
                 (_, _) => Task.FromResult(HealthOverride && Healthy(Starts[^1])));
+    }
+
+    [Fact]
+    public async Task R5_1_D112_TheModelServersMemoryIsHandedBackOnceItIsReady()
+    {
+        var f = new Fake();
+        await using var host = f.Host();
+        Assert.True(await host.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(1, f.Procs[^1].Trims);
+        host.TrimMemory();
+        Assert.Equal(2, f.Procs[^1].Trims);
     }
 
     [Fact]

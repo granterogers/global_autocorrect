@@ -88,6 +88,10 @@ public sealed class LlmRuntime : ILlmClient, IAsyncDisposable
     }
 
     /// <summary>One watchdog/idle pass, run every few seconds by the host app.</summary>
+    /// <summary>D112: how often the model server's working set is handed back to Windows while idle.</summary>
+    public const long TrimEveryMs = 10 * 60_000;
+    private long _lastTrimMs;
+
     public async Task MaintainAsync(CancellationToken ct)
     {
         if (_host.State == ServerState.Ready)
@@ -99,7 +103,13 @@ public sealed class LlmRuntime : ILlmClient, IAsyncDisposable
                 IdleUnloaded?.Invoke();
                 return;
             }
-            if (await _host.ProbeAsync(ct).ConfigureAwait(false)) { _failedProbes = 0; return; }
+            if (await _host.ProbeAsync(ct).ConfigureAwait(false))
+            {
+                _failedProbes = 0;
+                // D112: every 10 minutes, a minute after the last request, give back the pages read since to Windows.
+                if (_clock.NowMs - _lastTrimMs >= TrimEveryMs && _clock.NowMs - _lastActivityMs >= 60_000) { _host.TrimMemory(); _lastTrimMs = _clock.NowMs; }
+                return;
+            }
             if (++_failedProbes < 3) return;
             // 5.6.a: crashed or stopped answering three times in a row → restart.
             _failedProbes = 0;
