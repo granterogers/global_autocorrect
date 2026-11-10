@@ -62,7 +62,10 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         int changed = edits.Where(e => e.Kind is EditKind.Substitution or EditKind.Insertion or EditKind.Deletion)
                            .Where(e => !(settings.LenientWithNonWords && e.Kind == EditKind.Substitution && AllNonWords(e.OriginalWords)))
                            .Sum(e => Math.Max(e.OriginalWords.Count, e.NewWords.Count));
-        if (changed > settings.MaxChangedWordRatio * Math.Max(1, words))
+        // D110, user report (Intercom: "Thakms," alone on the last line, never fixed): on a line of one word, fixing it is not a rewrite.
+        // A one-word line was always "more than half changed", so a capitalised sign-off ("Thakms,", "Regadrs,") could not
+        // be fixed at all (a lower-case non-word was let through by D36). The single word still faces every other rule.
+        if (words <= 1 ? changed > 1 : changed > settings.MaxChangedWordRatio * words)
             return Reject(edits, RejectReason.TooManyChanges);
 
         var verdicts = edits.Select(e => Judge(original, origTokens, e, edits)).ToArray();

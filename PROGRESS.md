@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D110 (4.5.d):** a one-word line (a sign-off like "Thakms,") can be corrected; it never could before. 6 tests.
 - **D109 (4.6.d, 11.3):** real typing in the Sandbox, every editor twice: 8 editors 9/9 with nothing damaged; CKEditor (Teams) 6/9, nothing damaged (fixes on earlier lines are skipped there, by design). 1 test.
 - **D108 (4.6.d, 10.7.a):** retyped fixes no longer come out in capitals: Caps Lock is read as the app in front sees it. Lexical 9/9 three runs in a row. 1 test.
 - **D107 (4.2, 4.5.d):** pasted text is never corrected (context only); links without "http" are recognised and never changed. 4 tests.
