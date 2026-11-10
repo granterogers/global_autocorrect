@@ -39,7 +39,11 @@ Core tests only: `dotnet test tests/GlobalAutocorrect.Core.Tests`
   `Brain.Knobs`, a per-program `write` rule of "retype" or "arrows"), make it there: bump `updated` (UTC ISO 8601), run
   `pwsh ./check.ps1 fast` (it checks the file loads and every entry is known), commit and plain `git push`. The hook
   doesn't tag pushes that only touch paths in `.versionignore`, so no release or deploy is needed. Every running copy
-  downloads the brain within 15 minutes. Code changes still follow the four steps above. If a fix needs a new kind of
+  downloads the brain within 15 minutes. Code changes still follow the four steps above.
+  The brain also holds the correction rules' thresholds (`Rules.*` in `tuning`, `Brain.RuleKnobs`) and the AI `prompt`
+  (D111). A change to either must pass `pwsh ./scripts/brain-eval.ps1` first (scores it against origin/main's brain on
+  the tuning set, never the holdout; it closes and restarts the installed app, after 2 minutes idle). Don't push one
+  that fails. If a fix needs a new kind of
   value, add it to the brain in code once (a release), then tune it from the brain afterwards.
 - Requirement IDs (e.g. `4.5.a`) go in test names (`R4_5_a_...`), commit messages and PROGRESS.md.
 - Never log or persist typed text (8.6). Counts and error types only.

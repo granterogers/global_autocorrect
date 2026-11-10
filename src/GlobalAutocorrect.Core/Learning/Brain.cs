@@ -41,9 +41,22 @@ public sealed record BrainFile
     /// </summary>
     public Dictionary<string, Dictionary<string, AppStats>> Pcs { get; init; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// D111: the AI's instructions and examples (5.4), replacing the built-in prompt while set. A change goes out only after
+    /// scripts/brain-eval.ps1 shows it scores at least as well on the tuning set (6.1). A prompt file the user chose in
+    /// Settings still wins.
+    /// </summary>
+    public BrainPrompt? Prompt { get; init; }
+
     [JsonIgnore]
     public DateTimeOffset UpdatedAt =>
         DateTimeOffset.TryParse(Updated, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d) ? d : DateTimeOffset.MinValue;
+}
+
+/// <summary>D111: a prompt as the brain holds it.</summary>
+public sealed record BrainPrompt(string System, List<GlobalAutocorrect.Core.Ai.ChatTurn> Examples)
+{
+    public GlobalAutocorrect.Core.Ai.PromptTemplate ToTemplate() => new(System, Examples);
 }
 
 public static class Brain
@@ -77,6 +90,35 @@ public static class Brain
             ["RetypeMaxDistance"] = (0, 1000, (o, v) => o with { RetypeMaxDistance = v }),
         };
 
+    /// <summary>
+    /// D111: the correction rules' thresholds (4.5, 4.5.e), as "Rules.Name" in <see cref="BrainFile.Tuning"/>, each held to
+    /// its range; 0 or 1 for a yes/no rule. Boldness (a user setting) still moves the distance afterwards.
+    /// </summary>
+    public static IReadOnlyDictionary<string, (double Min, double Max, Func<Text.EditRuleSettings, double, Text.EditRuleSettings> Set)> RuleKnobs { get; } =
+        new Dictionary<string, (double, double, Func<Text.EditRuleSettings, double, Text.EditRuleSettings>)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Rules.MaxNormalisedDistance"] = (0.2, 0.8, (r, v) => r with { MaxNormalisedDistance = v }),
+            ["Rules.MaxChangedWordRatio"] = (0.2, 0.9, (r, v) => r with { MaxChangedWordRatio = v }),
+            ["Rules.MaxNonWordDistance"] = (0.3, 0.9, (r, v) => r with { MaxNonWordDistance = v }),
+            ["Rules.AcceptLikelyKeyboardSlips"] = (0, 1, (r, v) => r with { AcceptLikelyKeyboardSlips = v >= 0.5 }),
+            ["Rules.LenientWithNonWords"] = (0, 1, (r, v) => r with { LenientWithNonWords = v >= 0.5 }),
+        };
+
+    /// <summary>A tuning name the app knows, and its range.</summary>
+    public static bool TryRange(string name, out double min, out double max)
+    {
+        if (Knobs.TryGetValue(name, out var k)) { (min, max) = (k.Min, k.Max); return true; }
+        if (RuleKnobs.TryGetValue(name, out var r)) { (min, max) = (r.Min, r.Max); return true; }
+        (min, max) = (0, 0);
+        return false;
+    }
+
+    /// <summary>D111: a prompt the app can use: real instructions, at most 40 examples taking turns user/assistant.</summary>
+    public static bool PromptOk(BrainPrompt? p) =>
+        p is { System.Length: >= 40 and <= 8000, Examples: not null }
+        && p.Examples.Count <= 40 && p.Examples.Count % 2 == 0
+        && p.Examples.Select((t, i) => t is not null && t.Role == (i % 2 == 0 ? "user" : "assistant") && t.Content is { Length: <= 2000 }).All(ok => ok);
+
     public static readonly IReadOnlySet<string> WriteModes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "retype", "arrows" };
 
     private static readonly JsonSerializerOptions Json = new()
@@ -103,7 +145,8 @@ public static class Brain
         {
             Apps = Collect(b.Apps, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase),
             Mistakes = Collect(b.Mistakes, m => m.Key.Length == 16 && m.Key.All(char.IsAsciiHexDigitLower), StringComparer.Ordinal),
-            Tuning = Collect(b.Tuning, t => Knobs.ContainsKey(t.Key) && double.IsFinite(t.Value), StringComparer.OrdinalIgnoreCase),
+            Tuning = Collect(b.Tuning, t => TryRange(t.Key, out _, out _) && double.IsFinite(t.Value), StringComparer.OrdinalIgnoreCase),
+            Prompt = PromptOk(b.Prompt) ? b.Prompt : null,   // D111: an unusable prompt is left out, the rest kept
             Write = Collect(b.Write, w => w.Key.Length is > 0 and <= 64 && w.Value is not null && WriteModes.Contains(w.Value), StringComparer.OrdinalIgnoreCase),
             Pcs = Collect(b.Pcs, p => IsPcId(p.Key) && p.Value is not null, StringComparer.Ordinal)
                 .ToDictionary(p => p.Key, p => Collect(p.Value, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase), StringComparer.Ordinal),
@@ -155,8 +198,9 @@ public static class Brain
         if (tuning is null) return o;
         foreach (var (name, value) in tuning)
         {
-            if (!Knobs.TryGetValue(name, out var k) || !double.IsFinite(value)) continue;
-            o = k.Set(o, (int)Math.Clamp(Math.Round(value), k.Min, k.Max));
+            if (!double.IsFinite(value)) continue;
+            if (Knobs.TryGetValue(name, out var k)) o = k.Set(o, (int)Math.Clamp(Math.Round(value), k.Min, k.Max));
+            else if (RuleKnobs.TryGetValue(name, out var r)) o = o with { Rules = r.Set(o.Rules, Math.Clamp(value, r.Min, r.Max)) };   // D111
         }
         return o;
     }

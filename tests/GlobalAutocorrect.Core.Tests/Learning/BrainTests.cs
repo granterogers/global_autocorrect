@@ -40,7 +40,11 @@ public sealed class BrainTests : IDisposable
         Assert.Equal(Count("apps"), b.Apps.Count);
         Assert.Equal(Count("pcs"), b.Pcs.Count);
         foreach (var (name, value) in b.Tuning)
-            Assert.InRange(value, Brain.Knobs[name].Min, Brain.Knobs[name].Max);
+        {
+            Assert.True(Brain.TryRange(name, out double min, out double max), name);
+            Assert.InRange(value, min, max);
+        }
+        Assert.Equal(raw.RootElement.TryGetProperty("prompt", out var p) && p.ValueKind == JsonValueKind.Object, b.Prompt is not null);   // D111: a prompt in the file must load
     }
 
     [Fact]
@@ -65,6 +69,31 @@ public sealed class BrainTests : IDisposable
         Assert.Equal(800, tuned.ShakyAppGapMs);
         var user = new AppSettings { LookBackWhenPaused = false }.ToEngineOptions(tuned);
         Assert.Equal(0, user.RevisitAfterMs);   // the user turned look-back off; the brain can't turn it on
+    }
+
+    [Fact]
+    public void R4_5_e_D111_TheRulesThresholdsComeFromTheBrainHeldToTheirRanges()
+    {
+        var tuned = Brain.Tune(new EngineOptions(), new Dictionary<string, double>
+        {
+            ["Rules.MaxNormalisedDistance"] = 0.45, ["Rules.MaxChangedWordRatio"] = 5, ["Rules.LenientWithNonWords"] = 0,
+        });
+        Assert.Equal(0.45, tuned.Rules.MaxNormalisedDistance);
+        Assert.Equal(0.9, tuned.Rules.MaxChangedWordRatio);   // held to its range
+        Assert.False(tuned.Rules.LenientWithNonWords);
+        var cautious = new AppSettings { Boldness = Boldness.Cautious }.ToEngineOptions(tuned);
+        Assert.True(cautious.Rules.MaxNormalisedDistance <= 0.34);   // the user's Boldness still applies after the brain
+    }
+
+    [Fact]
+    public void R5_2_D111_ThePromptComesFromTheBrainOnlyWhenItIsUsable()
+    {
+        string sys = "You fix typing mistakes in short messages written in British English. Reply with the text only.";
+        var ok = Brain.Parse($$"""{ "format": 1, "prompt": { "system": "{{sys}}", "examples": [ { "role": "user", "content": "teh" }, { "role": "assistant", "content": "the" } ] } }""")!;
+        Assert.Equal(sys, ok.Prompt!.ToTemplate().System);
+        Assert.Equal(2, ok.Prompt.ToTemplate().Examples.Count);
+        Assert.Null(Brain.Parse("""{ "format": 1, "prompt": { "system": "too short", "examples": [] } }""")!.Prompt);
+        Assert.Null(Brain.Parse($$"""{ "format": 1, "prompt": { "system": "{{sys}}", "examples": [ { "role": "assistant", "content": "x" } ] } }""")!.Prompt);
     }
 
     [Fact]

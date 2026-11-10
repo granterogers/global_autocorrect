@@ -10,11 +10,12 @@ internal static class Program
           GlobalAutocorrect.DataGen ngram --sentences <sentences.txt> --assets <assetsDir> --out <ngram.bin> [--min-count <int>]
           GlobalAutocorrect.DataGen userstyle --tuning <tuning.jsonl> --out <userstyle.jsonl> --seed <int> --per-kind <int>
           GlobalAutocorrect.DataGen learning --local <apphealth.json> --pc <id> --dir <data/learning> --out <brain/brain.json>
+          GlobalAutocorrect.DataGen brain-defaults --out <brain/brain.json>
         """;
 
     private static int Main(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq" or "ngram" or "userstyle" or "learning"))
+        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq" or "ngram" or "userstyle" or "learning" or "brain-defaults"))
         {
             Console.Error.WriteLine(Usage);
             return 2;
@@ -45,6 +46,11 @@ internal static class Program
             {
                 if (!Has(opts, "tuning", "out", "seed", "per-kind") || !int.TryParse(opts["seed"], out int seed) || !int.TryParse(opts["per-kind"], out int perKind)) return Fail();
                 Commands.UserStyle(opts["tuning"], opts["out"], seed, perKind);
+            }
+            else if (args[0] == "brain-defaults")
+            {
+                if (!Has(opts, "out")) return Fail();
+                Learning.WriteDefaults(opts["out"]);
             }
             else if (args[0] == "learning")
             {

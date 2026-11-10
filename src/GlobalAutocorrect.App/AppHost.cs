@@ -158,7 +158,7 @@ public sealed class AppHost : IAsyncDisposable
             Models.ModelDownloader.Labelled(Path.Combine(CacheDir, "llama", build, "cpu", "llama-server.exe"), gpu: false),
             CpuModelPath: Path.Combine(CacheDir, "models", Settings.FallbackModel),
             ExtraArgs: ServerFlags.LookupDecoding));   // D56
-        _llm = new LlmRuntime(host, SystemClock.Instance, () => PromptTemplate.LoadOrDefault(Settings.PromptFile)) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };
+        _llm = new LlmRuntime(host, SystemClock.Instance, CurrentPrompt) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };   // D111
 
         _uia = new UiaWorker();
         Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings) { Cost = ReadCost };   // D97
@@ -214,6 +214,13 @@ public sealed class AppHost : IAsyncDisposable
 
     private BrainMonitor? _brain;
     private IReadOnlyDictionary<string, double>? _tuning;
+    private PromptTemplate? _brainPrompt;
+
+    /// <summary>D111: a prompt file the user chose in Settings, else the brain's, else the built-in one. Read before every request.</summary>
+    private PromptTemplate CurrentPrompt() =>
+        !string.IsNullOrWhiteSpace(Settings.PromptFile) && File.Exists(Settings.PromptFile)
+            ? PromptTemplate.LoadOrDefault(Settings.PromptFile)
+            : _brainPrompt ?? PromptTemplate.Default;
     private readonly HttpClient _brainHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     /// <summary>When the brain in use was last changed (shown on the About page).</summary>
@@ -237,6 +244,7 @@ public sealed class AppHost : IAsyncDisposable
         Health.UseShipped(Brain.LearntElsewhere(b, InstallId(), DateOnly.FromDateTime(DateTime.Now)), b.Write);
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
+        _brainPrompt = b.Prompt?.ToTemplate();   // D111
     }
 
     /// <summary>The engine is rebuilt only when the brain changed a value it runs with; on the UI thread, like a settings change.</summary>

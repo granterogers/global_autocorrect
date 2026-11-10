@@ -11,6 +11,34 @@ namespace GlobalAutocorrect.DataGen;
 /// </summary>
 internal static class Learning
 {
+    /// <summary>
+    /// D111: writes the built-in prompt and rule thresholds into the brain where it has none, so they can be seen and
+    /// tuned there. Values the brain already has are kept. The app behaves exactly as before.
+    /// </summary>
+    public static void WriteDefaults(string brainPath)
+    {
+        var b = Brain.Read(brainPath) ?? new BrainFile();
+        var rules = new GlobalAutocorrect.Core.Engine.EngineOptions().Rules;
+        var tuning = new Dictionary<string, double>(b.Tuning, StringComparer.OrdinalIgnoreCase);
+        void Add(string k, double v) { if (!tuning.ContainsKey(k)) tuning[k] = v; }
+        Add("Rules.MaxNormalisedDistance", rules.MaxNormalisedDistance);
+        Add("Rules.MaxChangedWordRatio", rules.MaxChangedWordRatio);
+        Add("Rules.MaxNonWordDistance", rules.MaxNonWordDistance);
+        Add("Rules.AcceptLikelyKeyboardSlips", rules.AcceptLikelyKeyboardSlips ? 1 : 0);
+        Add("Rules.LenientWithNonWords", rules.LenientWithNonWords ? 1 : 0);
+        var d = GlobalAutocorrect.Core.Ai.PromptTemplate.Default;
+        var next = b with
+        {
+            Tuning = tuning,
+            Prompt = b.Prompt ?? new BrainPrompt(d.System, [.. d.Examples]),
+            Updated = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+        };
+        string text = Brain.ToJson(next);
+        if (Brain.Parse(text) is not { Prompt: not null }) throw new InvalidOperationException("the brain written would not load in the app");
+        File.WriteAllText(brainPath, text);
+        Console.WriteLine($"brain-defaults: {tuning.Count} tuning values, prompt with {next.Prompt!.Examples.Count} examples");
+    }
+
     public static void Publish(string localPath, string pcId, string dir, string brainPath)
     {
         if (!Brain.IsPcId(pcId))

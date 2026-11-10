@@ -48,10 +48,16 @@ internal static class RunCommand
                 ? sa.Split(';', StringSplitOptions.RemoveEmptyEntries).SelectMany(kv => kv.Split('=', 2) is [var k, var v] ? new[] { "--" + k, v } : ["--" + kv]).ToArray()
                 : ServerFlags.LookupDecoding));
         if (!await host.StartAsync(CancellationToken.None)) { Console.Error.WriteLine("model server did not start; run scripts/setup.ps1 then scripts/verify.ps1"); return 1; }
-        using var client = new LlamaServerClient(host.BaseAddress!, PromptTemplate.LoadOrDefault(o.GetValueOrDefault("prompt")), apiKey: host.ApiKey);
+        // D111: scores the brain: its rule thresholds and prompt (brain/brain.json, or --brain <file>; --brain none for the
+        // built-in values). --prompt still overrides the prompt.
+        string brainPath = o.GetValueOrDefault("brain", Path.Combine(repo, "brain", "brain.json"));
+        var brain = brainPath == "none" ? null : GlobalAutocorrect.Core.Learning.Brain.Read(brainPath);
+        if (brainPath != "none" && brain is null) { Console.Error.WriteLine($"the brain {brainPath} is missing or unusable"); return 2; }
+        var prompt = o.ContainsKey("prompt") ? PromptTemplate.LoadOrDefault(o["prompt"]) : brain?.Prompt?.ToTemplate() ?? PromptTemplate.Default;
+        using var client = new LlamaServerClient(host.BaseAddress!, prompt, apiKey: host.ApiKey);
         await client.CleanAsync("warm up teh cache", CancellationToken.None);
 
-        var options = EvalOptions(o);
+        var options = EvalOptions(o, brain);
         var ngram = NgramModel.FromAssets(Path.Combine(repo, "assets"));
         var runner = new PipelineRunner(HunspellSpellChecker.FromAssets(Path.Combine(repo, "assets")),
             SymSpellSuggester.FromAssets(Path.Combine(repo, "assets")), client, options,
@@ -107,9 +113,9 @@ internal static class RunCommand
     }
 
     /// <summary>Tuning knobs (4.5.e); only ever changed against the tuning set.</summary>
-    private static EngineOptions EvalOptions(Dictionary<string, string> o)
+    private static EngineOptions EvalOptions(Dictionary<string, string> o, GlobalAutocorrect.Core.Learning.BrainFile? brain)
     {
-        var d = new EngineOptions();
+        var d = GlobalAutocorrect.Core.Learning.Brain.Tune(new EngineOptions(), brain?.Tuning);   // D111
         var rules = d.Rules with
         {
             MaxNormalisedDistance = double.Parse(o.GetValueOrDefault("max-dist", d.Rules.MaxNormalisedDistance.ToString(System.Globalization.CultureInfo.InvariantCulture)), System.Globalization.CultureInfo.InvariantCulture),

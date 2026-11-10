@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "updated": "2026-11-09T18:00:04Z",
+  "updated": "2026-11-10T15:37:32Z",
   "apps": {
     "chatgpt": {
       "writes": 14.1,
@@ -53,7 +53,12 @@
   },
   "mistakes": {},
   "tuning": {
-    "WriteGapMs": 150
+    "WriteGapMs": 150,
+    "Rules.MaxNormalisedDistance": 0.5,
+    "Rules.MaxChangedWordRatio": 0.5,
+    "Rules.MaxNonWordDistance": 0.65,
+    "Rules.AcceptLikelyKeyboardSlips": 1,
+    "Rules.LenientWithNonWords": 1
   },
   "write": {},
   "pcs": {
@@ -107,5 +112,98 @@
         "retypeFailures": 1
       }
     }
+  },
+  "prompt": {
+    "system": "You fix typing mistakes in short messages written in British English.\nFix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example \u0022in the main hall\u0022 or \u0022for the interview\u0022.\nKeep: the writer\u0027s own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).\nIf the text has no mistakes, return it unchanged.\nReply with the corrected text only: no quotes, no notes.",
+    "examples": [
+      {
+        "role": "user",
+        "content": "cna you sned me teh report befor friday? thnaks"
+      },
+      {
+        "role": "assistant",
+        "content": "Can you send me the report before Friday? Thanks"
+      },
+      {
+        "role": "user",
+        "content": "im going to be late, the trian was cancled"
+      },
+      {
+        "role": "assistant",
+        "content": "I\u0027m going to be late, the train was cancelled"
+      },
+      {
+        "role": "user",
+        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
+      },
+      {
+        "role": "assistant",
+        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
+      },
+      {
+        "role": "user",
+        "content": "we shoud organise a meeting nextweek to dicsuss the budjet and there plans"
+      },
+      {
+        "role": "assistant",
+        "content": "We should organise a meeting next week to discuss the budget and their plans"
+      },
+      {
+        "role": "user",
+        "content": "can you leave report on my desk, its for meeting at 3"
+      },
+      {
+        "role": "assistant",
+        "content": "Can you leave the report on my desk, it\u0027s for the meeting at 3"
+      },
+      {
+        "role": "user",
+        "content": "Fancy a quick coffee before the train?"
+      },
+      {
+        "role": "assistant",
+        "content": "Fancy a quick coffee before the train?"
+      },
+      {
+        "role": "user",
+        "content": "i think i left keys on kitchen table, can you check"
+      },
+      {
+        "role": "assistant",
+        "content": "I think I left the keys on the kitchen table, can you check"
+      },
+      {
+        "role": "user",
+        "content": "Dinner at mine on Friday, bring wine if you like."
+      },
+      {
+        "role": "assistant",
+        "content": "Dinner at mine on Friday, bring wine if you like."
+      },
+      {
+        "role": "user",
+        "content": "theres a leak in bathroom ceiling agian, cna you ring plumber"
+      },
+      {
+        "role": "assistant",
+        "content": "There\u0027s a leak in the bathroom ceiling again, can you ring the plumber"
+      },
+      {
+        "role": "user",
+        "content": "sory for th edelay, i ws stuck in trafic on teh way bakc from leeds"
+      },
+      {
+        "role": "assistant",
+        "content": "Sorry for the delay, I was stuck in traffic on the way back from Leeds"
+      },
+      {
+        "role": "user",
+        "content": "Back in the office on Monday if you need anything."
+      },
+      {
+        "role": "assistant",
+        "content": "Back in the office on Monday if you need anything."
+      }
+    ]
   }
 }
