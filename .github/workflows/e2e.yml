@@ -12,6 +12,14 @@ on:
         description: 'D114: run only the write-race probe (how editors apply a fix while Shift goes down)'
         type: boolean
         default: false
+      editors:
+        description: 'D115: only these editors of the real-typing test, comma-separated (e.g. lexical,prosemirror); runs only that test'
+        type: string
+        default: ''
+      repeat:
+        description: 'D115: how many times each editor is typed'
+        type: string
+        default: '1'
   push:
     branches: [main, ci-e2e]
   workflow_call:
@@ -136,6 +144,8 @@ jobs:
         env:
           GA_E2E: '1'
           GA_PROBE: ${{ inputs.probe && '1' || '' }}
+          GA_RT_EDITORS: ${{ inputs.editors }}
+          GA_RT_REPEAT: ${{ inputs.repeat }}
           MSBUILDDISABLENODEREUSE: '1'
         run: |
           pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes 30 `

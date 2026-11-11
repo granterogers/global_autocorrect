@@ -109,7 +109,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         if (k.dwExtraInfo == InjectionTag.Value) return CallNextHookEx(_kb, nCode, wParam, lParam);   // ours (10.7.b)
         // D105: a fenced edit batch: swallowed whole if a key or a held modifier got to the app after the gate's last look.
         if (WriteFence.IsFenced(k.dwExtraInfo))
-            return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq), ModifierForFence()) ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
+            return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq), ModifierForFence(),
+                       WriteFence.Trace is null ? null : $"hookShift={_shift} hookCtrl={_ctrl} asyncShift={IsDown(VK_SHIFT)} sinceModMs={unchecked(Environment.TickCount - Volatile.Read(ref _modifierChangedTick))}")
+                ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
         bool injected = (k.flags & LLKHF_INJECTED) != 0 && !_untaggedInjectedIsPhysical;
         bool down = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;

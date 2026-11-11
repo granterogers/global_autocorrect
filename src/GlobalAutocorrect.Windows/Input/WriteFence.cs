@@ -43,7 +43,7 @@ public static class WriteFence
     /// The hook's verdict for an event of a fenced batch: true to swallow it. Decided once, at the batch's first event,
     /// from the key count then and whether the user holds a modifier; every later event of the batch gets the same.
     /// </summary>
-    public static bool Swallow(nuint tag, long keySeqNow, bool modifierDown)
+    public static bool Swallow(nuint tag, long keySeqNow, bool modifierDown, string? modifiers = null)
     {
         uint batch = (uint)((ulong)tag & 0xFFFF_FFFF);
         lock (Gate)
@@ -55,10 +55,14 @@ public static class WriteFence
                 _decidedBlocked = batch != _armed || keySeqNow != _armedSeq || modifierDown;
                 Outcomes[batch] = _decidedBlocked;
                 if (Outcomes.Count > 32) Outcomes.Remove(Outcomes.Keys.Min());
+                Trace?.Invoke($"fence: batch={batch} armed={_armed} keys={keySeqNow}/{_armedSeq} {modifiers} blocked={_decidedBlocked}");
             }
             return _decidedBlocked;
         }
     }
+
+    /// <summary>D115: each verdict, for the screen tests' log only (GA_E2E=1): numbers and key states, never text.</summary>
+    public static Action<string>? Trace { get; set; }
 
     /// <summary>What happened to a batch: null until the hook has seen it, then true if it was swallowed.</summary>
     public static bool? Blocked(nuint tag)
