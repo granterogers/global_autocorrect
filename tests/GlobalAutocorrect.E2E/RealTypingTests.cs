@@ -106,7 +106,7 @@ public sealed class RealTypingTests
     {
         get
         {
-            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate", "intercom", "chat"];   // D113: Intercom and Claude/ChatGPT stand-ins
+            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate", "intercom", "email", "chat"];   // D113: Intercom and Claude/ChatGPT stand-ins; D122: Intercom email, signature below
             var only = Environment.GetEnvironmentVariable("GA_RT_EDITORS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             int repeat = int.TryParse(Environment.GetEnvironmentVariable("GA_RT_REPEAT"), out int r) && r > 1 ? r : 1;
             var data = new TheoryData<string>();

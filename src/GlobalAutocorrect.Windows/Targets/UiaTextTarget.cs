@@ -133,6 +133,73 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         return true;
     }
 
+    /// <summary>D122: the key count and modifier state from the hook, for the placed write's own check (no fence there).</summary>
+    public Func<long>? KeySeq { get; init; }
+    public Func<bool>? ModifiersDown { get; init; }
+
+    /// <summary>D122: Chromium (Edge, Chrome, Electron apps, WebView2) applies a UI Automation selection to the page.</summary>
+    public bool CanPlaceCaret => LastSnapshot?.FrameworkId == "Chrome";
+
+    public bool LastEditRefused { get; private set; }
+
+    /// <summary>
+    /// D122: select the fix through UI Automation, wait until the field shows it selected, type over it, put the caret back
+    /// and wait until it is back, with the user's keys held throughout (<see cref="GlobalAutocorrect.Windows.Input.KeyHold"/>).
+    /// Nothing is typed unless the field shows exactly the fix selected.
+    /// </summary>
+    public bool ApplyEditPlaced(string original, string tail, string replacement, long expectedKeySeq)
+    {
+        LastEditBlocked = LastEditRefused = false;
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
+        if (pid != _lastPid) return false;
+        var tails = TextNorm.FieldTails(LastSnapshot?.Before ?? "", original, tail);
+        if (tails.Count == 0) { Refuse("tail-not-found"); return false; }
+        _beforeWrite = LastSnapshot?.Before ?? "";
+        long started = Stopwatch.GetTimestamp();
+        GlobalAutocorrect.Windows.Input.KeyHold.Begin();
+        try
+        {
+            // Counted before the hold decides, so an unchanged count means no key got past it to the app.
+            if ((KeySeq is not null && KeySeq() != expectedKeySeq) || ModifiersDown?.Invoke() == true) { LastEditBlocked = true; return false; }
+            if (!worker.Invoke(r => r.PlaceSelectFix(original, tails), false)) { Refuse("not-found"); return false; }
+            if (!Until(400, () => worker.Invoke(r => r.PlaceSelectionIsFix(), false)))
+            {
+                worker.Invoke(r => r.PlaceReturn(0, fixUntouched: true), false);
+                Until(400, () => worker.Invoke(r => r.PlaceReturned(original), false));
+                Refuse("not-selected");
+                return false;
+            }
+            Thread.Sleep(30);   // the page's editor takes the selection from the browser's selectionchange event
+            var writer = new SendInputWriter(GlobalAutocorrect.Windows.Input.InjectionTag.Value) { TypeAsUnicode = true };
+            if (!writer.ApplyEdit(0, replacement.Length == 0 ? 1 : 0, replacement)) return false;   // a Backspace deletes the selection
+            bool typed = Until(1000, () => worker.Invoke(r => r.PlaceTyped(replacement), false));
+            bool back = false;
+            for (int attempt = 0; attempt < 2 && !back; attempt++)
+                back = worker.Invoke(r => r.PlaceReturn(attempt), false) && Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
+            timings?.Record("write.placed", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            if (!typed || !back) diagnose?.Invoke($"place: app={LastSnapshot?.ProcessName ?? "?"} typed={typed} back={back} (D122, no text)");
+            return true;   // typed: the gate's check decides
+        }
+        finally
+        {
+            int replayed = GlobalAutocorrect.Windows.Input.KeyHold.Release();
+            if (replayed > 0 && Environment.GetEnvironmentVariable("GA_E2E") == "1") diagnose?.Invoke($"place: replayed {replayed / 2} held keys (D122)");
+        }
+    }
+
+    private void Refuse(string why)
+    {
+        LastEditRefused = true;
+        diagnose?.Invoke($"place refused: app={LastSnapshot?.ProcessName ?? "?"} {why} (D122, no text)");
+    }
+
+    private static bool Until(int ms, Func<bool> done)
+    {
+        long until = Environment.TickCount64 + ms;
+        do { if (done()) return true; Thread.Sleep(10); } while (Environment.TickCount64 < until);
+        return false;
+    }
+
     /// <summary>D99: the caret was left short of the user's place after a fix: step it back, if focus hasn't moved.</summary>
     public bool MoveCaretRight(int count)
     {

@@ -36,6 +36,25 @@ public interface ITextTarget
     bool LastEditBlocked => false;
 
     /// <summary>
+    /// D122: the field can be told where its caret goes (UI Automation selection, Chromium), so a fix on an earlier line
+    /// needs no arrow keys: how many presses cross a line break differs between editors, and guessing wrong put the fix
+    /// and the user's next keys in the wrong place (Intercom: "slimmed-down -downversion", "Best Wishes,w").
+    /// </summary>
+    bool CanPlaceCaret => false;
+
+    /// <summary>
+    /// D122: selects <paramref name="original"/> where it ends <paramref name="tail"/> before the caret, checks the field
+    /// shows exactly that selected, types <paramref name="replacement"/> over it and puts the caret back where it was.
+    /// The user's keys are held meanwhile and replayed after, so none lands at the fix. False with
+    /// <see cref="LastEditBlocked"/> when a key got in first (try later), with <see cref="LastEditRefused"/> when the
+    /// field couldn't be shown the fix (nothing typed: drop it).
+    /// </summary>
+    bool ApplyEditPlaced(string original, string tail, string replacement, long expectedKeySeq) => false;
+
+    /// <summary>D122: the last placed edit typed nothing, because the field didn't show the fix where it was expected.</summary>
+    bool LastEditRefused => false;
+
+    /// <summary>
     /// D46: the editor handles a burst of arrow keys late (CKEditor 5, Teams' message box: it moves its own cursor from
     /// the browser's selection events, which arrive after the backspaces), so fixes delete back and retype instead.
     /// </summary>
@@ -161,4 +180,26 @@ public static class TextNorm
     }
 
     public static int Elements(string s) => s.Length == 0 ? 0 : new System.Globalization.StringInfo(s).LengthInTextElements;
+
+    /// <summary>
+    /// D122: how the field may show <paramref name="tail"/> (the text typed after a fix) at the end of
+    /// <paramref name="before"/>, right after <paramref name="original"/>: the suffixes of <paramref name="before"/> that
+    /// compare equal to it (D42: a blank line can show as one line break or two), shortest first. Each is checked against
+    /// the field before anything is typed.
+    /// </summary>
+    public static IReadOnlyList<string> FieldTails(string before, string original, string tail)
+    {
+        var found = new List<string>();
+        string want = Comparable(tail), orig = Normalise(original);
+        int minLen = Math.Max(0, want.Length - 1);
+        for (int len = minLen; len <= Math.Min(before.Length, tail.Length * 2 + 2); len++)
+        {
+            string s = before[^len..];
+            if (Comparable(s) != want) continue;
+            if (char.IsLowSurrogate(s.Length > 0 ? s[0] : 'a')) continue;   // never half a character
+            if (!Normalise(before[..^len]).EndsWith(orig, StringComparison.Ordinal)) continue;
+            found.Add(s);
+        }
+        return found;
+    }
 }

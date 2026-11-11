@@ -107,6 +107,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         KBDLLHOOKSTRUCT k;
         unsafe { k = *(KBDLLHOOKSTRUCT*)lParam; }   // direct read: no marshalling on the hot path
         if (k.dwExtraInfo == InjectionTag.Value) return CallNextHookEx(_kb, nCode, wParam, lParam);   // ours (10.7.b)
+        if (k.dwExtraInfo == KeyHold.ReplayTag) return CallNextHookEx(_kb, nCode, wParam, lParam);   // D122: held keys, counted when held
         // D105: a fenced edit batch: swallowed whole if a key or a held modifier got to the app after the gate's last look.
         if (WriteFence.IsFenced(k.dwExtraInfo))
             return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq), ModifierForFence(),
@@ -125,7 +126,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
             if (k.vkCode == VK_TAB && _swallowTabUp) { _swallowTabUp = false; return 1; }
             // Key-ups don't change text and don't count in the sequence; the translator needs them for modifier state.
             _channel.Writer.TryWrite(new RawInput(RawKind.Key, k.vkCode, k.scanCode, k.flags, false, injected, Interlocked.Read(ref _seq), at));
-            return CallNextHookEx(_kb, nCode, wParam, lParam);
+            return Pass(nCode, wParam, lParam, k, injected, down: false);
         }
 
         long prev = Interlocked.Read(ref _seq);
@@ -146,12 +147,20 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         if (IsModifier(k.vkCode))
         {
             _channel.Writer.TryWrite(new RawInput(RawKind.Key, k.vkCode, k.scanCode, k.flags, true, injected, Interlocked.Read(ref _seq), at));
-            return CallNextHookEx(_kb, nCode, wParam, lParam);
+            return Pass(nCode, wParam, lParam, k, injected, down: true);
         }
         SuggestionArm.Disarm();
         Enqueue(RawKind.Key, k, true, injected, at);
-        return CallNextHookEx(_kb, nCode, wParam, lParam);
+        return Pass(nCode, wParam, lParam, k, injected, down: true);
     }
+
+    /// <summary>
+    /// D122: the user's event goes on to the app, unless a write has the caret away from the user's place: then it is held
+    /// and replayed when the caret is back (<see cref="KeyHold"/>). Called after the key is counted, so a write that
+    /// starts holding and then finds the count unchanged knows no key got past it.
+    /// </summary>
+    private nint Pass(int nCode, nint wParam, nint lParam, in KBDLLHOOKSTRUCT k, bool injected, bool down) =>
+        !injected && KeyHold.TryHold(k.vkCode, k.scanCode, k.flags, down) ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
     private volatile bool _ctrl, _alt, _shift, _win;
 

@@ -167,8 +167,6 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // field is checked against the typed text before writing and verified after. Fast typists start the next
         // paragraph before the AI's fix arrives, and those fixes were all dropped (user report, Intercom).
         if (tail.Count(c => c == '\n') > options.MaxLineBreaksCrossed) { Drop(w, "too-many-lines"); return false; }
-        // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only.
-        if (w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
 
         var win = target.ReadWindow();
         if (IsDesynced(win.TargetId)) { Drop(w, "desynced"); return false; }
@@ -231,7 +229,14 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // straight after the batch, leaving "thed og" (found by E2E). No arrow keys, nothing to fall out of step.
         bool retype = caretDistance is > 0 and <= 3 && tail.All(c => c is ' ' or '\t' || char.IsPunctuation(c));
         bool learntRetype = !target.RetypeInsteadOfArrows && Health?.RetypeIn(target.AppName) == true;   // D95
-        if ((target.RetypeInsteadOfArrows || learntRetype) && caretDistance > 0)
+        // D122: a fix on an earlier line is written by putting the caret on it through UI Automation where the field allows
+        // it (no arrow keys to miscount across a line break), checked before anything is typed. Unless that has gone
+        // wrong in this program too (then D121's miss).
+        bool placed = w.Layer != Layer.Undo && tail.Contains('\n') && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
+        // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
+        if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
+        if (placed) retype = false;
+        else if ((target.RetypeInsteadOfArrows || learntRetype) && caretDistance > 0)
         {
             // D46: CKEditor (Teams) applies arrow keys after the edits that follow them, so delete back and retype. D89:
             // so does any program where a fix stepped to with arrows has gone wrong (learnt, WhatsApp's editor). Never
@@ -255,8 +260,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // Right presses didn't carry the caret back across the line break, so it stopped at the end of the line above and
         // the user's next letter went there. When the user is typing at the very end of the field (nothing after the
         // caret), the way back is Ctrl+End instead, which lands at the end however the editor counts its line breaks.
-        bool toEnd = !retype && w.Layer != Layer.Undo && caretDistance > 0 && tail.Contains('\n') && TextNorm.Comparable(win.After).Length == 0;
-        bool sent = toEnd
+        bool toEnd = !placed && !retype && w.Layer != Layer.Undo && caretDistance > 0 && tail.Contains('\n') && TextNorm.Comparable(win.After).Length == 0;
+        bool sent = placed
+            ? target.ApplyEditPlaced(w.Original, tail, w.Replacement, seqAtWrite)
+            : toEnd
             ? target.ApplyEditThenEnd(caretDistance, deleteCount, w.Replacement, seqAtWrite)
             : w.Layer == Layer.Undo
             ? (retype ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail) : target.ApplyEdit(caretDistance, deleteCount, w.Replacement))
@@ -267,6 +274,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D105: a key seen between that look and the send most likely reached the app first (logged with the outcome).
         bool raced = keys.LatestKeySeq != seqAtWrite;
         if (!sent && target.LastEditBlocked) return false;   // nothing reached the app: the next tick tries again
+        if (!sent && placed && target.LastEditRefused) { Drop(w, "place-refused"); return false; }   // D122: nothing typed
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
         string before = TextNorm.Comparable(win.Before);
@@ -280,15 +288,18 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             return false;
         }
         int reach = caretDistance + TextNorm.Elements(w.Replacement) + 2;   // D120: the check must see the fix itself
-        if (!target.Verify(expectedBefore, win.After, reach) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite)
-            && !RepairedCaret(target, expectedBefore, win.After, retype ? 0 : caretDistance, seqAtWrite))   // 4.6.d, D84, D99
+        if (!target.Verify(expectedBefore, win.After, reach)
+            && (placed   // D122: the repairs step with arrow keys, which is what a placed fix avoids
+                || (!RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite)
+                    && !RepairedCaret(target, expectedBefore, win.After, retype ? 0 : caretDistance, seqAtWrite))))   // 4.6.d, D84, D99
         {
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
-            if (tail.Contains('\n') && w.Layer != Layer.Undo) Health?.LineFixFailed(target.AppName);   // D121
+            if (placed) Health?.PlaceFailed(target.AppName);   // D122
+            else if (tail.Contains('\n') && w.Layer != Layer.Undo) Health?.LineFixFailed(target.AppName);   // D121
             // D95: which way the failed fix was written (no text), so a report like "not picking it up" can be answered.
-            WriteDropped?.Invoke(w.Layer, $"verify-failed {(retype ? "retype" : "arrows")} distance={caretDistance} lines={tail.Count(c => c == '\n')}{(raced ? " raced" : "")}");
-            if (!retype && caretDistance > 0 && Health is not null && !Health.RetypeIn(target.AppName))
+            WriteDropped?.Invoke(w.Layer, $"verify-failed {(placed ? "placed" : retype ? "retype" : "arrows")} distance={caretDistance} lines={tail.Count(c => c == '\n')}{(raced ? " raced" : "")}");
+            if (!placed && !retype && caretDistance > 0 && Health is not null && !Health.RetypeIn(target.AppName))
             {
                 Health.ArrowsFailed(target.AppName);   // D89: this program's fixes are retyped from now on
                 ArrowsFailed?.Invoke(target.AppName);

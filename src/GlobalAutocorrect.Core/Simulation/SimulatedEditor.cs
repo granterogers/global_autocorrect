@@ -210,6 +210,33 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
 
     public int EditsThenEnd { get; private set; }
 
+    /// <summary>D122: the field can be told where its caret goes (Chromium's UI Automation selection).</summary>
+    public bool CanPlaceCaret { get; set; }
+
+    /// <summary>D122: the field never shows the selection asked for, so nothing is typed.</summary>
+    public bool PlaceRefuses { get; set; }
+
+    public bool LastEditRefused { get; private set; }
+    public int PlacedEdits { get; private set; }
+
+    /// <summary>D122: select the fix, check it, type over it, put the caret back: no arrow keys, so no line break miscounted.</summary>
+    public bool ApplyEditPlaced(string original, string tail, string replacement, long expectedKeySeq)
+    {
+        LastEditRefused = false;
+        LastEditBlocked = BlockFencedEdits > 0;
+        if (LastEditBlocked) { BlockFencedEdits--; return false; }
+        BeforeApply?.Invoke(this);
+        string before = Text[..Caret];
+        if (PlaceRefuses || !before.EndsWith(original + tail, StringComparison.Ordinal)) { LastEditRefused = true; return false; }
+        int start = Caret - tail.Length - original.Length;
+        LastEdit = new AppliedEdit(Text, start, original, replacement);
+        Text = Text[..start] + replacement + Text[(start + original.Length)..];
+        Caret += replacement.Length - original.Length;
+        Edits++;
+        PlacedEdits++;
+        return true;
+    }
+
     /// <summary>Characters "typed" between the write and its verification (models a user who keeps typing, 4.6.e).</summary>
     public string TypedDuringVerify { get; set; } = "";
 

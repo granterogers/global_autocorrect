@@ -161,7 +161,7 @@ public sealed class AppHost : IAsyncDisposable
         _llm = new LlmRuntime(host, SystemClock.Instance, CurrentPrompt) { IdleUnloadMinutes = Settings.IdleUnloadMinutes };   // D111
 
         _uia = new UiaWorker();
-        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings) { Cost = ReadCost };   // D97
+        Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(Settings.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings) { Cost = ReadCost, KeySeq = () => _hook?.LatestKeySeq ?? -1, ModifiersDown = () => _hook?.ModifiersDown ?? false };   // D97, D122
         ReadCost.Changed += (app, light, p90) =>
         {
             Diagnose($"adapt: app={app} {(light ? "light" : "normal")} readP90={p90:0} (D97, no text)");
@@ -353,7 +353,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             bool exclusionsChanged = !(old.ExcludedApps ?? AppExclusions.Defaults).SequenceEqual(s.ExcludedApps ?? AppExclusions.Defaults);
             if (exclusionsChanged && _uia is not null)
-                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings);
+                Target = new UiaTextTarget(_uia, TargetGate.Create(new AppExclusions(s.ExcludedApps ?? AppExclusions.Defaults)), Diagnose, _counters.Timings) { Cost = ReadCost, KeySeq = () => _hook?.LatestKeySeq ?? -1, ModifiersDown = () => _hook?.ModifiersDown ?? false };
             var options = s.ToEngineOptions(Brain.Tune(new EngineOptions(), _tuning));   // D102
             if (options != _engineOptions) _loop.Replace(BuildEngine());   // BuildEngine records the new options
             if (exclusionsChanged)

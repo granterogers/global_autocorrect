@@ -161,6 +161,129 @@ public sealed class UiaReader
         catch (Exception e) when (IsUiaFailure(e)) { return null; }
     }
 
+    // D122: a fix on an earlier line, written by selecting it through UI Automation. One at a time, on this thread.
+    private IUIAutomationTextPattern? _placePattern;
+    private IUIAutomationTextRange? _placeCaret, _placeFix;
+    private string _placeTail = "";
+    private int _placeTailUnits;
+
+    private (IUIAutomationTextPattern? Pattern, IUIAutomationTextRange? Caret) FocusedCaret()
+    {
+        var el = _uia.GetFocusedElement();
+        if (el is null) return (null, null);
+        if (el.GetCurrentPattern(TextPatternId) is null && _hosted.FocusedIn(_uia, el.CurrentProcessId) is { } inner) el = inner;   // D87
+        var pattern = el.GetCurrentPattern(TextPatternId) as IUIAutomationTextPattern;
+        IUIAutomationTextRange? caret = (el.GetCurrentPattern(TextPattern2Id) as IUIAutomationTextPattern2)?.GetCaretRange(out _);
+        if (caret is null && pattern?.GetSelection() is { Length: 1 } sel) caret = sel.GetElement(0);
+        return (pattern, caret);
+    }
+
+    private static string Text(IUIAutomationTextRange r) => GlobalAutocorrect.Core.Targets.TextNorm.Normalise(r.GetText(-1) ?? "");
+
+    /// <summary>
+    /// D122, step 1: finds <paramref name="original"/> right before one of <paramref name="tails"/> (how the field may show
+    /// what was typed after it), counted back from the caret, and selects it. Only where the field's own text there is
+    /// exactly that; otherwise nothing is selected and false comes back.
+    /// </summary>
+    public bool PlaceSelectFix(string original, IReadOnlyList<string> tails)
+    {
+        _placePattern = null; _placeCaret = _placeFix = null;
+        try
+        {
+            var (pattern, caret) = FocusedCaret();
+            if (pattern is null || caret is null) return false;
+            string want = GlobalAutocorrect.Core.Targets.TextNorm.Normalise(original);
+            foreach (string tail in tails)
+            {
+                // Characters as the field counts them: text elements, or UTF-16 units where an emoji counts twice.
+                foreach (var (tu, ou) in new[] { (Elements(tail), Elements(original)), (tail.Length, original.Length) }.Distinct())
+                {
+                    var whole = caret.Clone();
+                    if (whole.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -(tu + ou)) != -(tu + ou)) continue;
+                    if (Text(whole) != GlobalAutocorrect.Core.Targets.TextNorm.Normalise(original + tail)) continue;
+                    var fix = whole.Clone();
+                    if (tu > 0 && fix.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, TextUnit.TextUnit_Character, -tu) != -tu) continue;
+                    if (Text(fix) != want) continue;
+                    _placePattern = pattern; _placeCaret = caret.Clone(); _placeFix = fix;
+                    _placeTail = GlobalAutocorrect.Core.Targets.TextNorm.Normalise(tail); _placeTailUnits = tu;
+                    fix.Select();
+                    return true;
+                }
+            }
+            return false;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return false; }
+    }
+
+    /// <summary>D122, step 2: the field shows the fix selected (the browser has applied the selection).</summary>
+    public bool PlaceSelectionIsFix()
+    {
+        try
+        {
+            if (_placePattern?.GetSelection() is not { Length: 1 } sel || _placeFix is null) return false;
+            var r = sel.GetElement(0);
+            return r.CompareEndpoints(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, _placeFix, TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start) == 0
+                && r.CompareEndpoints(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, _placeFix, TextPatternRangeEndpoint.TextPatternRangeEndpoint_End) == 0;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return false; }
+    }
+
+    /// <summary>D122, step 3: the replacement is in, the caret right after it, and the text typed after the fix follows.</summary>
+    public bool PlaceTyped(string replacement)
+    {
+        try
+        {
+            var (_, caret) = FocusedCaret();
+            if (caret is null) return false;
+            var back = caret.Clone();
+            int n = Elements(replacement);
+            if (n > 0 && back.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -n) != -n) return false;
+            if (Text(back) != GlobalAutocorrect.Core.Targets.TextNorm.Normalise(replacement)) return false;
+            var on = caret.Clone();
+            on.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, TextUnit.TextUnit_Character, _placeTailUnits);
+            return Text(on) == _placeTail;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return false; }
+    }
+
+    /// <summary>
+    /// D122, step 4: the caret back where the user was. First by stepping over the typed tail from where typing left it
+    /// (counted the way the field counted it in step 1); <paramref name="attempt"/> 1 uses the caret position kept from
+    /// before the fix instead. With <paramref name="fixUntouched"/> (nothing was typed) that kept position is used at once.
+    /// </summary>
+    public bool PlaceReturn(int attempt, bool fixUntouched = false)
+    {
+        try
+        {
+            if (fixUntouched || attempt > 0) { _placeCaret?.Select(); return _placeCaret is not null; }
+            var (_, caret) = FocusedCaret();
+            if (caret is null) return false;
+            var r = caret.Clone();
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_End, TextUnit.TextUnit_Character, _placeTailUnits);
+            r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, _placeTailUnits);
+            r.Select();
+            return true;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return false; }
+    }
+
+    /// <summary>D122: the caret is back: collapsed, with <paramref name="beforeTail"/> and the typed tail right before it.</summary>
+    public bool PlaceReturned(string beforeTail)
+    {
+        try
+        {
+            var (_, caret) = FocusedCaret();
+            if (caret is null || caret.CompareEndpoints(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, caret, TextPatternRangeEndpoint.TextPatternRangeEndpoint_End) != 0) return false;
+            var r = caret.Clone();
+            int n = Elements(beforeTail) + _placeTailUnits;
+            if (r.MoveEndpointByUnit(TextPatternRangeEndpoint.TextPatternRangeEndpoint_Start, TextUnit.TextUnit_Character, -n) != -n) return false;
+            return Text(r) == GlobalAutocorrect.Core.Targets.TextNorm.Normalise(beforeTail) + _placeTail;
+        }
+        catch (Exception e) when (IsUiaFailure(e)) { return false; }
+    }
+
+    private static int Elements(string s) => GlobalAutocorrect.Core.Targets.TextNorm.Elements(s);
+
     /// <summary>Touches the focused element's text pattern so Chromium/Electron turn on full accessibility (10.6.d).</summary>
     public void Warm()
     {
