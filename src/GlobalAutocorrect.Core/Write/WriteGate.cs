@@ -277,7 +277,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             session.Break(SessionBreakReason.FocusChange);
             return false;
         }
-        if (!target.Verify(expectedBefore, win.After) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite)
+        int reach = caretDistance + TextNorm.Elements(w.Replacement) + 2;   // D120: the check must see the fix itself
+        if (!target.Verify(expectedBefore, win.After, reach) && !RepairedCase(target, w, expectedBefore, win.After, retype, caretDistance, tail, seqAtWrite)
             && !RepairedCaret(target, expectedBefore, win.After, retype ? 0 : caretDistance, seqAtWrite))   // 4.6.d, D84, D99
         {
             counters.Desync();

@@ -149,12 +149,16 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>D99: how far short of the user's place the caret may be found and still be put back.</summary>
     public const int MaxCaretShort = 300;
 
-    public bool Verify(string expectedBefore, string expectedAfter)
+    public bool Verify(string expectedBefore, string expectedAfter) => Verify(expectedBefore, expectedAfter, 0);
+
+    /// <param name="reach">D120: how far back before the caret the check must see (the fix and what follows it).</param>
+    public bool Verify(string expectedBefore, string expectedAfter, int reach)
     {
         // The app processes the injected keys asynchronously: poll briefly until it shows the result (4.6.d). The user
         // keeps typing meanwhile (4.6.e), so the expected text may be followed by a few new characters on the same line.
         string e = TextNorm.Comparable(expectedBefore), ea = TextNorm.Comparable(expectedAfter);   // D42
-        string tail = e.Length > 48 ? e[^48..] : e;
+        int want = Math.Max(48, reach);   // D120: the fix itself, not only what follows it
+        string tail = e.Length > want ? e[^want..] : e;
         // The text after the caret only has to still be there: browsers can show their own suggestion (Edge's text
         // prediction) right after the caret, which used to count as a mismatch.
         string afterLine = ea.Split('\n')[0];
@@ -165,7 +169,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         int caretShortReads = 0;
         string lastShort = "";
         // A heavy web app can take a while to show injected keys (found in Intercom): poll for up to about a second.
-        for (int i = 0; i < 30; i++)
+        // D120: a long fix takes a heavy page longer to apply: wait up to about 5 s for it, 1 s for a short one.
+        int polls = Math.Clamp(30 + reach / 2, 30, 150);
+        for (int i = 0; i < polls; i++)
         {
             var w = ReadWindow();
             if (w.CaretKnown)

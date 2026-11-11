@@ -50,6 +50,13 @@ public interface ITextTarget
     /// <summary>Re-reads and checks the field now shows <paramref name="expectedBefore"/> before the caret and <paramref name="expectedAfter"/> after it (4.6.d).</summary>
     bool Verify(string expectedBefore, string expectedAfter);
 
+    /// <summary>
+    /// D120: the same check, but it must see the last <paramref name="reach"/> characters before the caret (where the fix
+    /// is), not only the last few: a retype's tail is the same before and after, so a check of the tail alone passed on a
+    /// heavy page before the page had applied anything.
+    /// </summary>
+    bool Verify(string expectedBefore, string expectedAfter, int reach) => Verify(expectedBefore, expectedAfter);
+
     /// <summary>D99: presses Right <paramref name="count"/> times (tagged, one batch), to put the caret back after a fix
     /// whose Right presses the editor lost. False if nothing was sent.</summary>
     bool MoveCaretRight(int count) => false;
