@@ -15,7 +15,18 @@ namespace GlobalAutocorrect.Windows.Targets;
 /// <param name="timings">D64: how long reads, writes and verifies take (durations only).</param>
 public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStatus?>? gate = null, Action<string>? diagnose = null, Timings? timings = null) : ITextTarget
 {
-    private int _lastPid;
+    private int _lastPid, _lastWindowPid;
+
+    /// <summary>
+    /// 12.2: focus is still where the field was read. D123, user report (new Teams, "why not realise picked up?"): the field
+    /// belongs to the browser engine the app hosts (msedgewebview2) while the window in front belongs to the app (ms-teams),
+    /// so comparing the window with the field's process dropped every fix there as "not-sent". The window in front at the
+    /// read counts too.
+    /// </summary>
+    private bool SameFocus(uint foregroundPid) => SameFocus(foregroundPid, _lastPid, _lastWindowPid);
+
+    public static bool SameFocus(uint foregroundPid, int fieldPid, int windowPidAtRead) =>
+        foregroundPid != 0 && (foregroundPid == (uint)fieldPid || foregroundPid == (uint)windowPidAtRead);
 
     /// <summary>Latest successful read, for the overlay (caret rectangle) and the home page (app name).</summary>
     public UiaSnapshot? LastSnapshot { get; private set; }
@@ -61,6 +72,8 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         if (why != _lastStatus) { _lastStatus = why; if (status != TargetStatus.Ok) diagnose?.Invoke($"read: app={s.ProcessName} status={status} (D105)"); }
         if (status != TargetStatus.Ok) return TextWindow.Unavailable(status, id);
         _lastPid = s.ProcessId;
+        NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint fg);
+        _lastWindowPid = (int)fg;   // D123
         LastSnapshot = s;
         return new TextWindow(TargetStatus.Ok, id, s.Before, s.After);
     }
@@ -90,7 +103,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     {
         // SendInput goes to whatever has focus now; make sure it's still the app we read (12.2).
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
-        if (pid != _lastPid) return false;
+        if (!SameFocus(pid)) return false;
         _beforeWrite = LastSnapshot?.Before ?? "";
         long started = Stopwatch.GetTimestamp();
         bool sent = SendInputWriter.Tagged.ApplyEdit(caretDistance, deleteCount, replacement);
@@ -115,7 +128,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     {
         LastEditBlocked = false;
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
-        if (pid != _lastPid) return false;
+        if (!SameFocus(pid)) return false;
         _beforeWrite = LastSnapshot?.Before ?? "";
         long started = Stopwatch.GetTimestamp();
         nuint tag = GlobalAutocorrect.Windows.Input.WriteFence.Arm(expectedKeySeq);
@@ -151,7 +164,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     {
         LastEditBlocked = LastEditRefused = false;
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
-        if (pid != _lastPid) return false;
+        if (!SameFocus(pid)) return false;
         var tails = TextNorm.FieldTails(LastSnapshot?.Before ?? "", original, tail);
         if (tails.Count == 0) { Refuse("tail-not-found"); return false; }
         _beforeWrite = LastSnapshot?.Before ?? "";
@@ -204,7 +217,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     public bool MoveCaretRight(int count)
     {
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
-        return count > 0 && pid == _lastPid && SendInputWriter.Tagged.MoveRight(count);
+        return count > 0 && SameFocus(pid) && SendInputWriter.Tagged.MoveRight(count);
     }
 
     /// <summary>D46: CKEditor 5 (Teams' message box) applies a burst of arrow keys after the edits that follow them.</summary>
