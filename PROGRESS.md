@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D121 (4.6.d):** a program where a fix on an earlier line went wrong (real Intercom) gets fixes on the caret's own line only; learnt and shared. 2 tests.
 - **D120 (4.6.d):** the check after a fix must see the fix itself, so a heavy page can't pass it early (Intercom stand-in misses). GitHub run on 1.35.0: no editor damaged any text.
 - **D119 (4.6.d):** after a long fix the next one waits 200 ms for the editor to catch up (Slate "Wi-ri", Intercom page misses). GitHub full run on 1.34.0: 8 editors 9/9, nothing damaged.
 - **D118 (4.6.d):** after a fix on an earlier line the caret returns with Ctrl+End, so the next letter no longer lands on the line above ("Best Wishes,w"). 2 tests.

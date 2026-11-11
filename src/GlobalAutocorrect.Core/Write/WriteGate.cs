@@ -167,6 +167,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // field is checked against the typed text before writing and verified after. Fast typists start the next
         // paragraph before the AI's fix arrives, and those fixes were all dropped (user report, Intercom).
         if (tail.Count(c => c == '\n') > options.MaxLineBreaksCrossed) { Drop(w, "too-many-lines"); return false; }
+        // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only.
+        if (w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
 
         var win = target.ReadWindow();
         if (IsDesynced(win.TargetId)) { Drop(w, "desynced"); return false; }
@@ -283,6 +285,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         {
             counters.Desync();
             Health?.VerifyFailed(target.AppName);   // D81
+            if (tail.Contains('\n') && w.Layer != Layer.Undo) Health?.LineFixFailed(target.AppName);   // D121
             // D95: which way the failed fix was written (no text), so a report like "not picking it up" can be answered.
             WriteDropped?.Invoke(w.Layer, $"verify-failed {(retype ? "retype" : "arrows")} distance={caretDistance} lines={tail.Count(c => c == '\n')}{(raced ? " raced" : "")}");
             if (!retype && caretDistance > 0 && Health is not null && !Health.RetypeIn(target.AppName))

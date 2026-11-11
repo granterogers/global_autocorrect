@@ -27,18 +27,21 @@ public sealed class AppStats
     /// <summary>D95: fixes retyped because of <see cref="ArrowFailures"/> whose check afterwards failed too.</summary>
     public double RetypeFailures { get; set; }
 
+    /// <summary>D121: fixes on an earlier line (across a line break) whose check afterwards failed.</summary>
+    public double LineFailures { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
-        ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures,
+        ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures, LineFailures = LineFailures + o.LineFailures,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by;
     }
 
-    internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures;
+    internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures + LineFailures;
 }
 
 /// <summary>
@@ -130,6 +133,14 @@ public sealed class AppHealth
     public void VerifyFailed(string app) => Note(app, s => s.VerifyFailures++);
     public void ArrowsFailed(string app) => Note(app, s => s.ArrowFailures++);
     public void RetypeFailed(string app) => Note(app, s => s.RetypeFailures++);   // D95
+    public void LineFixFailed(string app) => Note(app, s => s.LineFailures++);   // D121
+
+    /// <summary>
+    /// D121, user report (Intercom email: "slimmed-down -downversion", after "Best Wishes,w" and "update. y"): a program
+    /// where a fix on an earlier line has gone wrong gets fixes on the caret's own line only, for about two weeks (the
+    /// same fading as D89), renewed whenever it happens again; shared through the brain. A miss, never damage.
+    /// </summary>
+    public bool SameLineOnly(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).LineFailures >= RetypeAfter;
     public void Stuck(string app) => Note(app, s => s.Stuck++);
     public void Undone(string app) => Note(app, s => s.Undos++);
 
@@ -207,7 +218,7 @@ public sealed class AppHealth
         foreach (var source in sources)
             foreach (var (k, v) in source) apps[k] = apps.TryGetValue(k, out var s) ? s.Plus(v) : v.Plus(new AppStats());
         // D89: one arrow-key failure is worth sharing on its own (it is what makes another PC retype from the start).
-        var kept = apps.Where(a => a.Value.Events >= minEvents || a.Value.ArrowFailures >= RetypeAfter)
+        var kept = apps.Where(a => a.Value.Events >= minEvents || a.Value.ArrowFailures >= RetypeAfter || a.Value.LineFailures >= RetypeAfter)   // D121: shared on its own too
             .OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(a => a.Key.ToLowerInvariant(), a => Round(a.Value));
         return new ProfileFile(today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), kept);
@@ -216,7 +227,7 @@ public sealed class AppHealth
     private static AppStats Round(AppStats s) => new()
     {
         Writes = Math.Round(s.Writes, 1), VerifyFailures = Math.Round(s.VerifyFailures, 1), Stuck = Math.Round(s.Stuck, 1), Undos = Math.Round(s.Undos, 1),
-        ArrowFailures = Math.Round(s.ArrowFailures, 2), RetypeFailures = Math.Round(s.RetypeFailures, 2),
+        ArrowFailures = Math.Round(s.ArrowFailures, 2), RetypeFailures = Math.Round(s.RetypeFailures, 2), LineFailures = Math.Round(s.LineFailures, 2),
     };
 
     /// <summary>This PC's counts (for publishing). A copy.</summary>
