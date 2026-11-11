@@ -41,6 +41,8 @@ public sealed class BrowserTests
             _ => "#ed",
         };
         await p.ClickAsync(target);   // a click is a session break, before any typing
+        // D122: the email reply is typed above its signature, where the user clicks (the click above lands mid-box).
+        if (page == "email") await p.EvaluateAsync("() => window.caretToTop()");
         await Task.Delay(1500);      // Chromium turns on full accessibility once UIA connects (10.6.d)
         return (browser, p, pw);
     }

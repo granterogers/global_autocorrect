@@ -75,6 +75,8 @@ view.focus();
 window.view = view;
 
 // What the test reads: the sent messages, then what is still in the box, one line each.
+window.caretToTop = () => { view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1))); view.focus(); };
+
 // With a signature: the text above it, and a line that fails the test if the signature was touched.
 const boxText = () => {
   const all = view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '￼');

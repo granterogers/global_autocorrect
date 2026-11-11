@@ -231,8 +231,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         bool learntRetype = !target.RetypeInsteadOfArrows && Health?.RetypeIn(target.AppName) == true;   // D95
         // D122: a fix on an earlier line is written by putting the caret on it through UI Automation where the field allows
         // it (no arrow keys to miscount across a line break), checked before anything is typed. Unless that has gone
-        // wrong in this program too (then D121's miss).
-        bool placed = w.Layer != Layer.Undo && tail.Contains('\n') && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
+        // wrong in this program too (then D121's miss). So is a long fix on the caret's own line (D117's pause applies to
+        // both): retyping 91 characters took the heavy Intercom page longer than the check waits, and stepping that far
+        // with arrows is what goes wrong in such editors; placed, only the replacement is typed.
+        bool placed = w.Layer != Layer.Undo && (tail.Contains('\n') || caretDistance > options.LongFixDistance)
+                      && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
         // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
         if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
         if (placed) retype = false;
