@@ -864,7 +864,7 @@ public sealed class EngineTests
         var h = new Harness(model: s => System.Text.RegularExpressions.Regex.Replace(s, @"I'mafraid.*popup \.", good), latencyMs: 500, options: new EngineOptions());   // D55 rules on: they must not drop the AI's writes
         // Typed straight through to the next two paragraphs: the fixes for the first land afterwards, four breaks back.
         h.Type("Thanks for the update.  " + bad + "\n\nAploges for any invoenvenee.\n\nBest wishes,", msPerKey: 90);
-        h.Wait(4000);
+        h.Wait(7000);   // D117/D119: four breaks back, each fix waits for the pause and then a moment after the one before
         Assert.Contains("I'm afraid controlling the software remotely", h.Text);
         Assert.Contains("is not supported, so for the time being they will need to just close the popup.", h.Text);
         Assert.Equal(0, h.Counters.Desyncs);

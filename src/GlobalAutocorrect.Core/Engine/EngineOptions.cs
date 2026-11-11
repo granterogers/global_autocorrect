@@ -55,6 +55,9 @@ public sealed record EngineOptions
     /// <summary>D117: how long without a key a long fix waits for (4.6.b's pause).</summary>
     public int LongFixQuietMs { get; init; } = 1500;
 
+    /// <summary>D119: after a fix goes in, the next one waits this long, so the editor has caught up with the first.</summary>
+    public int WriteSettleMs { get; init; } = 200;
+
     public bool InstantEnabled { get; init; } = true;
 
     /// <summary>D55: spacing and punctuation fixed by the instant layer (space before ".", two spaces, "i", sentence starts).</summary>

@@ -126,9 +126,18 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         return now - keys.LastKeyAtMs >= options.ShakyAppGapMs || !Health.ArrowsShaky(app);
     }
 
+    /// <summary>D119: when the last fix went in, so the next waits for the editor to settle.</summary>
+    private long _lastWriteAtMs = long.MinValue / 2;
+    private bool _lastWriteWasLong;   // D119: far back or across a line: the ones an editor takes a while to apply
+
     private bool Ready(PendingWrite w, long now)
     {
         if (w.Layer == Layer.Undo) return true;   // the user asked for it and is waiting
+        // D119 (screen tests on GitHub): two fixes sent in the same instant. After the first returned with Ctrl+End, Slate's
+        // own idea of the caret hadn't caught up, so the second's 277 Left presses started from the first fix's place and
+        // changed "Wi-fi" to "Wi-ri"; on a heavy page two long retypes back to back left the read behind and the queue was
+        // cleared. The next fix waits a moment after the last one.
+        if (_lastWriteWasLong && now - _lastWriteAtMs < options.WriteSettleMs) return false;
         bool gap = now - keys.LastKeyAtMs >= options.WriteGapMs && !keys.ModifierHeld;   // 4.6.c
         // D100, user report "why all caps? stop doing that" (Intercom: "REPRESENTATIVE Mickey"): the instant fix went out
         // while Shift was down for the next word's capital, and was typed in capitals. Never while a modifier is held.
@@ -301,6 +310,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
 
         _queue.Remove(w);
+        _lastWriteAtMs = clock.NowMs;   // D119
+        _lastWriteWasLong = caretDistance > options.LongFixDistance || tail.Contains('\n') || (retype && caretDistance > 20);
         int delta = w.Replacement.Length - (w.End - w.Start);
         foreach (var other in _queue.ToArray())
         {
