@@ -88,6 +88,8 @@ public static class Brain
             ["ShakyAppGapMs"] = (0, 3000, (o, v) => o with { ShakyAppGapMs = v }),
             ["ParagraphsLookedBack"] = (0, 10, (o, v) => o with { ParagraphsLookedBack = v }),
             ["RetypeMaxDistance"] = (0, 1000, (o, v) => o with { RetypeMaxDistance = v }),
+            ["LongFixDistance"] = (10, 1000, (o, v) => o with { LongFixDistance = v }),     // D117
+            ["LongFixQuietMs"] = (0, 5000, (o, v) => o with { LongFixQuietMs = v }),       // D117
         };
 
     /// <summary>

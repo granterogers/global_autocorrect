@@ -27,7 +27,7 @@ public sealed class ShakyAppGapTests
     {
         var h = TypedThenTypingOn(shaky: true);
         Assert.Contains("went their", h.Text);         // never between two keys
-        h.Wait(1000);
+        h.Wait(1700);                                   // D117: a fix this far back waits for a 1.5 s pause
         Assert.Equal("We went there yesterday and stayed all day. Then we came home and slept", h.Text);
         Assert.Equal(0, h.Counters.Desyncs);
     }

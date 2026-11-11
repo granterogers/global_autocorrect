@@ -49,6 +49,12 @@ public sealed record EngineOptions
     /// <summary>D89/D101: a fix further back than this is never retyped (too much to delete and type again).</summary>
     public int RetypeMaxDistance { get; init; } = 300;
 
+    /// <summary>D117: a fix further back than this (or on an earlier line) waits for <see cref="LongFixQuietMs"/> without a key.</summary>
+    public int LongFixDistance { get; init; } = 40;
+
+    /// <summary>D117: how long without a key a long fix waits for (4.6.b's pause).</summary>
+    public int LongFixQuietMs { get; init; } = 1500;
+
     public bool InstantEnabled { get; init; } = true;
 
     /// <summary>D55: spacing and punctuation fixed by the instant layer (space before ".", two spaces, "i", sentence starts).</summary>

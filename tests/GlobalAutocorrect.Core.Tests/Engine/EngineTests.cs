@@ -426,7 +426,7 @@ public sealed class EngineTests
         h.Type("i went their yesterday. ");
         h.Type("And then I came home", msPerKey: 100);   // the result arrives mid-typing; gaps are only 100 ms
         Assert.StartsWith("i went their", h.Text);
-        h.Wait(300);
+        h.Wait(1600);   // D117: this far back, the fix waits for a 1.5 s pause
         Assert.Equal("I went there yesterday. And then I came home", h.Text);
     }
 

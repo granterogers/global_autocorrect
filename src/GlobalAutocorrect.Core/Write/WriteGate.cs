@@ -113,7 +113,16 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     /// </summary>
     private bool QuietEnough(PendingWrite w, string app, long now)
     {
-        if (w.Layer == Layer.Undo || Health is null || session.Typed.Length - w.End <= 3) return true;
+        if (w.Layer == Layer.Undo || session.Typed.Length - w.End <= 3) return true;
+        // D117 (screen tests on GitHub's slower machines): a fix far back or on an earlier line is a long run of arrow keys,
+        // and a browser can take a while to apply it. A Shift pressed for the next capital while it was still moving the
+        // caret back turned the last Right presses into a selection, and the capital replaced it: "Is the Wednesday …
+        // Hi Paul, " became "IsI really", 79 characters gone. Such a fix waits for a real pause (4.6.b: 1.5 s), so the user
+        // is very unlikely to be typing while it is applied. Both values are in the brain (LongFixDistance, LongFixQuietMs).
+        int distance = session.Typed.Length - w.End;
+        bool longFix = distance > options.LongFixDistance || session.Typed.AsSpan(w.End).Contains('\n');
+        if (longFix && now - keys.LastKeyAtMs < options.LongFixQuietMs) return false;
+        if (Health is null) return true;
         return now - keys.LastKeyAtMs >= options.ShakyAppGapMs || !Health.ArrowsShaky(app);
     }
 

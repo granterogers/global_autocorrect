@@ -165,7 +165,8 @@ public sealed class RealTypingTests
         string verifyFails = VerifyFailures(app);
         Report(run, score, desyncs, verifyFails);
         // D109: CKEditor must be retyped, so fixes on an earlier line are skipped there by design (a miss, never damage).
-        int allowedMisses = editor == "ckeditor" ? score.NeedFix / 2 : score.NeedFix / 20;
+        // D117: in the chat box Enter sends the message, so a fix that wasn't in before it was sent can't be made (a miss).
+        int allowedMisses = editor is "ckeditor" or "chat" ? score.NeedFix / 2 : score.NeedFix / 20;
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
