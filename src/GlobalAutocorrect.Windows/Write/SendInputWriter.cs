@@ -32,7 +32,10 @@ public sealed class SendInputWriter(nuint tag)
 
     /// <param name="caretDistance">Text elements between the end of the replaced range and the caret.</param>
     /// <param name="deleteCount">Text elements to remove (the original range).</param>
-    public INPUT[] BuildEditBatch(int caretDistance, int deleteCount, string replacement)
+    public INPUT[] BuildEditBatch(int caretDistance, int deleteCount, string replacement) => BuildEditBatch(caretDistance, deleteCount, replacement, toEnd: false);
+
+    /// <param name="toEnd">D118: back to the end of the field with Ctrl+End instead of Right × <paramref name="caretDistance"/>.</param>
+    public INPUT[] BuildEditBatch(int caretDistance, int deleteCount, string replacement, bool toEnd)
     {
         var list = new List<INPUT>(caretDistance * 4 + deleteCount * 2 + replacement.Length * 2 + 12);
         // Undo runs while the user still holds Ctrl (or Ctrl+Alt): release held modifiers for the batch, then press them
@@ -42,10 +45,21 @@ public sealed class SendInputWriter(nuint tag)
         for (int i = 0; i < caretDistance; i++) AddVk(list, VK_LEFT);
         for (int i = 0; i < deleteCount; i++) AddVk(list, VK_BACK);
         AddUnicode(list, replacement);
-        for (int i = 0; i < caretDistance; i++) AddVk(list, VK_RIGHT);
+        if (toEnd)
+        {
+            ushort ctrl = (ushort)MapVirtualKeyW(VK_CONTROL, MAPVK_VK_TO_VSC), end = (ushort)MapVirtualKeyW(VK_END, MAPVK_VK_TO_VSC);
+            list.Add(Key(VK_CONTROL, ctrl, 0));
+            list.Add(Key(VK_END, end, KEYEVENTF_EXTENDEDKEY));
+            list.Add(Key(VK_END, end, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP));
+            list.Add(Key(VK_CONTROL, ctrl, KEYEVENTF_KEYUP));
+        }
+        else for (int i = 0; i < caretDistance; i++) AddVk(list, VK_RIGHT);
         foreach (var vk in held.Reverse()) list.Add(Modifier(vk, up: false));
         return [.. list];
     }
+
+    public bool ApplyEditThenEnd(int caretDistance, int deleteCount, string replacement) =>
+        Send(BuildEditBatch(caretDistance, deleteCount, replacement, toEnd: true));
 
     private INPUT Modifier(ushort vk, bool up)
     {

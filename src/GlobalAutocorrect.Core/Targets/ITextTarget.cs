@@ -26,6 +26,12 @@ public interface ITextTarget
     /// </summary>
     bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq) => ApplyEdit(caretDistance, deleteCount, replacement);
 
+    /// <summary>
+    /// D118: the same fenced batch, but back to the end of the field with Ctrl+End instead of Right × <paramref name="caretDistance"/>.
+    /// Only when the caret was at the very end of the field.
+    /// </summary>
+    bool ApplyEditThenEnd(int caretDistance, int deleteCount, string replacement, long expectedKeySeq) => ApplyEdit(caretDistance, deleteCount, replacement, expectedKeySeq);
+
     /// <summary>D105: the last fenced edit was swallowed because a key got in first: nothing changed, try again later.</summary>
     bool LastEditBlocked => false;
 

@@ -240,7 +240,14 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // ("oe has" fixed to "oerhas", real-typing test). Edge itself never reorders a batch and later keys (probe).
         if (keys.LatestKeySeq != session.LastKeySeq) return false;
         long seqAtWrite = keys.LatestKeySeq;
-        bool sent = w.Layer == Layer.Undo
+        // D118, user reports (Intercom email: "Best Wishes,w", "update. y", "uuupdate"): after a fix on an earlier line the
+        // Right presses didn't carry the caret back across the line break, so it stopped at the end of the line above and
+        // the user's next letter went there. When the user is typing at the very end of the field (nothing after the
+        // caret), the way back is Ctrl+End instead, which lands at the end however the editor counts its line breaks.
+        bool toEnd = !retype && w.Layer != Layer.Undo && caretDistance > 0 && tail.Contains('\n') && TextNorm.Comparable(win.After).Length == 0;
+        bool sent = toEnd
+            ? target.ApplyEditThenEnd(caretDistance, deleteCount, w.Replacement, seqAtWrite)
+            : w.Layer == Layer.Undo
             ? (retype ? target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail) : target.ApplyEdit(caretDistance, deleteCount, w.Replacement))
             // D105: fenced: applied only if no key got to the app after this look (undo runs with Ctrl held, so it isn't).
             : retype

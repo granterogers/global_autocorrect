@@ -189,10 +189,26 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         LastEdit = new AppliedEdit(Text, del, Text[del..pos], replacement);
         Text = Text[..del] + replacement + Text[pos..];
         Caret = del + replacement.Length + Math.Min(Caret - pos, KeepsRightArrowsUpTo ?? int.MaxValue);
+        // D118: Intercom's email editor: the Right presses stop at the end of the line instead of crossing the line break.
+        if (RightStopsAtLineEnd && Text.IndexOf('\n', del + replacement.Length) is var nl and >= 0 && nl < Caret) Caret = nl;
         Edits++;
         CaretMoves += caretDistance * 2;
         return true;
     }
+
+    /// <summary>D118: Right presses don't cross a line break (Intercom's email editor), so the caret stops on the line of the edit.</summary>
+    public bool RightStopsAtLineEnd { get; set; }
+
+    /// <summary>D118: the edit, then Ctrl+End: the caret goes to the end of the text whatever the Right presses would do.</summary>
+    public bool ApplyEditThenEnd(int caretDistance, int deleteCount, string replacement, long expectedKeySeq)
+    {
+        if (!ApplyEdit(caretDistance, deleteCount, replacement, expectedKeySeq)) return false;
+        Caret = Text.Length;
+        EditsThenEnd++;
+        return true;
+    }
+
+    public int EditsThenEnd { get; private set; }
 
     /// <summary>Characters "typed" between the write and its verification (models a user who keeps typing, 4.6.e).</summary>
     public string TypedDuringVerify { get; set; } = "";

@@ -104,7 +104,14 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// D105: the edit batch, fenced: the hook lets it through only if no key reached the app since the gate's last look
     /// (<see cref="GlobalAutocorrect.Windows.Input.WriteFence"/>). Waits up to 150 ms for the hook's verdict; with no verdict (no hook) it counts as sent.
     /// </summary>
-    public bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq)
+    public bool ApplyEdit(int caretDistance, int deleteCount, string replacement, long expectedKeySeq) =>
+        ApplyFenced(caretDistance, deleteCount, replacement, expectedKeySeq, toEnd: false);
+
+    /// <summary>D118: the fenced edit, back to the end of the field with Ctrl+End.</summary>
+    public bool ApplyEditThenEnd(int caretDistance, int deleteCount, string replacement, long expectedKeySeq) =>
+        ApplyFenced(caretDistance, deleteCount, replacement, expectedKeySeq, toEnd: true);
+
+    private bool ApplyFenced(int caretDistance, int deleteCount, string replacement, long expectedKeySeq, bool toEnd)
     {
         LastEditBlocked = false;
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
@@ -112,7 +119,8 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         _beforeWrite = LastSnapshot?.Before ?? "";
         long started = Stopwatch.GetTimestamp();
         nuint tag = GlobalAutocorrect.Windows.Input.WriteFence.Arm(expectedKeySeq);
-        bool sent = new SendInputWriter(tag).ApplyEdit(caretDistance, deleteCount, replacement);
+        var writer = new SendInputWriter(tag);
+        bool sent = toEnd ? writer.ApplyEditThenEnd(caretDistance, deleteCount, replacement) : writer.ApplyEdit(caretDistance, deleteCount, replacement);
         timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         if (!sent) return false;
         for (int i = 0; i < 150 && GlobalAutocorrect.Windows.Input.WriteFence.Blocked(tag) is null; i++) Thread.Sleep(1);
