@@ -148,7 +148,9 @@ public sealed class CorrectionEngine
 
         if (effect.Word is { } typedBack && _undo.Recent.Count > 0) NoticeTypedBack(typedBack);   // D84: before it could be "fixed" again
         string? fix = null;
-        if (effect.Word is { } fw && _o.InstantEnabled)
+        // D116: a paragraph that reads as another language (Spanish...) is left as typed: no instant fixes, no tidying.
+        bool foreign = (effect.Word is not null || (k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char))) && Text.LanguageGuess.IsForeign(CurrentParagraph());
+        if (effect.Word is { } fw && _o.InstantEnabled && !foreign)
         {
             fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby);   // 4.3, D92
             if (fix is not null)
@@ -161,7 +163,7 @@ public sealed class CorrectionEngine
         // D55: spacing and punctuation, decided at the space or Enter after them (only when no word was fixed on this key).
         // On a key that sends the sentence to the AI, the AI fixes it instead: an instant edit inside a request's text
         // would leave that request's positions out of date, and one of the two writes would be dropped.
-        if (fix is null && !aiStartsNow && _o.InstantEnabled && _o.TidySpacing && k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char)
+        if (fix is null && !aiStartsNow && !foreign && _o.InstantEnabled && _o.TidySpacing && k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char)
             && _tidy.Find(Session.Typed) is { } t)
         {
             _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, t.Start, t.End, t.Original, t.Replacement, _d.Clock.NowMs, k.Seq));
@@ -170,6 +172,15 @@ public sealed class CorrectionEngine
         if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null, learnt.Start, fix);
         if (aiStartsNow)
             _ai!.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
+    }
+
+    /// <summary>D116: the paragraph being typed, as far as the typed record goes.</summary>
+    private string CurrentParagraph()
+    {
+        string t = Session.Typed;
+        int end = t.Length > 0 && t[^1] == '\n' ? t.Length - 1 : t.Length;
+        int start = end == 0 ? 0 : t.LastIndexOf('\n', end - 1) + 1;
+        return t[start..end];
     }
 
     private bool? _targetOk;

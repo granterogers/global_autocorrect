@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D116 (1.9):** text in another language (Spanish, French, Portuguese, Italian, German) is left as typed. 15 tests.
 - **D113 (4.1, 11.3):** Intercom and Claude/ChatGPT stand-in pages in the real-typing test, run on GitHub's machines; test-only pushes build no release.
 - **D112 (5.1):** the model server hands its loading pages back to Windows once ready and every 10 minutes idle: E2B working set 2.6 GB → 59 MB, same speed. 1 test.
 - **D111 (4.5.e, 5.4):** the correction rules' thresholds and the AI prompt are in the brain (no rebuild to change them); `scripts/brain-eval.ps1` checks a change scores at least as well first. 2 tests.

@@ -67,7 +67,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         {
             var (s, e) = spans[k];
             string key = s + ":" + typed[s..e];
-            if (_revisited.Contains(key) || !HasObviousNonWord(typed[s..e])) continue;
+            if (_revisited.Contains(key) || !HasObviousNonWord(typed[s..e]) || LanguageGuess.IsForeign(typed[s..e])) continue;   // D116
             _revisited.Add(key);
             var win = target.ReadWindow();
             if (!win.CaretKnown || isDesynced(win.TargetId) || !session.MatchesField(win.Before)) return false;
@@ -175,6 +175,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         ctxStart = Math.Max(ctxStart, paraStart);
         string ctx = earlier ? before[ctxStart..end] : before[ctxStart..];
         if (ctx.Trim().Length == 0 || before.Length <= Math.Max(ctxStart, typedStart)) return;
+        if (LanguageGuess.IsForeign(ctx)) return;   // D116: another language: not sent, not corrected
 
         counters.AiRequest();
         _pendingShift = 0;
@@ -214,6 +215,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         var writes = new List<PendingWrite>();
         foreach (var e in verdicts.Accepted)
         {
+            if (LanguageGuess.IsForeign(LanguageGuess.SentenceAt(p.Context, e.Start))) continue;   // D116: a sentence in another language
             int s = p.ContextStartInTyped + _pendingShift + e.Start, en = p.ContextStartInTyped + _pendingShift + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
             writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords) { KeyAtMs = p.KeyAtMs });
