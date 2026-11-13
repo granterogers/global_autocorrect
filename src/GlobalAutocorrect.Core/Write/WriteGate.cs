@@ -212,7 +212,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D127, chaos typing on GitHub ("he" fixed to "the" became "tthe", "tttthe" in every editor): an AI answer that
         // was on its way when the same word was fixed is moved along by that fix, and "he" still matched, inside "the".
         // The whole word where a fix lands must be the word it was made for.
-        if (w.Layer == Layer.Ai && w.Words.Count > 0 && !StillAimed(typed, w))
+        if (w.Layer == Layer.Ai && !StillAimed(typed, w))
         {
             Drop(w, "word-changed");
             return false;
@@ -494,6 +494,20 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     /// </summary>
     private static bool StillAimed(string typed, PendingWrite w)
     {
+        // D134 (real-use run on GitHub's CPU, answers 2-6 s late: "for t thehe project", "a thet th of thee end"): a word
+        // the model adds ("the") carries no word of its own to check. Its place must be between words, and the word it
+        // adds must not already be there (a late answer adding it a second time).
+        if (w.Original.Length == 0 && w.Words.Count == 0)
+        {
+            bool insideWord = w.Start > 0 && w.Start < typed.Length && char.IsLetterOrDigit(typed[w.Start - 1]) && char.IsLetterOrDigit(typed[w.Start]);
+            string added = w.Replacement.Trim();
+            string next = new(typed.AsSpan(Math.Min(w.Start, typed.Length)).TrimStart().ToArray().TakeWhile(c => !char.IsWhiteSpace(c)).ToArray());
+            string prev = new(typed[..Math.Min(w.Start, typed.Length)].TrimEnd().Reverse().TakeWhile(c => !char.IsWhiteSpace(c)).Reverse().ToArray());
+            bool alreadyThere = added.Length > 0 && (string.Equals(Letters(next), Letters(added.Split(' ')[0]), StringComparison.OrdinalIgnoreCase)
+                                                    || string.Equals(Letters(prev), Letters(added.Split(' ')[^1]), StringComparison.OrdinalIgnoreCase));
+            return !insideWord && !alreadyThere;
+        }
+        if (w.Words.Count == 0) return true;
         if (Letters(w.Original) == Letters(string.Concat(w.Words)))
         {
             bool startOk = w.Start == 0 || w.Start >= typed.Length || !char.IsLetterOrDigit(typed[w.Start - 1]) || !char.IsLetterOrDigit(typed[w.Start]);

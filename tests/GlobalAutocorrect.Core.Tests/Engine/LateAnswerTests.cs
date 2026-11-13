@@ -26,6 +26,23 @@ public sealed class LateAnswerTests
     }
 
     [Fact]
+    public void R4_6_d_D134_ALateAddedWordIsNotWrittenTwiceOrInsideAWord()
+    {
+        // Real-use run on GitHub's CPU: "for project" fixed to "for the project", then a late answer added "the" again.
+        var h = new Harness();
+        h.Type("thank you for applying for project coordinator role. ");
+        h.Wait(500);
+        int at = h.Text.IndexOf("project", StringComparison.Ordinal);
+        h.Engine.EnqueueForTest(new PendingWrite(Layer.Ai, h.Engine.Session.Generation, at, at, "", "the ", h.Clock.NowMs, h.Ed.LatestKeySeq, []));
+        h.Wait(2000);
+        Assert.Equal("thank you for applying for the project coordinator role. ", h.Text);
+        foreach (int shifted in new[] { at + 1, at + 4 })   // inside "the" ("t thehe"), and right after it ("the the")
+            h.Engine.EnqueueForTest(new PendingWrite(Layer.Ai, h.Engine.Session.Generation, shifted, shifted, "", "the ", h.Clock.NowMs, h.Ed.LatestKeySeq, []));
+        h.Wait(3000);
+        Assert.Equal("thank you for applying for the project coordinator role. ", h.Text);
+    }
+
+    [Fact]
     public void R4_6_d_D127_ALateInsertedLetterIsNotWrittenTwice()
     {
         var h = new Harness();

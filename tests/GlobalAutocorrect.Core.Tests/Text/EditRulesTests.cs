@@ -103,6 +103,8 @@ public sealed class EditRulesTests
         // "10 mins" is a unit after a number; the typo next to it is still fixed.
         Assert.Equal("I'll be there in 10 mins, just parking now",
             ApplyWith(s, "I'll be there in 10 mins, just parkign now", "I'll be there in 10 mind, just parking now"));
+        // A typo right after a number is still fixed ("9 Mya" is a date).
+        Assert.Equal("on Tuesday 9 May at 2pm", ApplyWith(new FakeSpeller("on", "tuesday", "may", "at"), "on Tuesday 9 Mya at 2pm", "on Tuesday 9 May at 2pm"));
         // A UK spelling stays.
         Assert.Equal("has anybody got a spare adaptor", ApplyWith(s, "has anybody got a spare adaptor", "has anybody got a spare adapter"));
     }

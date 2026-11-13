@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D134 (4.6.d):** a late AI answer adding a word can no longer write it twice or inside a word ("t thehe"); "9 Mya" is fixed again; "adaptor" stays. 4 tests.
 - **D133 (4.5):** from the first real-model run: short forms and units are words ("10 mins"), UK spellings are never Americanised, a fix brings at most one word of its own. 13 tests.
 - **D132 (11.2):** Real use workflow: the real model on 55 real-life messages, failing on any stupid mistake (capitals, repeats, added ?/!, changed correct words, names, times). Releases held until it passes. 8 tests.
 - **D131 (13.3):** updates checked every hour and installed by themselves, with no window, after 10 minutes without input. 1 test.

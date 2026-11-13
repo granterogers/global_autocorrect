@@ -22,15 +22,18 @@ public static class EverydayWords
     private static readonly (string Uk, string Us)[] Pairs =
     [
         ("our", "or"), ("ise", "ize"), ("isa", "iza"), ("yse", "yze"), ("tre", "ter"), ("ogue", "og"), ("ence", "ense"),
-        ("or", "er"), ("ll", "l"), ("ae", "e"), ("oe", "e"), ("mme", "m"), ("que", "ck"), ("grey", "gray"), ("tyre", "tire"),
+        ("or", "er"), ("grey", "gray"), ("tyre", "tire"),
     ];
 
+    /// <summary>Pairs that also look like typo fixes ("untill" → "until"): only for a word the dictionary knows ("travelled").</summary>
+    private static readonly (string Uk, string Us)[] KnownOnlyPairs = [("ll", "l"), ("mme", "m"), ("que", "ck")];
+
     /// <summary>True when <paramref name="b"/> is <paramref name="a"/> spelled the other way (UK/US, either direction).</summary>
-    public static bool SpellingVariant(string a, string b)
+    public static bool SpellingVariant(string a, string b, bool aIsAWord = true)
     {
         a = a.ToLowerInvariant(); b = b.ToLowerInvariant();
         if (a == b) return false;
-        foreach (var (uk, us) in Pairs)
+        foreach (var (uk, us) in aIsAWord ? Pairs.Concat(KnownOnlyPairs) : Pairs)
             if (OneSwap(a, uk, us) == b || OneSwap(a, us, uk) == b) return true;
         return false;
     }

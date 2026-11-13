@@ -33,5 +33,14 @@ public sealed class RealUseRulesTests
     [InlineData("form", "from")]
     [InlineData("their", "there")]
     [InlineData("recieve", "receive")]
+    [InlineData("givaen", "given")]
     public void R4_5_D133_RealFixesAreNotVariants(string a, string b) => Assert.False(EverydayWords.SpellingVariant(a, b));
+
+    [Fact]
+    public void R4_5_D133_UntillIsATypoButTravelledIsASpelling()
+    {
+        Assert.False(EverydayWords.SpellingVariant("untill", "until", aIsAWord: false));
+        Assert.True(EverydayWords.SpellingVariant("travelled", "traveled", aIsAWord: true));
+        Assert.True(EverydayWords.SpellingVariant("adaptor", "adapter", aIsAWord: false));
+    }
 }

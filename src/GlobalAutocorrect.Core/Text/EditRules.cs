@@ -99,7 +99,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 if (t.IsWord && t.End <= e.SpanStart) previousWord = t;
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;
                 // D133: a short word right after a number is a unit or short form ("10 mins", "5 hrs", "2 pcs"), not a typo.
-                if (previousWord is { } p && (p.Flags & TokenFlags.Number) != 0 && t.Text.Count(char.IsLetter) <= 5 && t.Start >= e.SpanStart)
+                if (previousWord is { } p && (p.Flags & TokenFlags.Number) != 0 && t.Text.Count(char.IsLetter) <= 5 && t.Start >= e.SpanStart && IsKnown(t.Text))   // a typo after a number ("9 Mya") is still fixed
                     return RejectReason.AfterNumber;
                 previousWord = t;
                 // Run-together words like "nextFriday" look code-like; re-spacing them changes no characters, so it's allowed.
@@ -110,7 +110,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             }
             // D133: a correctly spelled word is never swapped for its other spelling ("adaptor" → "adapter", "colour" → "color").
             if (e.OriginalWords.Count == e.NewWords.Count
-                && e.OriginalWords.Zip(e.NewWords).Any(p => IsKnown(Trim(p.First)) && EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second))))
+                && e.OriginalWords.Zip(e.NewWords).Any(p => EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second), IsKnown(Trim(p.First)))))   // either way, known to the dictionary or not ("adaptor" isn't)
                 return RejectReason.SpellingVariant;
             switch (e.Kind)
             {
@@ -292,7 +292,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
 
     // D31: a possessive or "is" contraction of a known word ("heating's") is known too; the dictionary lists few of them.
     private bool IsKnown(string w) =>
-        speller.IsValid(w) || isPersonalWord(w) || (w.Length > 2 && w.EndsWith("'s", StringComparison.OrdinalIgnoreCase) && speller.IsValid(w[..^2]));
+        speller.IsValid(w) || isPersonalWord(w) || EverydayWords.Contains(w) || (w.Length > 2 && w.EndsWith("'s", StringComparison.OrdinalIgnoreCase) && speller.IsValid(w[..^2]));
 
     private static IEnumerable<string> ProtectedMultiset(IEnumerable<Token> tokens) =>
         tokens.Where(t => t.IsWord && (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.Mention)) != 0)
