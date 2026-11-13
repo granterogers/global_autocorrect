@@ -46,6 +46,17 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D125_AShortFixBehindTheCaretIsPlacedNotArrowed()
+    {
+        var h = Make(new AppHealth());
+        h.Type("we went their today. ");
+        h.Wait(3000);
+        Assert.Equal("we went there today. ", h.Text);
+        Assert.Equal(1, h.Ed.PlacedEdits);
+        Assert.Equal(0, h.Ed.CaretMoves);   // no arrow keys
+    }
+
+    [Fact]
     public void R4_6_d_D122_WhenTheFieldWontShowTheFixNothingIsTyped()
     {
         var health = new AppHealth();

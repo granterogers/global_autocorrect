@@ -239,7 +239,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // wrong in this program too (then D121's miss). So is a long fix on the caret's own line (D117's pause applies to
         // both): retyping 91 characters took the heavy Intercom page longer than the check waits, and stepping that far
         // with arrows is what goes wrong in such editors; placed, only the replacement is typed.
-        bool placed = w.Layer != Layer.Undo && (tail.Contains('\n') || caretDistance > options.LongFixDistance)
+        // D125, user report (Intercom note: "unfortunatelytunately"): short arrow-key fixes went wrong there too (6 and 5
+        // characters back: text doubled, then a learnt retype lost 10). Every fix that would step with arrows is placed;
+        // only D28's short retype of the space or punctuation after the word stays as it is.
+        bool placed = w.Layer != Layer.Undo && caretDistance > 0 && !retype
                       && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
         // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
         if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
