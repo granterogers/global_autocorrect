@@ -74,7 +74,12 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     private long _refusedSinceMs;
     private long _refusedGeneration = -1;
 
-    public void Enqueue(PendingWrite w) => _queue.Add(w);
+    public void Enqueue(PendingWrite w)
+    {
+        // D127: the same fix twice (two answers for the same sentence) is queued once.
+        if (_queue.Any(q => q.Generation == w.Generation && q.Start == w.Start && q.End == w.End && q.Replacement == w.Replacement && q.Original == w.Original)) return;
+        _queue.Add(w);
+    }
 
     /// <summary>D43: text was taken in at the front of the buffer; queued writes move with it.</summary>
     public void Shift(int by)
@@ -204,6 +209,14 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // "Loking" (CI screen tests, CKEditor). The field is the truth: a letter right before means it's a fragment.
         if (w.Start == 0 && StartsMidWord(win.Before, typed)) { Drop(w, "fragment"); return false; }
         if (w.WholeWord && !IsWholeWord(typed, w.Start, w.End)) { Drop(w, "no-longer-a-word"); return false; }   // D61
+        // D127, chaos typing on GitHub ("he" fixed to "the" became "tthe", "tttthe" in every editor): an AI answer that
+        // was on its way when the same word was fixed is moved along by that fix, and "he" still matched, inside "the".
+        // The whole word where a fix lands must be the word it was made for.
+        if (w.Layer == Layer.Ai && w.Words.Count > 0 && !StillAimed(typed, w))
+        {
+            Drop(w, "word-changed");
+            return false;
+        }
 
         // D84: never the same mistake twice, and never a change that looks like one (capitals from nowhere, a doubled word).
         if (w.Layer != Layer.Undo)
@@ -472,6 +485,23 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
     /// <summary>Why the last write was dropped (a reason code, never text): for tests and the diagnostics log.</summary>
     public string LastDropReason { get; private set; } = "";
+
+    private static string Letters(string s) => new(s.Where(char.IsLetterOrDigit).ToArray());
+
+    /// <summary>
+    /// D127: a fix of whole words must still sit on word edges (no word runs on across either end); a fix of a few letters
+    /// inside a word must still be inside the word it was made for.
+    /// </summary>
+    private static bool StillAimed(string typed, PendingWrite w)
+    {
+        if (Letters(w.Original) == Letters(string.Concat(w.Words)))
+        {
+            bool startOk = w.Start == 0 || w.Start >= typed.Length || !char.IsLetterOrDigit(typed[w.Start - 1]) || !char.IsLetterOrDigit(typed[w.Start]);
+            bool endOk = w.End == 0 || w.End >= typed.Length || !char.IsLetterOrDigit(typed[w.End]) || !char.IsLetterOrDigit(typed[w.End - 1]);
+            return startOk && endOk;
+        }
+        return Letters(WriteGuard.WholeWords(typed, w.Start, w.End, w.Replacement).Before) == Letters(string.Concat(w.Words));
+    }
 
     private void Drop(PendingWrite w, string reason)
     {

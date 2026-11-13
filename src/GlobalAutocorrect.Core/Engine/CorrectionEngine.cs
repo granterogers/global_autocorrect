@@ -47,6 +47,9 @@ public sealed class CorrectionEngine
     public double TypicalAiLatencyMs => _ai?.TypicalLatencyMs ?? 0;
     public bool AiInFlight => _ai?.InFlight ?? false;
     public int QueuedWrites => _gate.Count;
+
+    /// <summary>Tests only: queue a write as if a layer had decided it (D127: a late answer for a word already fixed).</summary>
+    public void EnqueueForTest(PendingWrite w) => _gate.Enqueue(w);
     public string LastDropReason => _gate.LastDropReason;
     public CorrectionRecord? LastCorrection => _undo.Last;
 

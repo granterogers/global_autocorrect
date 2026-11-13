@@ -97,6 +97,17 @@ jobs:
           $v = [uint32]1; $null = [Ci.User32]::SystemParametersInfo(0x2000, 0, [ref]$v, 0)   # SPI_GETFOREGROUNDLOCKTIMEOUT
           Write-Host "foreground lock time-out set: $ok (error $err); now $v ms"
 
+      # D126: the "teams" editor hosts CKEditor in WebView2, as new Teams does. The runner image has Edge but not always
+      # the WebView2 runtime that apps use: install Microsoft's evergreen runtime if it is missing.
+      - name: WebView2 runtime
+        run: |
+          $key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          if ((Test-Path $key) -and (Get-ItemProperty $key).pv) { Write-Host "WebView2 runtime $((Get-ItemProperty $key).pv) present"; exit 0 }
+          $setup = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $setup
+          Start-Process $setup -ArgumentList '/silent', '/install' -Wait
+          Write-Host "WebView2 runtime installed: $((Get-ItemProperty $key -ErrorAction SilentlyContinue).pv)"
+
       # What the tests will drive: the session, the screen, Notepad and Edge. A screenshot that is all black or fails
       # means there is no interactive desktop for SendInput and UIA.
       - name: Desktop diagnostics

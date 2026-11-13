@@ -132,7 +132,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         _beforeWrite = LastSnapshot?.Before ?? "";
         long started = Stopwatch.GetTimestamp();
         nuint tag = GlobalAutocorrect.Windows.Input.WriteFence.Arm(expectedKeySeq);
-        var writer = new SendInputWriter(tag);
+        // D128 (chaos typing: "tye" fixed to "THE"): in a browser the fix is typed as characters, which a Shift pressed
+        // for the next capital while the page is still applying the batch can't turn into capitals (D114).
+        var writer = new SendInputWriter(tag) { TypeAsUnicode = LastSnapshot?.FrameworkId == "Chrome" };
         bool sent = toEnd ? writer.ApplyEditThenEnd(caretDistance, deleteCount, replacement) : writer.ApplyEdit(caretDistance, deleteCount, replacement);
         timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         if (!sent) return false;
@@ -143,6 +145,11 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             diagnose?.Invoke($"write blocked: app={LastSnapshot?.ProcessName ?? "?"} a key reached the app first (D105, no text)");
             return false;
         }
+        // D128 (chaos typing: Notepad "kitnchen", "osoI'm"): the app applies a batch after it has been sent, and keys the
+        // user typed meanwhile landed inside it. From here until the check after the fix sees it in place, the user's keys
+        // are held and then replayed in order (never more than KeyHold.MaxHoldMs).
+        GlobalAutocorrect.Windows.Input.KeyHold.Begin();
+        _holdingUntilVerified = true;
         return true;
     }
 
@@ -232,7 +239,18 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     public bool Verify(string expectedBefore, string expectedAfter) => Verify(expectedBefore, expectedAfter, 0);
 
     /// <param name="reach">D120: how far back before the caret the check must see (the fix and what follows it).</param>
+    private bool _holdingUntilVerified;
+
     public bool Verify(string expectedBefore, string expectedAfter, int reach)
+    {
+        try { return VerifyCore(expectedBefore, expectedAfter, reach); }
+        finally
+        {
+            if (_holdingUntilVerified) { _holdingUntilVerified = false; GlobalAutocorrect.Windows.Input.KeyHold.Release(); }   // D128
+        }
+    }
+
+    private bool VerifyCore(string expectedBefore, string expectedAfter, int reach)
     {
         // The app processes the injected keys asynchronously: poll briefly until it shows the result (4.6.d). The user
         // keeps typing meanwhile (4.6.e), so the expected text may be followed by a few new characters on the same line.

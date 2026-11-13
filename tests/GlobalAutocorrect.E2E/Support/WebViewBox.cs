@@ -45,7 +45,7 @@ internal sealed class WebViewBox : IDisposable
         ui.IsBackground = true;
         ui.Start();
         Assert.True(ready.Wait(30_000, TestContext.Current.CancellationToken), "the WebView2 window did not load");
-        if (failed is not null) Assert.Skip($"WebView2 is not available here: {failed.GetType().Name}");
+        if (failed is not null) Assert.Skip($"WebView2 is not available here: {failed.GetType().Name} 0x{failed.HResult:X8} {failed.Message}");
         (_window, _view) = (window!, view!);
         Assert.True(Desk.WaitUntil(() => Eval("typeof window.getText === 'function'") == "true", 15_000), "the page did not start");
         nint hwnd = _window.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(_window).Handle);
