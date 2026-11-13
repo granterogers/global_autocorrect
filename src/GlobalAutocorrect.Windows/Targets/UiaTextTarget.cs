@@ -135,20 +135,23 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         // D128 (chaos typing: "tye" fixed to "THE"): in a browser the fix is typed as characters, which a Shift pressed
         // for the next capital while the page is still applying the batch can't turn into capitals (D114).
         var writer = new SendInputWriter(tag) { TypeAsUnicode = LastSnapshot?.FrameworkId == "Chrome" };
+        // D128 (chaos typing: Notepad "gtreat" after a fix 210 back): a key pressed just after the batch still reached an
+        // app that applies typed input late, and landed inside the fix. The hold starts before the batch is sent; held keys
+        // don't count against the fence (they never reach the app), and are replayed once the check sees the fix.
+        GlobalAutocorrect.Windows.Input.KeyHold.Begin();
         bool sent = toEnd ? writer.ApplyEditThenEnd(caretDistance, deleteCount, replacement) : writer.ApplyEdit(caretDistance, deleteCount, replacement);
         timings?.Record("write", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-        if (!sent) return false;
+        if (!sent) { GlobalAutocorrect.Windows.Input.KeyHold.Release(); return false; }
         for (int i = 0; i < 150 && GlobalAutocorrect.Windows.Input.WriteFence.Blocked(tag) is null; i++) Thread.Sleep(1);
         if (GlobalAutocorrect.Windows.Input.WriteFence.Blocked(tag) == true)
         {
             LastEditBlocked = true;
+            GlobalAutocorrect.Windows.Input.KeyHold.Release();
             diagnose?.Invoke($"write blocked: app={LastSnapshot?.ProcessName ?? "?"} a key reached the app first (D105, no text)");
             return false;
         }
         // D128 (chaos typing: Notepad "kitnchen", "osoI'm"): the app applies a batch after it has been sent, and keys the
-        // user typed meanwhile landed inside it. From here until the check after the fix sees it in place, the user's keys
-        // are held and then replayed in order (never more than KeyHold.MaxHoldMs).
-        GlobalAutocorrect.Windows.Input.KeyHold.Begin();
+        // user typed meanwhile landed inside it. Held until the check after the fix sees it in place, then replayed.
         _holdingUntilVerified = true;
         return true;
     }

@@ -110,7 +110,8 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         if (k.dwExtraInfo == KeyHold.ReplayTag) return CallNextHookEx(_kb, nCode, wParam, lParam);   // D122: held keys, counted when held
         // D105: a fenced edit batch: swallowed whole if a key or a held modifier got to the app after the gate's last look.
         if (WriteFence.IsFenced(k.dwExtraInfo))
-            return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq), ModifierForFence(),
+            return WriteFence.Swallow(k.dwExtraInfo, Interlocked.Read(ref _seq) - KeyHold.HeldCounted, ModifierForFence(),   // D128: held keys never reached the app
+                      
                        WriteFence.Trace is null ? null : $"hookShift={_shift} hookCtrl={_ctrl} asyncShift={IsDown(VK_SHIFT)} sinceModMs={unchecked(Environment.TickCount - Volatile.Read(ref _modifierChangedTick))}")
                 ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
@@ -151,7 +152,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         }
         SuggestionArm.Disarm();
         Enqueue(RawKind.Key, k, true, injected, at);
-        return Pass(nCode, wParam, lParam, k, injected, down: true);
+        return Pass(nCode, wParam, lParam, k, injected, down: true, counted: true);
     }
 
     /// <summary>
@@ -159,8 +160,8 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
     /// and replayed when the caret is back (<see cref="KeyHold"/>). Called after the key is counted, so a write that
     /// starts holding and then finds the count unchanged knows no key got past it.
     /// </summary>
-    private nint Pass(int nCode, nint wParam, nint lParam, in KBDLLHOOKSTRUCT k, bool injected, bool down) =>
-        !injected && KeyHold.TryHold(k.vkCode, k.scanCode, k.flags, down) ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
+    private nint Pass(int nCode, nint wParam, nint lParam, in KBDLLHOOKSTRUCT k, bool injected, bool down, bool counted = false) =>
+        !injected && KeyHold.TryHold(k.vkCode, k.scanCode, k.flags, down, counted) ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
     private volatile bool _ctrl, _alt, _shift, _win;
 

@@ -25,7 +25,12 @@ internal sealed class WebViewBox : IDisposable
         {
             view = new WebView2
             {
-                CreationProperties = new CoreWebView2CreationProperties { UserDataFolder = Path.Combine(Path.GetTempPath(), "ga-e2e-webview2") },
+                CreationProperties = new CoreWebView2CreationProperties
+                {
+                    UserDataFolder = Path.Combine(Path.GetTempPath(), "ga-e2e-webview2"),
+                    // CI runners have no GPU, and the browser process died there ("disconnected"): as a server would run it.
+                    AdditionalBrowserArguments = "--disable-gpu --no-sandbox",
+                },
             };
             window = new System.Windows.Window { Title = "GA E2E WebView2 host", Width = 760, Height = 360, Content = view, Topmost = true };
             window.Loaded += async (_, _) =>
@@ -44,10 +49,16 @@ internal sealed class WebViewBox : IDisposable
         ui.SetApartmentState(ApartmentState.STA);
         ui.IsBackground = true;
         ui.Start();
-        Assert.True(ready.Wait(30_000, TestContext.Current.CancellationToken), "the WebView2 window did not load");
-        if (failed is not null) Assert.Skip($"WebView2 is not available here: {failed.GetType().Name} 0x{failed.HResult:X8} {failed.Message}");
+        bool loaded = ready.Wait(30_000, TestContext.Current.CancellationToken);
         (_window, _view) = (window!, view!);
-        Assert.True(Desk.WaitUntil(() => Eval("typeof window.getText === 'function'") == "true", 15_000), "the page did not start");
+        // A window left open (it is topmost) covered the next tests' screens: close it whenever this one can't go on.
+        if (!loaded || failed is not null)
+        {
+            Dispose();
+            if (!loaded) Assert.Fail("the WebView2 window did not load");
+            Assert.Skip($"WebView2 is not available here: {failed!.GetType().Name} 0x{failed.HResult:X8} {failed.Message}");
+        }
+        if (!Desk.WaitUntil(() => Eval("typeof window.getText === 'function'") == "true", 15_000)) { Dispose(); Assert.Fail("the page did not start"); }
         nint hwnd = _window.Dispatcher.Invoke(() => new System.Windows.Interop.WindowInteropHelper(_window).Handle);
         Desk.BringToFront(hwnd);
         Desk.ClickCentre(hwnd);   // focus and a session break before typing

@@ -29,12 +29,19 @@ public static class KeyHold
 
     public static bool Active { get { lock (Gate) return _on; } }
 
+    private static long _heldCounted;
+
+    /// <summary>D128: keys held since <see cref="Begin"/> that the hook counted in its key sequence. They never reached the
+    /// app, so a fenced batch sent while holding must not count them as "a key got in first".</summary>
+    public static long HeldCounted => Interlocked.Read(ref _heldCounted);
+
     /// <summary>Starts holding the user's keys. From the hook's next event on, nothing the user types reaches the app.</summary>
     public static void Begin()
     {
         lock (Gate)
         {
             _on = true;
+            Interlocked.Exchange(ref _heldCounted, 0);
             int gen = ++_generation;
             _safety?.Dispose();
             _safety = new Timer(_ => { lock (Gate) if (_generation != gen) return; Release(); }, null, MaxHoldMs, Timeout.Infinite);
@@ -42,11 +49,12 @@ public static class KeyHold
     }
 
     /// <summary>The hook's call for one of the user's events: true if it is held (the hook swallows it).</summary>
-    public static bool TryHold(uint vk, uint scan, uint llFlags, bool down)
+    public static bool TryHold(uint vk, uint scan, uint llFlags, bool down, bool counted = false)
     {
         lock (Gate)
         {
             if (!_on) return false;
+            if (counted) Interlocked.Increment(ref _heldCounted);
             Held.Add(ToInput(vk, scan, llFlags, down));
             return true;
         }
