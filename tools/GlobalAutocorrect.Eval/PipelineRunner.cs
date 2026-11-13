@@ -38,7 +38,11 @@ internal sealed class RecordingLlm(ILlmClient inner, List<double> latencies, Act
     public EditRules? Rules { get; init; }
 }
 
-internal sealed record EvalItem(string Id, string Clean, string Noisy, string Level, IReadOnlyList<string> Ops);
+internal sealed record EvalItem(string Id, string Clean, string Noisy, string Level, IReadOnlyList<string> Ops)
+{
+    /// <summary>D132: text that must come out exactly as typed (names, times, codes, links), from the set's "keep".</summary>
+    public IReadOnlyList<string> Keep { get; init; } = [];
+}
 
 internal sealed record ItemResult(EvalItem Item, string Output, MessageScore Score, string Counters = "");
 

@@ -30,7 +30,8 @@ internal static class RunCommand
             .Select(l => JsonDocument.Parse(l).RootElement)
             .Select(e => new EvalItem(e.GetProperty("id").GetString()!, e.GetProperty("clean").GetString()!, e.GetProperty("noisy").GetString()!,
                 e.TryGetProperty("level", out var lv) ? lv.GetString()! : "?",
-                e.TryGetProperty("ops", out var ops) ? ops.EnumerateArray().Select(x => x.GetString()!).ToArray() : []))
+                e.TryGetProperty("ops", out var ops) ? ops.EnumerateArray().Select(x => x.GetString()!).ToArray() : [])
+                { Keep = e.TryGetProperty("keep", out var keep) ? keep.EnumerateArray().Select(x => x.GetString()!).ToArray() : [] })
             .ToList();
         var trace = o.TryGetValue("trace", out var t) ? t.Split(',').ToHashSet() : [];
         if (trace.Count > 0) items = items.Where(i => trace.Contains(i.Id)).ToList();   // tracing: just those messages
@@ -79,6 +80,17 @@ internal static class RunCommand
             await File.WriteAllLinesAsync(Path.Combine(outDir, $"items-{set}.jsonl"), results.Select(r => JsonSerializer.Serialize(new
                 { r.Item.Id, r.Item.Level, ops = r.Item.Ops, r.Score.NeedFix, r.Score.Fixed, r.Score.FalseEdits, noisy = r.Item.Noisy, output = r.Output, raw = raw[r.Item.Id], clean = r.Item.Clean, counters = r.Counters })));
         }
+        // D132: the mistakes a person would call stupid, message by message (this set's own synthetic text).
+        var stupid = results.Select(r => (r.Item, Found: StupidMistakes.Find(r.Item.Noisy, r.Item.Clean, r.Output, r.Item.Keep), r.Output))
+            .Where(x => x.Found.Count > 0).ToList();
+        var sb = new StringBuilder($"# Stupid mistakes: {set}\n\n{stupid.Sum(x => x.Found.Count)} in {stupid.Count} of {results.Count} messages.\n\n");
+        foreach (var (item, found, output) in stupid)
+        {
+            sb.Append($"- **{item.Id}** {string.Join("; ", found.Select(f => $"{f.Kind}: {f.Detail}"))}\n  - typed: `{item.Noisy.Replace("\n", " / ")}`\n  - after: `{output.Replace("\n", " / ")}`\n");
+            Console.WriteLine($"STUPID {item.Id}: {string.Join("; ", found.Select(f => $"{f.Kind}: {f.Detail}"))}");
+        }
+        await File.WriteAllTextAsync(Path.Combine(outDir, $"stupid-{set}.md"), sb.ToString());
+        Console.WriteLine($"stupid mistakes: {stupid.Sum(x => x.Found.Count)} in {stupid.Count} of {results.Count} messages");
         var agg = Scorer.Combine(results.Select(r => r.Score));
         var lat = runner.Latencies.Order().ToArray();
         var byLevel = results.GroupBy(r => r.Item.Level).OrderBy(g => g.Key).ToDictionary(g => g.Key, g =>
@@ -109,7 +121,7 @@ internal static class RunCommand
         await File.WriteAllTextAsync(Path.Combine(outDir, $"metrics{suffix}.json"), JsonSerializer.Serialize(metrics, json));
         await File.WriteAllTextAsync(Path.Combine(outDir, $"eval-report{suffix}.md"), Report(metrics.set, modelFile, agg, lat, byLevel.ToDictionary(k => k.Key, k => (object)k.Value), results, worst.Length));
         Console.WriteLine($"\n{set}: errors fixed {agg.ErrorsFixedRate:P1} (target ≥95%), false edits {agg.FalseEditRate:P2} (target <1%), exact {agg.ExactMatchRate:P0}, p50 {Percentile(lat, 0.5)} ms, p95 {Percentile(lat, 0.95)} ms");
-        return 0;
+        return o.ContainsKey("strict") && stupid.Count > 0 ? 3 : 0;   // D132: the real-use gate allows no stupid mistake
     }
 
     /// <summary>Tuning knobs (4.5.e); only ever changed against the tuning set.</summary>

@@ -132,9 +132,10 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         _beforeWrite = LastSnapshot?.Before ?? "";
         long started = Stopwatch.GetTimestamp();
         nuint tag = GlobalAutocorrect.Windows.Input.WriteFence.Arm(expectedKeySeq);
-        // D128 (chaos typing: "tye" fixed to "THE"): in a browser the fix is typed as characters, which a Shift pressed
-        // for the next capital while the page is still applying the batch can't turn into capitals (D114).
-        var writer = new SendInputWriter(tag) { TypeAsUnicode = LastSnapshot?.FrameworkId == "Chrome" };
+        // D128: typed as real keys. Typing browser fixes as characters (D114's packets) made Lexical drop a Backspace and
+        // the next key ("tye" → "tthe", "Wednesday" → "ednesday"); a Shift pressed for the next capital can't reach the
+        // app mid-fix anyway, because keys are held from just before the batch is sent until the fix is in place.
+        var writer = new SendInputWriter(tag);
         // D128 (chaos typing: Notepad "gtreat" after a fix 210 back): a key pressed just after the batch still reached an
         // app that applies typed input late, and landed inside the fix. The hold starts before the batch is sent; held keys
         // don't count against the fence (they never reach the app), and are replayed once the check sees the fix.

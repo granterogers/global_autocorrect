@@ -1,0 +1,69 @@
+# D132, user: "I wouldn't be comfortable releasing this because there's just too many stupid mistakes … that would be
+# picked up if you were just testing this application as it would be used by a normal person." The other screen tests
+# use a model stand-in that always gives the right answer, so they prove delivery only. This runs the REAL model (the
+# app's own, on the CPU: GitHub's runners have no GPU, the answers are the same, only slower) through the app's whole
+# correction pipeline on real-life messages (data/eval/reallife.jsonl: invented, never the user's text), and fails on
+# any stupid mistake (src/GlobalAutocorrect.Core/Eval/StupidMistakes.cs): capitals nobody typed, a repeated or lost
+# word, an added "?" or "!", a correct word changed, a name, time, number or link changed. Nothing is released until it
+# passes. A slice of the tuning set is scored too, for the misses and false-edit rates (not gated).
+name: Real use
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ci-reallife]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-use-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-use:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
+
+      # The model and llama.cpp (several GB) are kept between runs, keyed by the pinned manifest.
+      - name: Model cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\GlobalAutocorrect\cache
+          key: models-${{ hashFiles('scripts/manifest.json') }}
+
+      - name: Download the model and llama.cpp
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: pwsh scripts/setup.ps1
+
+      - name: Real-life messages, real model (gated)
+        run: |
+          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set reallife --out artifacts --strict
+          $code = $LASTEXITCODE
+          if (Test-Path artifacts/stupid-reallife.md) { Get-Content artifacts/stupid-reallife.md >> $env:GITHUB_STEP_SUMMARY }
+          exit $code
+
+      - name: Tuning-set slice, real model (rates only)
+        if: always()
+        run: |
+          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set tuning --n 120 --out artifacts
+          if (Test-Path artifacts/stupid-tuning.md) { Get-Content artifacts/stupid-tuning.md -TotalCount 60 >> $env:GITHUB_STEP_SUMMARY }
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: real-use
+          path: artifacts/
