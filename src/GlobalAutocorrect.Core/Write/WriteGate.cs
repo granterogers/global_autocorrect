@@ -22,6 +22,9 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     public long CreatedAtMs { get; } = createdAtMs;
     public long KeySeqAtDecision { get; } = keySeqAtDecision;
 
+    /// <summary>D124: what the write was last waiting for, logged if it expires (a reason, never text).</summary>
+    public string Waiting { get; set; } = "nothing";
+
     /// <summary>D64: when the key that led to this fix was typed (the word's or the sentence's last key), for timings.</summary>
     public long KeyAtMs { get; init; } = createdAtMs;
 
@@ -88,7 +91,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         _queue.RemoveAll(w =>
         {
             bool expired = now - w.CreatedAtMs > options.WriteDeadlineMs;
-            if (expired) { counters.Dropped(); LastDropReason = "expired"; }
+            if (expired) { counters.Dropped(); LastDropReason = "expired"; WriteDropped?.Invoke(w.Layer, $"expired waiting={w.Waiting}"); }   // D124: never silent
             return expired;
         });
         if (target is null || _queue.Count == 0) return false;
@@ -98,7 +101,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
 
         foreach (var w in _queue.OrderByDescending(w => w.Start).ToArray())
         {
-            if (!Ready(w, now) || !QuietEnough(w, target.AppName, now)) continue;
+            if (!Ready(w, now)) { w.Waiting = "no-gap"; continue; }
+            if (!QuietEnough(w, target.AppName, now)) { w.Waiting = "no-pause"; continue; }
             return Execute(w, target);
         }
         return false;
@@ -172,10 +176,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         if (IsDesynced(win.TargetId)) { Drop(w, "desynced"); return false; }
         // A busy app sometimes can't be read for a moment: keep the edit and try again next tick; the deadline drops it
         // if the field never comes back (found by E2E: one failed read lost a correction).
-        if (!win.CaretKnown) return false;
+        if (!win.CaretKnown) { w.Waiting = "unreadable"; return false; }
+        if (session.TrimUnshown(win.Before, clock.NowMs) is > 0 and var unshown) Mismatch?.Invoke($"write unshown={unshown}: keys recorded that never reached the field (D124)");
         if (!session.MatchesField(win.Before))
         {
-            if (session.FieldBehind(win.Before)) return false;   // the app hasn't drawn the last keys yet: next tick
+            if (session.FieldBehind(win.Before)) { w.Waiting = "field-behind"; return false; }   // the app hasn't drawn the last keys yet: next tick
             // D42: the field changed in a way we didn't type (the app's own autocorrect, a paste). Start again from
             // what it shows instead of ending the session: this paragraph keeps being corrected.
             if (_refusedGeneration != session.Generation) { _refusedResyncs = 0; _refusedGeneration = session.Generation; }

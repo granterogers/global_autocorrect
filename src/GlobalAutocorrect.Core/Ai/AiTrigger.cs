@@ -121,7 +121,11 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     private void ReadFailed(TypingSession session)
     {
         if (_failedSeq != session.LastKeySeq) { _failedSeq = session.LastKeySeq; _failedReads = 0; }
-        if (++_failedReads >= MaxReadRetries) _lastTriggerSeq = session.LastKeySeq;   // give up on this text: a password box etc.
+        if (++_failedReads >= MaxReadRetries)
+        {
+            _lastTriggerSeq = session.LastKeySeq;   // give up on this text: a password box etc.
+            Mismatch?.Invoke("ai gave up: the field could not be read in step with the keys (D124)");   // never silent
+        }
         _retryAtMs = clock.NowMs + RetryAfterMs;
         _retryPending = _failedReads < MaxReadRetries;
     }
@@ -136,7 +140,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         _retryPending = false;   // set again below if this read fails too (D65)
         var win = target.ReadWindow();
         if (!win.CaretKnown) { ReadFailed(session); return; }   // 4.1.b, 10.6.c (retried shortly)
-        if (isDesynced(win.TargetId)) { _lastTriggerSeq = session.LastKeySeq; return; }
+        if (isDesynced(win.TargetId)) { _lastTriggerSeq = session.LastKeySeq; Mismatch?.Invoke("ai skipped: field left alone after desyncs (D124)"); return; }
+        if (session.TrimUnshown(win.Before, clock.NowMs) is > 0 and var unshown) Mismatch?.Invoke($"ai unshown={unshown}: keys recorded that never reached the field (D124)");
         if (!session.MatchesField(win.Before))
         {
             if (session.FieldBehind(win.Before)) { ReadFailed(session); return; }   // the app hasn't drawn the last keys yet

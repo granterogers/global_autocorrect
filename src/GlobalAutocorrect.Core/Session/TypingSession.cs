@@ -96,6 +96,33 @@ public sealed class TypingSession
         return false;
     }
 
+    /// <summary>D124: how long a field may look "behind" (<see cref="FieldBehind"/>) with no key before it counts as final.</summary>
+    public const int UnshownAfterMs = 1200;
+
+    /// <summary>
+    /// D124, user report (WhatsApp: nothing fixed in a whole message, nothing in the log): a field that still looks behind
+    /// the keys well after the last one isn't behind. The last few keys recorded never reached it (the app used them for
+    /// something else). Waiting for them stopped every fix silently: the AI pass gave up its retries, and writes waited
+    /// until they expired. They are taken off the record instead. Returns how many characters were taken off (0: none).
+    /// </summary>
+    public int TrimUnshown(string fieldBefore, long nowMs)
+    {
+        if (nowMs - LastKeyAtMs < UnshownAfterMs || MatchesField(fieldBefore) || !FieldBehind(fieldBefore)) return 0;
+        string f = TextNorm.Comparable(fieldBefore).TrimEnd('\n');
+        for (int k = 1; k <= Math.Min(16, _typed.Length - 1); k++)
+        {
+            string shorter = _typed.ToString(0, _typed.Length - k);
+            string t = TextNorm.Comparable(shorter).TrimEnd('\n');
+            if (t.Length > 0 && f.EndsWith(t, StringComparison.Ordinal))
+            {
+                _typed.Length -= k;
+                if (ProtectedEnd > _typed.Length) ProtectedEnd = _typed.Length;
+                return k;
+            }
+        }
+        return 0;
+    }
+
     public bool MatchesField(string fieldBefore)
     {
         // D42: line-break runs compare as one, so a blank line reported differently by the editor still matches.

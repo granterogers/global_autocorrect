@@ -44,6 +44,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         return Key(KeyKind.Char, c);
     }
 
+    /// <summary>D124: a key the hook saw that the app used for something else: the field never shows it.</summary>
+    public KeyInput SwallowedChar(char c) => Key(KeyKind.Char, c);
+
     /// <summary>A key the hook saw but the engine hasn't been given yet (D6 race).</summary>
     public KeyInput TypeUndelivered(char c) => TypeChar(c);
 
