@@ -28,8 +28,8 @@ public sealed class UpdateMonitor(
 {
     public static TimeSpan FirstCheckAfter { get; } = TimeSpan.FromSeconds(20);
 
-    /// <summary>D131: every 3 hours (was once a day, D58), so a fix released by the cloud routine arrives the same day.</summary>
-    public static TimeSpan CheckEvery { get; } = TimeSpan.FromHours(3);
+    /// <summary>D131: every hour (was once a day, D58), so a fix released on GitHub reaches this PC within the hour (then waits for 10 idle minutes).</summary>
+    public static TimeSpan CheckEvery { get; } = TimeSpan.FromHours(1);
 
     /// <summary>
     /// D131, user request "make things run as automatically as possible … ensure it doesn't interfere with my operation of
