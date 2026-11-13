@@ -14,6 +14,14 @@ public partial class App
     /// D58: the update check, while "Check for updates" is on. Never under the screen tests (GA_E2E), and not for a
     /// build whose version can't be read.
     /// </summary>
+    /// <summary>D131: how long since the last keyboard or mouse input anywhere on the PC.</summary>
+    private static TimeSpan IdleFor()
+    {
+        var info = new GlobalAutocorrect.Windows.Native.LASTINPUTINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<GlobalAutocorrect.Windows.Native.LASTINPUTINFO>() };
+        if (!GlobalAutocorrect.Windows.Native.NativeMethods.GetLastInputInfo(ref info)) return TimeSpan.Zero;
+        return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - info.dwTime));
+    }
+
     private void StartUpdateChecks()
     {
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") return;
@@ -27,7 +35,9 @@ public partial class App
             (u, ct) => client.DownloadAsync(u, UpdateInstaller.NewWorkFolder(), ct),
             UpdateInstaller.Run,
             Host.ShowNotice,
-            a => Dispatcher.BeginInvoke(a));
+            a => Dispatcher.BeginInvoke(a),
+            IdleFor,                         // D131
+            UpdateInstaller.RunQuietly);
         _updates.Start();
         Exit += (_, _) =>
         {

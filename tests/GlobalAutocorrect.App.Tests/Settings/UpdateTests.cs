@@ -106,6 +106,31 @@ public class UpdateTests
             notices.Add);
 
     [Fact]
+    public async Task R13_3_D131_AFoundUpdateInstallsQuietlyOnlyWhenThePcIsIdle()
+    {
+        using var s = new FakeServices();
+        var shown = new List<string>();
+        var quiet = new List<string>();
+        var idle = TimeSpan.FromMinutes(2);
+        using var m = new UpdateMonitor(s,
+            _ => Task.FromResult<AvailableUpdate?>(Rc2),
+            (_, _) => Task.FromResult("C:\\temp\\update"),
+            shown.Add, _ => { }, null, () => idle, quiet.Add);
+        await m.CheckAsync();
+
+        await m.InstallIfIdleAsync();                 // the user was here 2 minutes ago: wait
+        Assert.Empty(quiet);
+        idle = TimeSpan.FromMinutes(11);
+        s.Update(s.Settings with { InstallUpdatesWhenIdle = false });
+        await m.InstallIfIdleAsync();                 // switched off: never by itself
+        Assert.Empty(quiet);
+        s.Update(s.Settings with { InstallUpdatesWhenIdle = true });
+        await m.InstallIfIdleAsync();
+        Assert.Equal(["C:\\temp\\update"], quiet);    // with no window
+        Assert.Empty(shown);                          // not the visible installer
+    }
+
+    [Fact]
     public async Task R13_3_TheTrayAnnouncesEachNewVersionOnce_D58()
     {
         using var s = new FakeServices();

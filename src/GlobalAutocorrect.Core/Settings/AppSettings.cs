@@ -36,6 +36,7 @@ public sealed record AppSettings
     public bool FixWholeParagraph { get; init; } = true;           // D43, D52: a switch on the Clean-up page
     public bool LookBackWhenPaused { get; init; } = true;          // D49, D52
     public bool CheckForUpdates { get; init; } = true;             // D58: a switch on the About page
+    public bool InstallUpdatesWhenIdle { get; init; } = true;      // D131: install a found update after 10 min without input
     public string? UpdateNotifiedVersion { get; init; }            // D58: the tray says so once per version
     public bool FirstRunDone { get; init; }
 

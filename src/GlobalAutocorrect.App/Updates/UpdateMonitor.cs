@@ -22,10 +22,23 @@ public sealed class UpdateMonitor(
     Func<AvailableUpdate, CancellationToken, Task<string>> download,
     Action<string> runInstaller,
     Action<string> notify,
-    Action<Action>? onUi = null) : IUpdateService, IDisposable
+    Action<Action>? onUi = null,
+    Func<TimeSpan>? idleFor = null,
+    Action<string>? runInstallerQuietly = null) : IUpdateService, IDisposable
 {
     public static TimeSpan FirstCheckAfter { get; } = TimeSpan.FromSeconds(20);
-    public static TimeSpan CheckEvery { get; } = TimeSpan.FromDays(1);
+
+    /// <summary>D131: every 3 hours (was once a day, D58), so a fix released by the cloud routine arrives the same day.</summary>
+    public static TimeSpan CheckEvery { get; } = TimeSpan.FromHours(3);
+
+    /// <summary>
+    /// D131, user request "make things run as automatically as possible … ensure it doesn't interfere with my operation of
+    /// the computer": a found update is installed by itself once nobody has touched the keyboard or mouse for this long,
+    /// with no window. The app closes and starts again in a few seconds, while nobody is typing.
+    /// </summary>
+    public static TimeSpan IdleBeforeInstall { get; } = TimeSpan.FromMinutes(10);
+
+    private Timer? _idleTimer;
 
     private readonly CancellationTokenSource _stop = new();
     private Timer? _timer;
@@ -38,7 +51,23 @@ public sealed class UpdateMonitor(
     public event Action? Changed;
 
     /// <summary>First check shortly after start-up (not to compete with loading), then once a day.</summary>
-    public void Start() => _timer = new Timer(_ => _ = CheckAsync(), null, FirstCheckAfter, CheckEvery);
+    public void Start()
+    {
+        _timer = new Timer(_ => _ = CheckAsync(), null, FirstCheckAfter, CheckEvery);
+        if (idleFor is not null) _idleTimer = new Timer(_ => _ = InstallIfIdleAsync(), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+    }
+
+    /// <summary>D131: installs the update found, quietly, if the setting is on and the PC has been idle long enough.</summary>
+    public async Task InstallIfIdleAsync()
+    {
+        try
+        {
+            if (_available is null || _installing || idleFor is null || !settings.Settings.InstallUpdatesWhenIdle || !settings.Settings.CheckForUpdates) return;
+            if (idleFor() < IdleBeforeInstall) return;
+            await InstallAsync(quietly: true).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OutOfMemoryException) { }   // never crash the app from the background
+    }
 
     public void CheckNow() => _ = Task.Run(CheckAsync);
 
@@ -67,7 +96,9 @@ public sealed class UpdateMonitor(
         }
     }
 
-    public async Task<string?> InstallAsync()
+    public Task<string?> InstallAsync() => InstallAsync(quietly: false);
+
+    public async Task<string?> InstallAsync(bool quietly)
     {
         if (_available is not { } update) return "There's no update to install.";
         if (_installing) return "The update is already being downloaded.";
@@ -76,7 +107,8 @@ public sealed class UpdateMonitor(
         try
         {
             string folder = await Task.Run(() => download(update, _stop.Token)).ConfigureAwait(false);
-            runInstaller(folder);
+            if (quietly && runInstallerQuietly is not null) runInstallerQuietly(folder);
+            else runInstaller(folder);
             return null;
         }
         catch (UpdateRefusedException e)
@@ -97,6 +129,7 @@ public sealed class UpdateMonitor(
     public void Dispose()
     {
         _timer?.Dispose();
+        _idleTimer?.Dispose();
         _stop.Cancel();
         _stop.Dispose();
     }
@@ -132,6 +165,19 @@ public static class UpdateInstaller
         foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command" }) psi.ArgumentList.Add(a);
         string quoted = "'" + script.Replace("'", "''") + "'";
         psi.ArgumentList.Add($"try {{ & {quoted} }} catch {{ Write-Host $_ -ForegroundColor Red; Read-Host 'The update did not finish. Press Enter to close' }}");
+        using var p = Process.Start(psi) ?? throw new UpdateRefusedException("The installer couldn't be started. Nothing was changed.");
+    }
+
+    /// <summary>
+    /// D131: the same installer with no window (the PC is idle; nobody is there to read it). The outcome goes to
+    /// diagnostics.log through the new app's start, and a failed install leaves the running app as it was.
+    /// </summary>
+    public static void RunQuietly(string folder)
+    {
+        string script = Path.Combine(folder, "install.ps1");
+        string pwsh = FindPwsh() ?? throw new UpdateRefusedException("Installing needs PowerShell 7, which wasn't found.");
+        var psi = new ProcessStartInfo(pwsh) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = folder };
+        foreach (var a in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", script }) psi.ArgumentList.Add(a);
         using var p = Process.Start(psi) ?? throw new UpdateRefusedException("The installer couldn't be started. Nothing was changed.");
     }
 
