@@ -17,6 +17,8 @@ public enum RejectReason
     StyleCapitalisation,
     SplitsAValidWord,
     AddsQuestionMark,   // D129
+    SpellingVariant,    // D133
+    AfterNumber,        // D133
 }
 
 public sealed record EditVerdict(TextEdit Edit, bool Accepted, RejectReason Reason);
@@ -73,6 +75,8 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         return new RuleResult(verdicts, RejectReason.None);
     }
 
+    private static string Trim(string w) => w.Trim('.', ',', ';', ':', '!', '?', '"', '(', ')', '\'');
+
     private static int ToneMarks(string s) => s.Count(c => c is '?' or '!');
 
     private EditVerdict Judge(string original, IReadOnlyList<Token> origTokens, TextEdit e, IReadOnlyList<TextEdit> all)
@@ -89,15 +93,25 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             int from = Math.Max(0, Math.Min(e.Start, e.SpanStart) - 1), to = Math.Min(original.Length, Math.Max(e.End, e.SpanEnd) + 1);
             if (original.AsSpan(from, to - from).Contains(ObjectChar) || e.Replacement.Contains(ObjectChar))
                 return RejectReason.TouchesProtectedToken;
+            Token? previousWord = null;
             foreach (var t in origTokens)
             {
+                if (t.IsWord && t.End <= e.SpanStart) previousWord = t;
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;
+                // D133: a short word right after a number is a unit or short form ("10 mins", "5 hrs", "2 pcs"), not a typo.
+                if (previousWord is { } p && (p.Flags & TokenFlags.Number) != 0 && t.Text.Count(char.IsLetter) <= 5 && t.Start >= e.SpanStart)
+                    return RejectReason.AfterNumber;
+                previousWord = t;
                 // Run-together words like "nextFriday" look code-like; re-spacing them changes no characters, so it's allowed.
                 // Numbers, URLs and emails are never touched, not even their spacing (4.5.d).
                 bool hardProtected = (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.Mention)) != 0;   // D90
                 if (hardProtected || (t.IsProtected && e.Kind != EditKind.Spacing)) return RejectReason.TouchesProtectedToken;
                 if (isPersonalWord(t.Text)) return RejectReason.PersonalDictionary;
             }
+            // D133: a correctly spelled word is never swapped for its other spelling ("adaptor" → "adapter", "colour" → "color").
+            if (e.OriginalWords.Count == e.NewWords.Count
+                && e.OriginalWords.Zip(e.NewWords).Any(p => IsKnown(Trim(p.First)) && EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second))))
+                return RejectReason.SpellingVariant;
             switch (e.Kind)
             {
                 // D37: a space never splits a real word: "inorganic" → "in organic" keeps every letter but changes the
@@ -168,6 +182,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         if (settings.LenientWithNonWords && AllNonWords(e.OriginalWords) && NonWordFixOk(e)) return RejectReason.None;   // D36
         var reason = JudgeSubstitutionAlone(e);
         int extra = e.NewWords.Count - e.OriginalWords.Count;
+        // D133 (real-use run: "att end training" → "at the end of training"): a fix that brings two or more words of its
+        // own, around a real word, rewrites the sentence. One added small word stays allowed ("si" → "is the").
+        if (extra >= 2) return RejectReason.TooDissimilar;
         if (reason == RejectReason.None || extra <= 0) return reason;
         // Only when the fix itself is tight: "stationfor" → "station at" must not pass as "stationfor" → "station" (D26).
         if (string.Concat(e.OriginalWords.Select(Similarity.Key)).Length > string.Concat(e.NewWords.Take(e.OriginalWords.Count).Select(Similarity.Key)).Length + 1

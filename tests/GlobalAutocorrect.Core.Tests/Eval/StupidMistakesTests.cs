@@ -38,6 +38,14 @@ public sealed class StupidMistakesTests
         Assert.Contains("protected-changed", Kinds("see you at Portillo at 1630", "see you at Portillo at 1630", "see you at Portillo at 16:30", "1630"));
 
     [Fact]
+    public void D133_ACommaAfterOkAndACapitalAfterAQuestionMarkAreFine()
+    {
+        Assert.Empty(Kinds("Ok see you there", "Ok see you there", "Ok, see you there"));
+        Assert.Empty(Kinds("at 1630 (or later)? at the cafe?", "at 1630 (or later)? at the cafe?", "at 1630 (or later)? At the cafe?"));
+        Assert.Contains("correct-word-changed", Kinds("see you at the cafe", "see you at the cafe", "see you At the cafe"));   // mid-sentence
+    }
+
+    [Fact]
     public void D132_AWordLost() =>
         Assert.Contains("word-lost", Kinds("we can meet tomorrow morning", "we can meet tomorrow morning", "we can meet morning"));
 }

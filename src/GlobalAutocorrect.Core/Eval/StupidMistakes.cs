@@ -47,12 +47,28 @@ public static class StupidMistakes
         foreach (var u in cn) if (u.ACount == 1 && u.BCount == 1) rightBefore[u.AStart] = c[u.AStart] == n[u.BStart];
         foreach (var u in co)
         {
-            if (u.ACount == 1 && u.BCount == 1 && rightBefore[u.AStart] && c[u.AStart] != o[u.BStart])
+            if (u.ACount == 1 && u.BCount == 1 && rightBefore[u.AStart] && c[u.AStart] != o[u.BStart] && !Acceptable(c[u.AStart], o[u.BStart], u.BStart > 0 ? o[u.BStart - 1] : null))
                 found.Add(new("correct-word-changed", $"{c[u.AStart]} -> {o[u.BStart]}"));
             else if (u.ACount > u.BCount && Enumerable.Range(u.AStart, u.ACount).Any(i => rightBefore[i]))   // dropped, or run together
                 found.Add(new("word-lost", string.Join(' ', c.Skip(u.AStart).Take(u.ACount))));
         }
         if (o.Count > Math.Max(n.Count, c.Count) + 1) found.Add(new("text-added", $"{n.Count} words typed, {o.Count} after"));
         return found;
+    }
+
+    /// <summary>
+    /// D133: not stupid, ordinary correct writing: a comma (or other pause mark) added after a word ("Ok see you" → "Ok,
+    /// see you"), and a capital at the start of a sentence, after the writer's own ".", "?" or "!". The letters are the
+    /// same; anything else that changes a correct word still counts.
+    /// </summary>
+    private static bool Acceptable(string was, string now, string? before)
+    {
+        string Letters(string s) => new(s.Where(char.IsLetterOrDigit).ToArray());
+        if (Letters(was) != Letters(now) && !string.Equals(Letters(was), Letters(now), StringComparison.OrdinalIgnoreCase)) return false;
+        bool sameCase = Letters(was) == Letters(now);
+        bool onlyPauseAdded = now.StartsWith(was.TrimEnd(',', ';', ':'), StringComparison.Ordinal) && now[was.Length..].All(ch => ch is ',' or ';' or ':');
+        if (sameCase) return onlyPauseAdded;
+        bool sentenceStart = before is { Length: > 0 } && before[^1] is '.' or '?' or '!';
+        return sentenceStart && char.IsLower(was[0]) && char.IsUpper(now[0]) && was[1..] == now[1..];
     }
 }

@@ -20,6 +20,6 @@ public sealed class HunspellSpellChecker : ISpellChecker
     {
         if (string.IsNullOrEmpty(word)) return false;
         // Typed apostrophes may be curly; the dictionary uses straight ones.
-        return _words.Check(word.Replace('’', '\''));
+        return _words.Check(word.Replace('’', '\'')) || GlobalAutocorrect.Core.Text.EverydayWords.Contains(word);   // D133
     }
 }

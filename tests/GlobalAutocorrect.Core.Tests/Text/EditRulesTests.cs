@@ -96,6 +96,18 @@ public sealed class EditRulesTests
         Apply(a, new EditRules(new EditRuleSettings(), s, _ => false).Filter(a, b, WordDiff.Compute(a, b)));
 
     [Fact]
+    public void R4_5_D133_TheRealModelsStupidMistakesAreRefused()
+    {
+        var s = new FakeSpeller("i'll", "be", "there", "in", "just", "parking", "now", "mind", "has", "anybody", "got", "a",
+            "spare", "adaptor", "adapter", "can't", "attend", "at", "the", "end", "of", "training", "day");
+        // "10 mins" is a unit after a number; the typo next to it is still fixed.
+        Assert.Equal("I'll be there in 10 mins, just parking now",
+            ApplyWith(s, "I'll be there in 10 mins, just parkign now", "I'll be there in 10 mind, just parking now"));
+        // A UK spelling stays.
+        Assert.Equal("has anybody got a spare adaptor", ApplyWith(s, "has anybody got a spare adaptor", "has anybody got a spare adapter"));
+    }
+
+    [Fact]
     public void R4_5_b_AFixNextToADroppedFunctionWordIsAccepted_D31()
     {
         // Found on the tuning set: "si" → "is the" was aligned as one edit and judged too dissimilar.
@@ -293,7 +305,7 @@ public sealed class EditRulesTests
     {
         var r = Run("the colour is nice", "the color is nice");
         Assert.Empty(r.Accepted);
-        Assert.Equal(RejectReason.ReplacesValidWithInvalid, Assert.Single(r.Verdicts).Reason);
+        Assert.Contains(Assert.Single(r.Verdicts).Reason, new[] { RejectReason.ReplacesValidWithInvalid, RejectReason.SpellingVariant });   // D133 names it
         Assert.Empty(Run("we will organise", "we will organize").Accepted);
     }
 
