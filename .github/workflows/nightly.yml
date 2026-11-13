@@ -22,6 +22,7 @@ jobs:
     uses: ./.github/workflows/e2e.yml
     with:
       slot: ${{ matrix.slot }}
+      chaos: true   # D126: real-use habits, a different rhythm in every slot
 
   pass-rate:
     needs: e2e

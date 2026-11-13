@@ -38,6 +38,7 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public static void Diagnose(string line)
     {
+        Recent.Add(line);   // D126
         // One writer at a time: lines come from background tasks, and a collision used to drop a line silently.
         lock (DiagnoseLock)
         try
@@ -55,6 +56,37 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     private static readonly Lock DiagnoseLock = new();
+
+    /// <summary>D126: the last 90 s of what the app did (no text), saved when the user presses the report shortcut.</summary>
+    public static Core.Telemetry.RecentEvents Recent { get; } = new(() => Environment.TickCount64);
+
+    /// <summary>
+    /// D126, user request "catch potential bugs … so much weird stuff happens during the day": the report shortcut saves
+    /// the last 90 s of events to reports/report-&lt;time&gt;.txt (reasons, counts, positions; never text, 8.6), so a
+    /// screenshot of something that went wrong can be matched to exactly what the app did just before.
+    /// </summary>
+    public string? SaveReport()
+    {
+        try
+        {
+            string dir = Path.Combine(DataDir, "reports");
+            Directory.CreateDirectory(dir);
+            foreach (var old in new DirectoryInfo(dir).GetFiles("report-*.txt").OrderByDescending(f => f.Name).Skip(49)) old.Delete();
+            var lines = Recent.Snapshot();
+            string name = $"report-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+            var header = new[]
+            {
+                $"Global Autocorrect {typeof(AppHost).Assembly.GetName().Version} report, {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                $"app in front: {Target?.LastSnapshot?.ProcessName ?? "?"} (framework {Target?.LastSnapshot?.FrameworkId ?? "?"}); events in the last 90 s: {lines.Count}",
+                "No typed text is in this file (8.6): reasons, counts and positions only.",
+                "",
+            };
+            File.WriteAllLines(Path.Combine(dir, name), header.Concat(lines));
+            Diagnose($"report: the user marked a problem; {lines.Count} events saved to reports/{name} (D126)");
+            return name;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+    }
     private int _mismatchLines;
     private int _dropLines;   // D91
     private Diagnostics.PerfSampler? _perf;   // D94
@@ -303,6 +335,9 @@ public sealed class AppHost : IAsyncDisposable
             WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
         { Paused = Settings.Paused, Health = Health, Mistakes = Mistakes };   // D81, D84
         engine.Corrected += n => Corrected?.Invoke(n);
+        // D126: every fix written, for the report shortcut: how and how far, never what (8.6).
+        engine.Corrected += n => Recent.Add($"wrote: app={Target?.LastSnapshot?.ProcessName ?? "?"} {n.Layer} dist={n.CaretDistance} replacedLen={n.Original.Length} newLen={n.Replacement.Length} retype={n.Retyped}");
+        engine.Session.Restarted += reason => Recent.Add($"session: restart {reason}");
         engine.Stuck += app => Diagnose($"stuck: app={app} (gave up on the field for this session, D81)");
         engine.LearntFromMistake += kind => Diagnose($"mistake: {kind} app={Target?.LastSnapshot?.ProcessName ?? "?"} (D84, no text)");
         // D76: in normal use too, how the field differed from what was typed: kinds of character and lengths, never text
@@ -378,6 +413,7 @@ public sealed class AppHost : IAsyncDisposable
             Notice?.Invoke($"{Settings.PauseShortcut} is already used by another app. Choose a different pause shortcut in Settings.");
         if (Hotkey.TryParse(Settings.UndoShortcut, out var undo) && !_hotkeys.Register("undo", undo))
             Notice?.Invoke($"{Settings.UndoShortcut} is already used by another app. Choose a different undo shortcut in Settings.");
+        if (Hotkey.TryParse(Settings.ReportShortcut, out var report)) _hotkeys.Register("report", report);   // D126: quietly, if free
     }
 
     private void OnHotkey(string name)
@@ -388,6 +424,11 @@ public sealed class AppHost : IAsyncDisposable
         {
             if (_ui is not null) _ui.Post(_ => SetPaused(!Settings.Paused), null);   // 8.2
             else SetPaused(!Settings.Paused);
+        }
+        else if (name == "report")
+        {
+            string? saved = SaveReport();   // D126
+            Notice?.Invoke(saved is null ? "Couldn't save the report." : $"Noted at {DateTime.Now:HH:mm:ss}: what the app did in the last 90 seconds is saved (no text).");
         }
         else if (name == "undo")
         {

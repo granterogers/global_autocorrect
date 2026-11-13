@@ -28,6 +28,7 @@ public sealed record AppSettings
     public double NextWordShare => AlwaysSuggestNextWord ? 0.1 : 0.6;
     public string PauseShortcut { get; init; } = "Ctrl+Alt+P";     // 8.2
     public string UndoShortcut { get; init; } = "Ctrl+Alt+Z";      // 4.8.b
+    public string ReportShortcut { get; init; } = "Ctrl+Alt+R";    // D126: "that was wrong": saves the last 90 s of events
     public List<string>? ExcludedApps { get; init; }               // 8.4; null = the built-in defaults
     public bool StartWithWindows { get; init; } = true;            // 8.1
     public int IdleUnloadMinutes { get; init; } = 15;              // 5.6.b

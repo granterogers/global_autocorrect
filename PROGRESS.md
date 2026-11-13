@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D126 (11.3):** report shortcut Ctrl+Alt+R (last 90 s of events, no text); stand-in quirks (late arrows in Intercom pages, CKEditor in WebView2 as new Teams); chaos typing with seeds, nightly. 2 tests.
 - **D125 (4.6.d):** in browsers every fix behind the caret is placed (D122), not stepped to with arrow keys: short arrow fixes doubled a word in real Intercom. 1 test.
 - **D124 (4.4, 4.6.c):** keys recorded that never reached the field (WhatsApp) no longer stop a whole message being corrected silently; expired writes and abandoned AI passes are logged with a reason. 2 tests.
 - **D123 (12.2):** fixes in apps that host a browser engine (new Teams) were all dropped as "not-sent"; focus is now compared with the window read as well. 1 test.

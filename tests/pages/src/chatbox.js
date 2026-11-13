@@ -58,6 +58,26 @@ const mentions = new Plugin({
 // Busy work on every change: Intercom spends tens of milliseconds per key on its own bookkeeping.
 const busy = new Plugin({ view: () => ({ update: () => { const until = performance.now() + heavy; while (performance.now() < until) { /* busy */ } } }) });
 
+// D126, data-quirks="late-arrows": real Intercom applies arrow keys late and out of step with the keys after them
+// ("unfortunatelytunately", D125). Each Left/Right moves the caret 0–60 ms later, so a fix stepped to with arrows here
+// lands in the wrong place, as it did in real use.
+const quirks = (document.body.dataset.quirks || '').split(',');
+const lateArrows = new Plugin({
+  props: {
+    handleKeyDown(view, event) {
+      if (!quirks.includes('late-arrows') || event.shiftKey || event.ctrlKey || event.altKey) return false;
+      const d = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+      if (!d) return false;
+      setTimeout(() => {
+        const { from } = view.state.selection;
+        const pos = Math.max(0, Math.min(view.state.doc.content.size, from + d));
+        view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos), d)));
+      }, Math.random() * 60);
+      return true;
+    },
+  },
+});
+
 const lineBreak = (s, d) => { if (d) d(s.tr.replaceSelectionWith(schema.nodes.hard_break.create()).scrollIntoView()); return true; };
 const keys = mode === 'chat' ? { Enter: send, 'Shift-Enter': splitBlock } : { Enter: splitBlock, 'Shift-Enter': lineBreak };
 
@@ -68,7 +88,7 @@ const view = new EditorView(document.getElementById('ed'), {
     schema,
     doc: startDoc,
     selection: startDoc ? TextSelection.create(startDoc, 1) : undefined,
-    plugins: [history(), keymap({ 'Mod-z': undo, 'Mod-y': redo }), keymap(keys), keymap(baseKeymap), mentions, ...(heavy > 0 ? [busy] : [])],
+    plugins: [lateArrows, history(), keymap({ 'Mod-z': undo, 'Mod-y': redo }), keymap(keys), keymap(baseKeymap), mentions, ...(heavy > 0 ? [busy] : [])],
   }),
 });
 view.focus();

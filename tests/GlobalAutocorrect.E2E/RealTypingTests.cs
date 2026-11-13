@@ -106,7 +106,7 @@ public sealed class RealTypingTests
     {
         get
         {
-            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate", "intercom", "email", "chat"];   // D113: Intercom and Claude/ChatGPT stand-ins; D122: Intercom email, signature below
+            string[] all = ["notepad", "wpf", "textarea", "contenteditable", "prosemirror", "lexical", "ckeditor", "quill", "tinymce", "slate", "intercom", "email", "chat", "teams"];   // D126: "teams": CKEditor in WebView2, as new Teams   // D113: Intercom and Claude/ChatGPT stand-ins; D122: Intercom email, signature below
             var only = Environment.GetEnvironmentVariable("GA_RT_EDITORS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             int repeat = int.TryParse(Environment.GetEnvironmentVariable("GA_RT_REPEAT"), out int r) && r > 1 ? r : 1;
             var data = new TheoryData<string>();
@@ -125,11 +125,20 @@ public sealed class RealTypingTests
         using var llm = new MockLlm(Oracle);
         using var app = new AppUnderTest(llm, label: $"realtyping-{run}");
         var script = Messages.Value;
+        // D126: each repeat of an editor is typed with its own seed, so a nightly run of several repeats covers many rhythms.
+        int seed = (run.Contains('-') && int.TryParse(run[(run.LastIndexOf('-') + 1)..], out int n) ? n : 1)
+                   + (int.TryParse(Environment.GetEnvironmentVariable("GA_RT_SEED"), out int slot) ? slot * 100 : 0);   // nightly: each slot its own
         string text;
-        if (editor == "wpf")
+        if (editor == "teams")
+        {
+            using var box = new WebViewBox("ckeditor");
+            TypeLikeAPerson(script, seed);
+            text = Settle(() => box.Text);
+        }
+        else if (editor == "wpf")
         {
             using var box = new DesktopTests.WpfBox();
-            TypeLikeAPerson(script, seed: 1);
+            TypeLikeAPerson(script, seed);
             text = Settle(() => box.Text);
         }
         else if (editor == "notepad")
@@ -140,7 +149,7 @@ public sealed class RealTypingTests
             var (_, doc, close) = DesktopTests.OpenNotepad(uia);
             try
             {
-                TypeLikeAPerson(script, seed: 1);
+                TypeLikeAPerson(script, seed);
                 text = Settle(() => DesktopTests.Text(doc));
             }
             finally { close(); }
@@ -150,7 +159,7 @@ public sealed class RealTypingTests
             var (browser, page, pw) = await BrowserTests.Open(editor);
             try
             {
-                TypeLikeAPerson(script, seed: 1);
+                TypeLikeAPerson(script, seed);
                 text = Settle(() => page.EvaluateAsync<string>(ShownText).GetAwaiter().GetResult());
             }
             finally
@@ -166,7 +175,7 @@ public sealed class RealTypingTests
         Report(run, score, desyncs, verifyFails);
         // D109: CKEditor must be retyped, so fixes on an earlier line are skipped there by design (a miss, never damage).
         // D117: in the chat box Enter sends the message, so a fix that wasn't in before it was sent can't be made (a miss).
-        int allowedMisses = editor is "ckeditor" or "chat" ? score.NeedFix / 2 : score.NeedFix / 20;
+        int allowedMisses = editor is "chat" ? score.NeedFix / 2 : score.NeedFix / 20;   // D125: CKEditor (Teams) is placed now, no longer retyped
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
@@ -261,14 +270,39 @@ public sealed class RealTypingTests
     /// it (D100's race), keys 45–140 ms apart, a short think now and then at a word end, Enter between messages, and no
     /// long pause until the end. The same seed gives the same rhythm every run.
     /// </summary>
+    /// <summary>
+    /// D126 (GA_RT_CHAOS=1, the nightly run): habits from real use that leave the text as it was, so each word is still
+    /// scored in place: a wrong letter taken back with Backspace, a line break typed by mistake right after a capital
+    /// (Shift still down when Enter went, WhatsApp, D124) and deleted again, a pause of 1.6–3 s mid-message (long fixes
+    /// then go in while the user starts again), and bursts of fast keys.
+    /// </summary>
+    private static readonly bool Chaos = Environment.GetEnvironmentVariable("GA_RT_CHAOS") == "1";
+
+    private static void Tap(ushort vk, Random rnd)
+    {
+        Press(vk, up: false);
+        Thread.Sleep(rnd.Next(15, 45));
+        Press(vk, up: true);
+        Thread.Sleep(rnd.Next(45, 140));
+    }
+
     private static void TypeLikeAPerson(Script script, int seed)
     {
         var rnd = new Random(seed);
+        var habits = new Random(seed * 7919);   // its own stream, so seed 1 without chaos types exactly as before
         nint hkl = GetKeyboardLayout(0);
+        int burst = 0;
         for (int l = 0; l < script.Lines.Count; l++)
         {
             foreach (char ch in script.Lines[l].Noisy)
             {
+                if (Chaos && char.IsLower(ch) && habits.Next(25) == 0)
+                {
+                    char wrong = ch == 'z' ? 'x' : (char)(ch + 1);   // the key beside it, more or less
+                    Tap((ushort)(VkKeyScanExW(wrong, hkl) & 0xFF), rnd);
+                    Tap(0x08, rnd);   // Backspace
+                }
+                if (Chaos && burst == 0 && habits.Next(60) == 0) burst = habits.Next(6, 16);
                 short scan = VkKeyScanExW(ch, hkl);
                 int mods = scan >> 8;
                 if (scan == -1 || (mods & ~1) != 0) new SendInputWriter(0).Type(ch.ToString());   // not on the keyboard: as text
@@ -280,10 +314,18 @@ public sealed class RealTypingTests
                     Press(vk, up: false);
                     Thread.Sleep(rnd.Next(15, 45));
                     Press(vk, up: true);
-                    if (shift) { Thread.Sleep(rnd.Next(5, 50)); Press(0x10, up: true); }
+                    if (shift && Chaos && char.IsUpper(ch) && habits.Next(6) == 0)
+                    {
+                        Tap(0x0D, rnd);   // Enter with Shift still down: a line break, not a send
+                        Press(0x10, up: true);
+                        Tap(0x08, rnd);   // seen and taken back
+                    }
+                    else if (shift) { Thread.Sleep(rnd.Next(5, 50)); Press(0x10, up: true); }
                 }
-                Thread.Sleep(rnd.Next(45, 140));
+                if (burst > 0) { burst--; Thread.Sleep(rnd.Next(15, 40)); }
+                else Thread.Sleep(rnd.Next(45, 140));
                 if (ch == ' ' && rnd.Next(10) == 0) Thread.Sleep(rnd.Next(300, 900));   // a short think, never 1.5 s (4.6.b)
+                if (Chaos && ch == ' ' && habits.Next(14) == 0) Thread.Sleep(habits.Next(1600, 3000));   // a real pause mid-message
             }
             if (l < script.Lines.Count - 1)
             {

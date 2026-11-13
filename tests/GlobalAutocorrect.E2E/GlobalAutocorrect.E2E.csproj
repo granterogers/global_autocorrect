@@ -9,6 +9,7 @@
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
     <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

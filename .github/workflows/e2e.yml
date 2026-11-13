@@ -20,6 +20,10 @@ on:
         description: 'D115: how many times each editor is typed'
         type: string
         default: '1'
+      chaos:
+        description: 'D126: type with real-use habits (wrong letter + Backspace, stray Shift+Enter, long pauses, bursts)'
+        type: boolean
+        default: false
   push:
     branches: [main, ci-e2e]
   workflow_call:
@@ -28,6 +32,10 @@ on:
         description: 'D66: which nightly copy this is; each gets its own concurrency group and artifact name.'
         type: string
         default: ''
+      chaos:
+        description: 'D126: type with real-use habits; each slot types with its own seeds'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -146,6 +154,8 @@ jobs:
           GA_PROBE: ${{ inputs.probe && '1' || '' }}
           GA_RT_EDITORS: ${{ inputs.editors }}
           GA_RT_REPEAT: ${{ inputs.repeat }}
+          GA_RT_CHAOS: ${{ inputs.chaos && '1' || '' }}
+          GA_RT_SEED: ${{ inputs.slot }}
           MSBUILDDISABLENODEREUSE: '1'
         run: |
           pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes 30 `
