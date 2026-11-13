@@ -55,7 +55,8 @@ internal static class RunCommand
         var brain = brainPath == "none" ? null : GlobalAutocorrect.Core.Learning.Brain.Read(brainPath);
         if (brainPath != "none" && brain is null) { Console.Error.WriteLine($"the brain {brainPath} is missing or unusable"); return 2; }
         var prompt = o.ContainsKey("prompt") ? PromptTemplate.LoadOrDefault(o["prompt"]) : brain?.Prompt?.ToTemplate() ?? PromptTemplate.Default;
-        using var client = new LlamaServerClient(host.BaseAddress!, prompt, apiKey: host.ApiKey);
+        // D132: --timeout seconds per request (the real-use run on GitHub has no GPU, so the first request takes minutes).
+        using var client = new LlamaServerClient(host.BaseAddress!, prompt, timeout: o.TryGetValue("timeout", out var ts) ? TimeSpan.FromSeconds(int.Parse(ts)) : null, apiKey: host.ApiKey);
         await client.CleanAsync("warm up teh cache", CancellationToken.None);
 
         var options = EvalOptions(o, brain);

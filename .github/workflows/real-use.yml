@@ -50,7 +50,7 @@ jobs:
 
       - name: Real-life messages, real model (gated)
         run: |
-          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set reallife --out artifacts --strict
+          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set reallife --out artifacts --strict --timeout 600
           $code = $LASTEXITCODE
           if (Test-Path artifacts/stupid-reallife.md) { Get-Content artifacts/stupid-reallife.md >> $env:GITHUB_STEP_SUMMARY }
           exit $code
@@ -58,7 +58,7 @@ jobs:
       - name: Tuning-set slice, real model (rates only)
         if: always()
         run: |
-          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set tuning --n 120 --out artifacts
+          dotnet run --project tools/GlobalAutocorrect.Eval -c Release -- run --set tuning --n 120 --out artifacts --timeout 600
           if (Test-Path artifacts/stupid-tuning.md) { Get-Content artifacts/stupid-tuning.md -TotalCount 60 >> $env:GITHUB_STEP_SUMMARY }
 
       - name: Upload results
