@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: '15 */3 * * *'
   workflow_dispatch:
+  # D131: the cloud fix routine pushes a candidate fix here to run the same stress suite before it releases anything.
+  push:
+    branches: [ci-stress]
 
 permissions:
   contents: read
@@ -33,7 +36,7 @@ jobs:
 
   report:
     needs: e2e
-    if: failure()
+    if: failure() && github.event_name == 'schedule'   # only the runs on main open issues
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v5
