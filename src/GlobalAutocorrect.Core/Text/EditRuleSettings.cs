@@ -16,6 +16,13 @@ public sealed record EditRuleSettings
     /// <summary>4.5.d: reject the whole correction when more than this share of words would change.</summary>
     public double MaxChangedWordRatio { get; init; } = 0.5;
 
+    /// <summary>
+    /// D129, user report (WhatsApp: "… at 1630 (or later)? at Portillo?": "you're introducing extra question marks"): a
+    /// question mark or exclamation mark the user didn't type is their tone and meaning, not a slip, so the AI may not add
+    /// one. Brain knob Rules.AddQuestionMarks (1 allows it again).
+    /// </summary>
+    public bool AddQuestionMarks { get; init; }
+
     /// <summary>D27: accept one likely keyboard slip even when it fails the distance threshold (short words).</summary>
     public bool AcceptLikelyKeyboardSlips { get; init; } = true;
 

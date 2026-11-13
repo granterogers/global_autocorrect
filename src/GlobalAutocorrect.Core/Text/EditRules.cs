@@ -16,6 +16,7 @@ public enum RejectReason
     NotAFunctionWord,
     StyleCapitalisation,
     SplitsAValidWord,
+    AddsQuestionMark,   // D129
 }
 
 public sealed record EditVerdict(TextEdit Edit, bool Accepted, RejectReason Reason);
@@ -72,12 +73,16 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         return new RuleResult(verdicts, RejectReason.None);
     }
 
+    private static int ToneMarks(string s) => s.Count(c => c is '?' or '!');
+
     private EditVerdict Judge(string original, IReadOnlyList<Token> origTokens, TextEdit e, IReadOnlyList<TextEdit> all)
     {
         RejectReason Why()
         {
             if (original.AsSpan(e.Start, e.End - e.Start).ContainsAny('\r', '\n') || e.Replacement.ContainsAny('\r', '\n'))
                 return RejectReason.CrossesLine;   // D8
+            // D129: never a "?" or "!" the user didn't type.
+            if (!settings.AddQuestionMarks && ToneMarks(e.Replacement) > ToneMarks(original[e.Start..e.End])) return RejectReason.AddsQuestionMark;
             // D93: an embedded object (U+FFFC: Intercom's @mention, an image, a link) is not stray punctuation. The model
             // dropped it as one, and the write deleted the user's tag (user report, twice).
             // Right next to one counts too: deleting the space after it joins the tag to the next word.

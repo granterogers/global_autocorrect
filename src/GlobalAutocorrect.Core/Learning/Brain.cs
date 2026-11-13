@@ -105,6 +105,7 @@ public static class Brain
             ["Rules.MaxNonWordDistance"] = (0.3, 0.9, (r, v) => r with { MaxNonWordDistance = v }),
             ["Rules.AcceptLikelyKeyboardSlips"] = (0, 1, (r, v) => r with { AcceptLikelyKeyboardSlips = v >= 0.5 }),
             ["Rules.LenientWithNonWords"] = (0, 1, (r, v) => r with { LenientWithNonWords = v >= 0.5 }),
+            ["Rules.AddQuestionMarks"] = (0, 1, (r, v) => r with { AddQuestionMarks = v >= 0.5 }),   // D129
         };
 
     /// <summary>A tuning name the app knows, and its range.</summary>

@@ -114,11 +114,23 @@ public sealed class EditRulesTests
     {
         // Found on the tuning set: "afternoon something" → "afternoon? Something" lost the capital.
         var s = new FakeSpeller("could", "we", "move", "it", "to", "afternoon", "something", "came", "up");
-        Assert.Equal("could we move it to afternoon? Something came up",
-            ApplyWith(s, "could we move it to afternoon something came up", "could we move it to afternoon? Something came up"));
+        Assert.Equal("could we move it to afternoon. Something came up",
+            ApplyWith(s, "could we move it to afternoon something came up", "could we move it to afternoon. Something came up"));
         // Without the added full stop, the same capital mid-sentence is still a style change.
         Assert.Equal("could we move it to afternoon something came up",
             ApplyWith(s, "could we move it to afternoon something came up", "could we move it to afternoon Something came up"));
+    }
+
+    [Fact]
+    public void R4_5_a_D129_NoQuestionOrExclamationMarkTheUserDidntType()
+    {
+        // User report (WhatsApp): "at 1630 (or later) at Portillo?" became "at 1630 (or later)? at Portillo?".
+        var s = new FakeSpeller("can", "i", "see", "you", "guys", "at", "or", "later", "portillo", "great", "thanks");
+        Assert.Equal("can i see you guys at 1630 (or later) at Portillo?",
+            ApplyWith(s, "can i see you guys at 1630 (or later) at Portillo?", "can i see you guys at 1630 (or later)? at Portillo?"));
+        Assert.Equal("great thanks", ApplyWith(s, "great thanks", "great thanks!"));
+        // A typo fix next to the user's own question mark is still made.
+        Assert.Equal("can you see it?", ApplyWith(new FakeSpeller("can", "you", "see", "it"), "can yuo see it?", "can you see it?"));
     }
 
     [Fact]
