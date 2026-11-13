@@ -27,18 +27,42 @@ public sealed class RealTypingTests
     /// <summary>The messages typed, and the right answer for each noisy word in them (the model stand-in's whole knowledge).</summary>
     private sealed record Script(IReadOnlyList<(string Noisy, string Clean)> Lines, IReadOnlyDictionary<string, string> Fixes);
 
-    private static readonly Lazy<Script> Messages = new(Pick);
+    /// <summary>
+    /// D130 (GA_RT_VARIED=1, the stress runs): each seed types its own messages, 3–6 of them, picked at random from the
+    /// tuning set (never the holdout, 6.1), so every run covers different words, lengths and kinds of typo. Without it,
+    /// the same four messages every run, as before.
+    /// </summary>
+    private static readonly bool Varied = Environment.GetEnvironmentVariable("GA_RT_VARIED") == "1";
+
+    /// <summary>
+    /// D130 (GA_RT_ADVERSARY=1): a model stand-in that misbehaves now and then, the way real models do: a word or the whole
+    /// answer in capitals, a word repeated or dropped, a "?" or "!" added, two words swapped, a word added. None of it may
+    /// reach the field; the score counts any of it that does as damage.
+    /// </summary>
+    private static readonly bool Adversary = Environment.GetEnvironmentVariable("GA_RT_ADVERSARY") == "1";
+
+    private static readonly Dictionary<int, Script> Scripts = [];
+
+    private static Script ScriptFor(int seed)
+    {
+        lock (Scripts) return Scripts.TryGetValue(seed, out var s) ? s : Scripts[seed] = Pick(Varied ? seed : 0);
+    }
 
     /// <summary>
     /// Tuning-set messages with typos and the same number of words before and after (so each word can be checked in place),
-    /// 60–150 characters, and no word that is a typo in one message and correct in another. Fixed choice, every run.
+    /// 60–150 characters, and no word that is a typo in one message and correct in another. Seed 0: the first four, every
+    /// run; otherwise 3–6 chosen at random by the seed (D130).
     /// </summary>
-    private static Script Pick()
+    private static Script Pick(int seed)
     {
+        var rnd = new Random(seed);
+        int want = seed == 0 ? 4 : rnd.Next(3, 7);
+        var source = File.ReadLines(Path.Combine(Desk.Repo, "data", "eval", "tuning.jsonl")).ToList();
+        if (seed != 0) source = source.OrderBy(_ => rnd.Next()).ToList();
         var lines = new List<(string, string)>();
         var fixes = new Dictionary<string, string>(StringComparer.Ordinal);
         var correct = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var json in File.ReadLines(Path.Combine(Desk.Repo, "data", "eval", "tuning.jsonl")))
+        foreach (var json in source)
         {
             using var doc = JsonDocument.Parse(json);
             string noisy = doc.RootElement.GetProperty("noisy").GetString()!, clean = doc.RootElement.GetProperty("clean").GetString()!;
@@ -61,10 +85,45 @@ public sealed class RealTypingTests
             foreach (var (k, v) in mine) fixes[k] = v;
             for (int i = 0; i < n.Length; i++) if (n[i] == c[i]) correct.Add(n[i]);
             lines.Add((noisy, clean));
-            if (lines.Count == 4) break;
+            if (lines.Count == want) break;
         }
-        Assert.Equal(4, lines.Count);
+        Assert.Equal(want, lines.Count);
         return new Script(lines, fixes);
+    }
+
+    /// <summary>D130: now and then (about one answer in three), one of the ways real models go wrong.</summary>
+    private sealed class Misbehaviour(int seed)
+    {
+        private readonly Random _rnd = new(seed * 31 + 7);
+        private readonly Lock _lock = new();
+        public int Applied;
+
+        public string Apply(string answer)
+        {
+            lock (_lock)
+            {
+                var words = answer.Split(' ').ToList();
+                if (words.Count < 3 || _rnd.Next(3) != 0) return answer;
+                int i = _rnd.Next(words.Count - 1);
+                // 4.5.b lets the model add or drop a function word ("the", "to"): only longer words are dropped or swapped.
+                bool content = words[i].Count(char.IsLetter) >= 5 && words[i + 1].Count(char.IsLetter) >= 5;
+                if (words[i].Contains('\n') || words[i + 1].Contains('\n')) return answer;
+                Applied++;
+                switch (_rnd.Next(8))
+                {
+                    case 0: return answer.ToUpperInvariant();                       // all capitals
+                    case 1: words[i] = words[i].ToUpperInvariant(); break;          // one word in capitals
+                    case 2: words.Insert(i, words[i]); break;                       // a word repeated
+                    case 3 when content: words.RemoveAt(i); break;                  // a word dropped
+                    case 4: words[i] += "?"; break;                                 // a question mark from nowhere
+                    case 5: words[i] += "!"; break;                                 // an exclamation mark from nowhere
+                    case 6 when content: (words[i], words[i + 1]) = (words[i + 1], words[i]); break;   // two words swapped
+                    case 3 or 6: words[i] = words[i].ToUpperInvariant(); break;     // (short words: capitals instead)
+                    default: words.Insert(i, "really"); break;                      // a word added
+                }
+                return string.Join(' ', words);
+            }
+        }
     }
 
     /// <summary>Levenshtein distance, case-insensitive (capitals are a fix of their own, not a misalignment).</summary>
@@ -81,9 +140,9 @@ public sealed class RealTypingTests
     }
 
     /// <summary>The model stand-in: every word it knows the answer for is fixed, the rest kept, spacing and lines as sent.</summary>
-    private static string Oracle(string text)
+    private static string Oracle(Script script, string text)
     {
-        var fixes = Messages.Value.Fixes;
+        var fixes = script.Fixes;
         var sb = new StringBuilder(text.Length);
         int i = 0;
         while (i < text.Length)
@@ -122,12 +181,14 @@ public sealed class RealTypingTests
     {
         Desk.RequireIdle();
         string editor = run.Contains('-') && int.TryParse(run[(run.LastIndexOf('-') + 1)..], out _) ? run[..run.LastIndexOf('-')] : run;
-        using var llm = new MockLlm(Oracle);
-        using var app = new AppUnderTest(llm, label: $"realtyping-{run}");
-        var script = Messages.Value;
         // D126: each repeat of an editor is typed with its own seed, so a nightly run of several repeats covers many rhythms.
         int seed = (run.Contains('-') && int.TryParse(run[(run.LastIndexOf('-') + 1)..], out int n) ? n : 1)
                    + (int.TryParse(Environment.GetEnvironmentVariable("GA_RT_SEED"), out int slot) ? slot * 100 : 0);   // nightly: each slot its own
+        var script = ScriptFor(seed);
+        var misbehave = new Misbehaviour(seed);
+        using var llm = new MockLlm(t => Adversary ? misbehave.Apply(Oracle(script, t)) : Oracle(script, t));
+        using var app = new AppUnderTest(llm, label: $"realtyping-{run}");
+        TestContext.Current.SendDiagnosticMessage($"{run}: seed {seed}, {script.Lines.Count} messages{(Adversary ? ", misbehaving model" : "")}");
         string text;
         if (editor == "teams")
         {
@@ -175,7 +236,8 @@ public sealed class RealTypingTests
         Report(run, score, desyncs, verifyFails);
         // D109: CKEditor must be retyped, so fixes on an earlier line are skipped there by design (a miss, never damage).
         // D117: in the chat box Enter sends the message, so a fix that wasn't in before it was sent can't be made (a miss).
-        int allowedMisses = editor is "chat" ? score.NeedFix / 2 : score.NeedFix / 20;   // D125: CKEditor (Teams) is placed now, no longer retyped
+        // D130: a misbehaving model's whole answer is often refused (more than half the words changed, 4.5.d), fixes with it.
+        int allowedMisses = editor is "chat" ? score.NeedFix / 2 : Adversary ? score.NeedFix / 2 : score.NeedFix / 20;   // D125: CKEditor (Teams) is placed now, no longer retyped
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");

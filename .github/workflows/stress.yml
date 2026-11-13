@@ -1,0 +1,67 @@
+# D130, user request "continue to run stress tests … different patterns, different words … picking up the bugs …
+# run in the background". Every 3 hours, on the latest main: the real-typing test in every editor, typed with real-use
+# habits (D126), with messages chosen afresh from the tuning set each run (never the holdout, 6.1), once with the right
+# answers and once with a model stand-in that misbehaves (capitals, repeated or dropped words, added "?" or "!"). Each
+# run has its own seeds, so no two runs type the same thing; the seed is in the log, so a failure can be replayed.
+# A failure opens an issue (or adds to the open one) with the scores and what was damaged: synthetic text only.
+name: Stress
+
+on:
+  schedule:
+    - cron: '15 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        adversary: [false, true]
+    uses: ./.github/workflows/e2e.yml
+    with:
+      slot: ${{ format('{0}{1}', github.run_number, matrix.adversary && '1' || '0') }}
+      chaos: true
+      varied: true
+      adversary: ${{ matrix.adversary }}
+      repeat: '1'
+      editors: 'notepad,wpf,textarea,contenteditable,prosemirror,lexical,ckeditor,quill,tinymce,slate,intercom,email,chat,teams'
+
+  report:
+    needs: e2e
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: results
+      - name: Open or update the stress issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "Stress run ${{ github.run_number }} failed: $URL"
+            echo
+            for f in results/*/realtyping/summary.md; do
+              [ -f "$f" ] || continue
+              echo "### $(basename "$(dirname "$(dirname "$f")")")"
+              cat "$f"
+              echo
+            done
+            echo '<details><summary>Failures (synthetic tuning-set text only)</summary>'
+            echo
+            echo '```'
+            grep -h -E "fixed [0-9]+/[0-9]+, missed|FAIL\]|seed [0-9]+" results/*/e2e-output.txt 2>/dev/null | cut -c1-600 | head -60
+            echo '```'
+            echo '</details>'
+          } > body.md
+          gh label create stress --repo "$REPO" --color B60205 --description "Found by the stress runs (D130)" 2>/dev/null || true
+          open=$(gh issue list --repo "$REPO" --label stress --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then gh issue comment "$open" --repo "$REPO" --body-file body.md
+          else gh issue create --repo "$REPO" --label stress --title "Stress runs found a problem" --body-file body.md; fi

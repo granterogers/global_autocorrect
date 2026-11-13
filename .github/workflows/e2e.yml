@@ -24,6 +24,14 @@ on:
         description: 'D126: type with real-use habits (wrong letter + Backspace, stray Shift+Enter, long pauses, bursts)'
         type: boolean
         default: false
+      varied:
+        description: 'D130: each seed types its own 3-6 tuning-set messages'
+        type: boolean
+        default: false
+      adversary:
+        description: 'D130: the model stand-in misbehaves now and then (capitals, repeats, added ?/!, dropped or swapped words)'
+        type: boolean
+        default: false
   push:
     branches: [main, ci-e2e]
   workflow_call:
@@ -34,6 +42,22 @@ on:
         default: ''
       chaos:
         description: 'D126: type with real-use habits; each slot types with its own seeds'
+        type: boolean
+        default: false
+      editors:
+        description: 'D130: only these editors of the real-typing test (stress runs)'
+        type: string
+        default: ''
+      repeat:
+        description: 'D130: how many times each editor is typed'
+        type: string
+        default: '1'
+      varied:
+        description: 'D130: each seed types its own messages'
+        type: boolean
+        default: false
+      adversary:
+        description: 'D130: a misbehaving model stand-in'
         type: boolean
         default: false
 
@@ -167,6 +191,8 @@ jobs:
           GA_RT_REPEAT: ${{ inputs.repeat }}
           GA_RT_CHAOS: ${{ inputs.chaos && '1' || '' }}
           GA_RT_SEED: ${{ inputs.slot }}
+          GA_RT_VARIED: ${{ inputs.varied && '1' || '' }}
+          GA_RT_ADVERSARY: ${{ inputs.adversary && '1' || '' }}
           MSBUILDDISABLENODEREUSE: '1'
         run: |
           pwsh -NoProfile -File .github/scripts/Start-MediumIntegrity.ps1 -TimeoutMinutes 30 `
