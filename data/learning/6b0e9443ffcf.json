@@ -1,65 +1,65 @@
 {
-  "Updated": "2026-11-12",
+  "Updated": "2026-11-16",
   "Apps": {
     "chatgpt": {
-      "Writes": 15.7,
-      "VerifyFailures": 2.6,
-      "Stuck": 4.3,
+      "Writes": 14,
+      "VerifyFailures": 1.7,
+      "Stuck": 3.6,
       "Undos": 0,
-      "ArrowFailures": 0.53,
+      "ArrowFailures": 0.35,
       "RetypeFailures": 0,
-      "LineFailures": 0.81,
+      "LineFailures": 0.53,
       "PlaceFailures": 0
     },
     "claude": {
-      "Writes": 297,
-      "VerifyFailures": 34,
-      "Stuck": 2.5,
-      "Undos": 4,
-      "ArrowFailures": 10.75,
-      "RetypeFailures": 11.51,
-      "LineFailures": 5.4,
+      "Writes": 220.3,
+      "VerifyFailures": 22.3,
+      "Stuck": 1.6,
+      "Undos": 3.3,
+      "ArrowFailures": 7.05,
+      "RetypeFailures": 7.55,
+      "LineFailures": 3.54,
       "PlaceFailures": 0
     },
     "msedge": {
-      "Writes": 153.1,
-      "VerifyFailures": 23.7,
-      "Stuck": 0.5,
-      "Undos": 2.3,
-      "ArrowFailures": 4.89,
-      "RetypeFailures": 5.8,
-      "LineFailures": 9.76,
-      "PlaceFailures": 0
+      "Writes": 148.8,
+      "VerifyFailures": 20.2,
+      "Stuck": 0.3,
+      "Undos": 2.2,
+      "ArrowFailures": 5.66,
+      "RetypeFailures": 5.27,
+      "LineFailures": 6.41,
+      "PlaceFailures": 0.73
     },
     "msedgewebview2": {
-      "Writes": 7.9,
-      "VerifyFailures": 2,
-      "Stuck": 11.3,
+      "Writes": 38.4,
+      "VerifyFailures": 4.5,
+      "Stuck": 12.1,
       "Undos": 0,
       "ArrowFailures": 0,
       "RetypeFailures": 0,
       "LineFailures": 0,
-      "PlaceFailures": 0
+      "PlaceFailures": 1
     },
     "notepad": {
-      "Writes": 13.7,
-      "VerifyFailures": 2.7,
+      "Writes": 9,
+      "VerifyFailures": 1.7,
       "Stuck": 0,
       "Undos": 0,
-      "ArrowFailures": 1.06,
-      "RetypeFailures": 1.06,
+      "ArrowFailures": 0.7,
+      "RetypeFailures": 0.7,
       "LineFailures": 0,
       "PlaceFailures": 0
     },
     "whatsapp.root": {
-      "Writes": 102.2,
-      "VerifyFailures": 5.8,
+      "Writes": 107.3,
+      "VerifyFailures": 6.5,
       "Stuck": 0,
-      "Undos": 3,
-      "ArrowFailures": 2.05,
-      "RetypeFailures": 2.44,
+      "Undos": 1.9,
+      "ArrowFailures": 2.35,
+      "RetypeFailures": 1.6,
       "LineFailures": 0,
-      "PlaceFailures": 0
+      "PlaceFailures": 1
     }
   }
 }
