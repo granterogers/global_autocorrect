@@ -19,6 +19,11 @@ public static class WriteGuard
         bool shouting = letters.Length > 0 && letters.Count(char.IsUpper) * 10 >= letters.Length * 6;
         if (!shouting && (InsideCapitals(after) - InsideCapitals(before) >= 2 || AllCapitalWords(after) > AllCapitalWords(before))) return "capitals";
         if (DoubledWord(after) && !DoubledWord(before)) return "doubled-word";
+        // D135 (real-use run: "adaptor" → "adapter" came from the instant layer, which the AI's rules don't see): the
+        // writer's spelling of a word is never swapped for the other one, by any layer.
+        if (before.Trim().Split(' ') is { Length: 1 } bw && after.Trim().Split(' ') is { Length: 1 } aw
+            && Text.EverydayWords.SpellingVariant(bw[0].Trim('.', ',', '?', '!', ';', ':'), aw[0].Trim('.', ',', '?', '!', ';', ':'), aIsAWord: false))
+            return "spelling-variant";
         return null;
     }
 

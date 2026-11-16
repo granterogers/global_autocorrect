@@ -63,6 +63,8 @@ public sealed class MistakeMemoryTests
     [InlineData("teh", "THE", "capitals")]               // capitals from nowhere
     [InlineData("the meeting", "THE MEETING", "capitals")]
     [InlineData("see you", "see you you", "doubled-word")]
+    [InlineData("adaptor?", "adapter?", "spelling-variant")]   // D135: by any layer
+    [InlineData("colour", "color", "spelling-variant")]
     [InlineData("hello", "hel￼lo", "odd-character")]
     public void R4_5_D84_TheWriteGuardRefusesChangesNoFixNeeds(string before, string after, string why) =>
         Assert.Equal(why, WriteGuard.Problem(before, after));
@@ -75,6 +77,7 @@ public sealed class MistakeMemoryTests
     [InlineData("i think monday", "I think Monday")]
     [InlineData("SHOUTING teh", "SHOUTING THE")]         // writing in capitals already
     [InlineData("I had had enough", "I had had enough")]
+    [InlineData("untill", "until")]                      // D135: a typo, not a spelling
     public void R4_5_D84_TheWriteGuardLetsOrdinaryFixesThrough(string before, string after) =>
         Assert.Null(WriteGuard.Problem(before, after));
 
