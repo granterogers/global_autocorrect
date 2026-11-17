@@ -1,66 +1,66 @@
 {
   "format": 1,
-  "updated": "2026-11-16T18:00:07Z",
+  "updated": "2026-11-17T18:00:06Z",
   "apps": {
     "chatgpt": {
-      "writes": 14,
-      "verifyFailures": 1.7,
-      "stuck": 3.6,
+      "writes": 12.6,
+      "verifyFailures": 1.5,
+      "stuck": 4.1,
       "undos": 0,
-      "arrowFailures": 0.35,
+      "arrowFailures": 0.31,
       "retypeFailures": 0,
-      "lineFailures": 0.53,
+      "lineFailures": 0.48,
       "placeFailures": 0
     },
     "claude": {
-      "writes": 220.3,
-      "verifyFailures": 22.3,
-      "stuck": 1.6,
-      "undos": 3.3,
-      "arrowFailures": 7.05,
-      "retypeFailures": 7.55,
-      "lineFailures": 3.54,
+      "writes": 204.8,
+      "verifyFailures": 20.1,
+      "stuck": 1.5,
+      "undos": 3.9,
+      "arrowFailures": 6.35,
+      "retypeFailures": 6.8,
+      "lineFailures": 3.19,
       "placeFailures": 0
     },
     "msedge": {
-      "writes": 148.8,
-      "verifyFailures": 20.2,
+      "writes": 141.5,
+      "verifyFailures": 19.2,
       "stuck": 0.3,
-      "undos": 2.2,
-      "arrowFailures": 5.66,
-      "retypeFailures": 5.27,
-      "lineFailures": 6.41,
-      "placeFailures": 0.73
+      "undos": 2,
+      "arrowFailures": 5.1,
+      "retypeFailures": 5.74,
+      "lineFailures": 5.77,
+      "placeFailures": 0.66
     },
     "msedgewebview2": {
-      "writes": 38.4,
-      "verifyFailures": 4.5,
-      "stuck": 12.1,
+      "writes": 62.5,
+      "verifyFailures": 4,
+      "stuck": 12.8,
       "undos": 0,
       "arrowFailures": 0,
       "retypeFailures": 0,
       "lineFailures": 0,
-      "placeFailures": 1
+      "placeFailures": 0.9
     },
     "notepad": {
-      "writes": 9,
-      "verifyFailures": 1.7,
+      "writes": 8.1,
+      "verifyFailures": 1.6,
       "stuck": 0,
       "undos": 0,
-      "arrowFailures": 0.7,
-      "retypeFailures": 0.7,
+      "arrowFailures": 0.63,
+      "retypeFailures": 0.63,
       "lineFailures": 0,
       "placeFailures": 0
     },
     "whatsapp.root": {
-      "writes": 107.3,
-      "verifyFailures": 6.5,
+      "writes": 98.6,
+      "verifyFailures": 5.9,
       "stuck": 0,
-      "undos": 1.9,
-      "arrowFailures": 2.35,
-      "retypeFailures": 1.6,
+      "undos": 1.8,
+      "arrowFailures": 2.11,
+      "retypeFailures": 1.44,
       "lineFailures": 0,
-      "placeFailures": 1
+      "placeFailures": 0.9
     }
   },
   "mistakes": {},
@@ -76,64 +76,64 @@
   "pcs": {
     "6b0e9443ffcf": {
       "chatgpt": {
-        "writes": 14,
-        "verifyFailures": 1.7,
-        "stuck": 3.6,
+        "writes": 12.6,
+        "verifyFailures": 1.5,
+        "stuck": 4.1,
         "undos": 0,
-        "arrowFailures": 0.35,
+        "arrowFailures": 0.31,
         "retypeFailures": 0,
-        "lineFailures": 0.53,
+        "lineFailures": 0.48,
         "placeFailures": 0
       },
       "claude": {
-        "writes": 220.3,
-        "verifyFailures": 22.3,
-        "stuck": 1.6,
-        "undos": 3.3,
-        "arrowFailures": 7.05,
-        "retypeFailures": 7.55,
-        "lineFailures": 3.54,
+        "writes": 204.8,
+        "verifyFailures": 20.1,
+        "stuck": 1.5,
+        "undos": 3.9,
+        "arrowFailures": 6.35,
+        "retypeFailures": 6.8,
+        "lineFailures": 3.19,
         "placeFailures": 0
       },
       "msedge": {
-        "writes": 148.8,
-        "verifyFailures": 20.2,
+        "writes": 141.5,
+        "verifyFailures": 19.2,
         "stuck": 0.3,
-        "undos": 2.2,
-        "arrowFailures": 5.66,
-        "retypeFailures": 5.27,
-        "lineFailures": 6.41,
-        "placeFailures": 0.73
+        "undos": 2,
+        "arrowFailures": 5.1,
+        "retypeFailures": 5.74,
+        "lineFailures": 5.77,
+        "placeFailures": 0.66
       },
       "msedgewebview2": {
-        "writes": 38.4,
-        "verifyFailures": 4.5,
-        "stuck": 12.1,
+        "writes": 62.5,
+        "verifyFailures": 4,
+        "stuck": 12.8,
         "undos": 0,
         "arrowFailures": 0,
         "retypeFailures": 0,
         "lineFailures": 0,
-        "placeFailures": 1
+        "placeFailures": 0.9
       },
       "notepad": {
-        "writes": 9,
-        "verifyFailures": 1.7,
+        "writes": 8.1,
+        "verifyFailures": 1.6,
         "stuck": 0,
         "undos": 0,
-        "arrowFailures": 0.7,
-        "retypeFailures": 0.7,
+        "arrowFailures": 0.63,
+        "retypeFailures": 0.63,
         "lineFailures": 0,
         "placeFailures": 0
       },
       "whatsapp.root": {
-        "writes": 107.3,
-        "verifyFailures": 6.5,
+        "writes": 98.6,
+        "verifyFailures": 5.9,
         "stuck": 0,
-        "undos": 1.9,
-        "arrowFailures": 2.35,
-        "retypeFailures": 1.6,
+        "undos": 1.8,
+        "arrowFailures": 2.11,
+        "retypeFailures": 1.44,
         "lineFailures": 0,
-        "placeFailures": 1
+        "placeFailures": 0.9
       }
     }
   },
