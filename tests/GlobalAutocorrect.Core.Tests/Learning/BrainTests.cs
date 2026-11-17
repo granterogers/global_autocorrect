@@ -120,6 +120,20 @@ public sealed class BrainTests : IDisposable
     }
 
     [Fact]
+    public void R11_3_D136_ScreenTestsDoNotInheritWhatARealPcLearntAboutTheSameProgram()
+    {
+        var b = Brain.Parse("""{ "format": 1, "pcs": { "other567": { "msedge": { "placeFailures": 0.7, "lineFailures": 6 } } } }""")!;
+        var today = new DateOnly(2026, 11, 16);
+        var normal = new AppHealth();
+        normal.UseShipped(Brain.ForRun(b, "mine1234", today, underTest: false));
+        Assert.True(normal.PlaceUnsafe("msedge"));
+        var test = new AppHealth();
+        test.UseShipped(Brain.ForRun(b, "mine1234", today, underTest: true));
+        Assert.False(test.PlaceUnsafe("msedge"));
+        Assert.False(test.SameLineOnly("msedge"));
+    }
+
+    [Fact]
     public void R4_6_d_D102_TheBrainCanSayHowToWriteInAProgramWhateverTheCounts()
     {
         var health = new AppHealth();

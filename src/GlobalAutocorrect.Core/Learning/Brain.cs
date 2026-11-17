@@ -172,6 +172,14 @@ public static class Brain
         return AppHealth.Combine(others, today).Apps;
     }
 
+    /// <summary>
+    /// D136: what the app takes from the brain's per-program counts while running. The screen tests (<paramref name="underTest"/>)
+    /// type into stand-in editors in the real Edge, so they must not inherit what the owner's PC learnt about real Edge
+    /// (placing the caret failed there, so every earlier-line fix was dropped and every editor "missed" three): nothing.
+    /// </summary>
+    public static IReadOnlyDictionary<string, AppStats> ForRun(BrainFile b, string? myPcId, DateOnly today, bool underTest) =>
+        underTest ? new Dictionary<string, AppStats>() : LearntElsewhere(b, myPcId, today);
+
     /// <summary>The entries that pass <paramref name="keep"/>; of two keys that differ only in case, the later wins.</summary>
     private static Dictionary<string, T> Collect<T>(Dictionary<string, T>? from, Func<KeyValuePair<string, T>, bool> keep, StringComparer comparer)
     {

@@ -274,7 +274,7 @@ public sealed class AppHost : IAsyncDisposable
     private void UseBrain(BrainFile b)
     {
         // D103: only what other PCs learnt: this PC's own lessons are already in its local counts.
-        Health.UseShipped(Brain.LearntElsewhere(b, InstallId(), DateOnly.FromDateTime(DateTime.Now)), b.Write);
+        Health.UseShipped(Brain.ForRun(b, InstallId(), DateOnly.FromDateTime(DateTime.Now), Environment.GetEnvironmentVariable("GA_E2E") == "1"), b.Write);   // D136
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
         _brainPrompt = b.Prompt?.ToTemplate();   // D111
