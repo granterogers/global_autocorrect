@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D136 (4.5):** a mark inserted right beside the same mark the user typed is refused (a repeated "Georgia, Georgia," from the model arrived as a lone "," and made "Georgia,," in every editor, stress issue #1). 1 test.
 - **D135 (4.5):** a UK/US spelling swap is refused by the final write check, from every layer ("adaptor" stays). 3 tests.
 - **D134 (4.6.d):** a late AI answer adding a word can no longer write it twice or inside a word ("t thehe"); "9 Mya" is fixed again; "adaptor" stays. 4 tests.
 - **D133 (4.5):** from the first real-model run: short forms and units are words ("10 mins"), UK spellings are never Americanised, a fix brings at most one word of its own. 13 tests.

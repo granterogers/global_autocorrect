@@ -17,6 +17,7 @@ public enum RejectReason
     StyleCapitalisation,
     SplitsAValidWord,
     AddsQuestionMark,   // D129
+    DoublesPunctuation,   // D136
     SpellingVariant,    // D133
     AfterNumber,        // D133
 }
@@ -87,6 +88,11 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 return RejectReason.CrossesLine;   // D8
             // D129: never a "?" or "!" the user didn't type.
             if (!settings.AddQuestionMarks && ToneMarks(e.Replacement) > ToneMarks(original[e.Start..e.End])) return RejectReason.AddsQuestionMark;
+            // D136 (stress run, a model that repeats a word: "Georgia, Georgia," arrived as the word and a lone ","): a mark
+            // inserted right beside the same mark the user typed is never a fix, it makes ",,".
+            if (e.Start == e.End && e.Replacement.Length > 0 && e.Replacement.All(c => char.IsPunctuation(c))
+                && ((e.Start > 0 && original[e.Start - 1] == e.Replacement[0]) || (e.Start < original.Length && original[e.Start] == e.Replacement[^1])))
+                return RejectReason.DoublesPunctuation;
             // D93: an embedded object (U+FFFC: Intercom's @mention, an image, a link) is not stray punctuation. The model
             // dropped it as one, and the write deleted the user's tag (user report, twice).
             // Right next to one counts too: deleting the space after it joins the tag to the next word.

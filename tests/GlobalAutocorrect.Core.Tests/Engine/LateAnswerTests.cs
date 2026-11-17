@@ -56,4 +56,18 @@ public sealed class LateAnswerTests
         h.Wait(2000);
         Assert.Equal("I saw the dog today. ", h.Text);
     }
+
+    [Fact]
+    public void R4_5_D136_ARepeatedWordFromTheModelNeverDoublesTheCommaAfterIt()
+    {
+        // Stress run (misbehaving model): "Hello Georgia, Georgia, I'm" diffed as the word and a lone "," next to the typed one.
+        foreach (var answer in new[] { "Hello Georgia, Georgia, I'm free for a call.", "Hello Georgia, I'm free for a call, call." })
+        {
+            var h = new Harness(_ => answer);
+            h.Type("Hello Georgia, I'm free for a call. ");
+            h.Wait(4000);
+            Assert.DoesNotContain(",,", h.Text);
+            Assert.Equal("Hello Georgia, I'm free for a call. ", h.Text);
+        }
+    }
 }
