@@ -74,11 +74,29 @@ public sealed class PlacedFixTests
         var health = new AppHealth();
         health.LineFixFailed("msedge");
         health.PlaceFailed("msedge");
+        health.PlaceFailed("msedge");   // D137: failures that keep happening, not one
         var h = Make(health);
         h.Type("We went their today.\nI walked teh dog. ");
         h.Wait(3000);
         Assert.Equal("We went their today.\nI walked the dog. ", h.Text);
         Assert.Equal(0, h.Ed.PlacedEdits);
+    }
+
+    [Fact]
+    public void R4_6_d_D137_OnePlacedFailureAmongManyFixesDoesNotSwitchPlacingOff()
+    {
+        // This PC's brain on 17 Nov: Edge 141 fixes written, 0.66 placed failures (one, faded).
+        var health = new AppHealth();
+        for (int i = 0; i < 140; i++) health.Written("msedge");
+        health.PlaceFailed("msedge");
+        Assert.False(health.PlaceUnsafe("msedge"));
+        health.PlaceFailed("msedge");
+        Assert.False(health.PlaceUnsafe("msedge"));    // 2 in 140: still rare
+        var shaky = new AppHealth();
+        for (int i = 0; i < 10; i++) shaky.Written("teams");
+        shaky.PlaceFailed("teams");
+        shaky.PlaceFailed("teams");
+        Assert.True(shaky.PlaceUnsafe("teams"));       // 2 in 10: it keeps going wrong there
     }
 
     [Fact]

@@ -83,6 +83,13 @@ public sealed class SendInputWriter(nuint tag)
 
     public bool Type(string text) => Send(BuildTyping(text));
 
+    /// <summary>D137: Ctrl+End on its own, to put the caret back at the end of the field after a placed fix.</summary>
+    public bool CtrlEnd()
+    {
+        ushort ctrl = (ushort)MapVirtualKeyW(VK_CONTROL, MAPVK_VK_TO_VSC), end = (ushort)MapVirtualKeyW(VK_END, MAPVK_VK_TO_VSC);
+        return Send([Key(VK_CONTROL, ctrl, 0), Key(VK_END, end, KEYEVENTF_EXTENDEDKEY), Key(VK_END, end, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP), Key(VK_CONTROL, ctrl, KEYEVENTF_KEYUP)]);
+    }
+
     /// <summary>D99: Right × <paramref name="count"/>, one batch, with held modifiers released around it as in an edit.</summary>
     public bool MoveRight(int count)
     {

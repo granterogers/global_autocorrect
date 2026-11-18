@@ -200,6 +200,11 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             bool back = false;
             for (int attempt = 0; attempt < 2 && !back; attempt++)
                 back = worker.Invoke(r => r.PlaceReturn(attempt), false) && Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
+            // D137 (Teams, 16 Nov: the fix went in, the caret couldn't be shown back, and the held keys were replayed at the
+            // fix): when the user was typing at the very end of the field, Ctrl+End puts the caret there whatever the
+            // field reports, before any held key is let go.
+            if (!back && TextNorm.Comparable(LastSnapshot?.After ?? "x").Length == 0 && SendInputWriter.Tagged.CtrlEnd())
+                back = Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
             timings?.Record("write.placed", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             if (!typed || !back) diagnose?.Invoke($"place: app={LastSnapshot?.ProcessName ?? "?"} typed={typed} back={back} (D122, no text)");
             return true;   // typed: the gate's check decides

@@ -152,7 +152,25 @@ public sealed class AppHealth
     /// D122: putting the caret on a fix through UI Automation has gone wrong in this program: fixes on an earlier line are
     /// left there (D121's miss), for about two weeks, renewed if it happens again.
     /// </summary>
-    public bool PlaceUnsafe(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).PlaceFailures >= RetypeAfter;
+    /// <remarks>
+    /// D137: not after one failure. Placing is the safest way to write in a browser, and its fall-back (arrow keys) is
+    /// what went wrong in Intercom: after one placed fix failed on the user's PC (a check confused by keys typed
+    /// meanwhile), Edge, Teams and WhatsApp went back to arrows for two weeks, and the brain shipped that to every PC
+    /// (screen tests then damaged words with late arrows: "decidso"). It takes failures that keep happening: at least
+    /// <see cref="PlaceFailuresBeforeUnsafe"/>, and more than one fix in <see cref="PlaceFailureShare"/> written there.
+    /// </remarks>
+    public bool PlaceUnsafe(string app)
+    {
+        if (string.IsNullOrEmpty(app)) return false;
+        var s = StatsFor(app);
+        return s.PlaceFailures >= PlaceFailuresBeforeUnsafe && s.PlaceFailures * PlaceFailureShare > s.Writes;
+    }
+
+    /// <summary>D137: how many (faded) placed failures it takes, at the least.</summary>
+    public const double PlaceFailuresBeforeUnsafe = 2;
+
+    /// <summary>D137: and they must be more than one in this many fixes written in that program.</summary>
+    public const double PlaceFailureShare = 20;
     public void Stuck(string app) => Note(app, s => s.Stuck++);
     public void Undone(string app) => Note(app, s => s.Undos++);
 
