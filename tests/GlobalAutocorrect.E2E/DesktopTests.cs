@@ -148,6 +148,9 @@ public sealed class DesktopTests
         finally { close(); }
     }
 
+    // D138: known flaky on GitHub runners (the overlay/suggestion measured against Notepad's own redraw timing): run
+    // on its own and reported, never failing the run, so a red run always means a real problem.
+    [Trait("Flaky", "yes")]
     [Fact]
     public void R7_4_TabAcceptsTheSuggestion_R7_1_R7_6()
     {

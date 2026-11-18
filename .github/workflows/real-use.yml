@@ -12,6 +12,7 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
+  workflow_call:          # D138: the Brain gate runs it on a candidate brain
   push:
     branches: [ci-reallife]
 

@@ -7,8 +7,9 @@
   Reads %APPDATA%\GlobalAutocorrect\apphealth.json (per program: fixes written, failed checks, stuck fields, undos),
   writes it as this PC's file in data/learning (replaced, never added to), rebuilds the brain's profiles and mistakes
   (brain/brain.json, D102) from every PC's file, and commits and pushes only those files. Programs with fewer than 5
-  events are left out. Nothing is committed if nothing changed, if the brain written wouldn't load, or if the branch isn't
-  main.
+  events are left out. Nothing is sent if nothing changed or if the brain written wouldn't load. D138: it goes to the
+  brain-candidate branch, and the Brain gate workflow merges it into main only if the stress runs and the real-model
+  test pass with it.
 
   D102: the brain is data, so no build, tests or release follow: every running copy downloads it within 15 minutes.
 
@@ -55,30 +56,35 @@ function Log($m) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" | Add-Content 
 
 Push-Location $repo
 try {
-    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-    if ($branch -ne 'main') { Log "learning: on branch $branch, not main: nothing published"; return }
-
+    # D138: a lesson never goes straight to every PC. It is built on top of GitHub's main, sent to the brain-candidate
+    # branch, and the Brain gate workflow (stress runs and the real-model test, with that brain built in) merges it into
+    # main only if they pass. Built from main's own files with a separate index, so this checkout and its branch are left
+    # exactly as they were (it publishes from any branch, and never commits here).
     $paths = @('data/learning', 'brain/brain.json')   # D81, D84, D102
+    git fetch -q origin main 2>$null
+    if ($LASTEXITCODE -ne 0) { Log "learning: couldn't reach GitHub: nothing published"; exit 1 }
+    git checkout -q origin/main -- $paths    # every PC's latest counts, then this PC's on top
     $out = dotnet run --project tools/GlobalAutocorrect.DataGen -c Release -- learning --local $local --pc $pc --dir data/learning --out brain/brain.json 2>&1
-    if ($LASTEXITCODE -ne 0) { Log "learning: DataGen failed: nothing published"; exit 1 }
+    if ($LASTEXITCODE -ne 0) { git checkout -q HEAD -- $paths; Log "learning: DataGen failed: nothing published"; exit 1 }
     Log ($out | Select-Object -Last 1)
 
-    git add -- $paths
-    git diff --cached --quiet -- $paths
-    if ($LASTEXITCODE -eq 0) { Log "learning: nothing new to publish"; return }
-
-
-    # Only these files go in the commit, whatever else is being worked on in the checkout.
-    git commit -q -m "Brain: learned from real use (D81, D84, D102, counts only)" -- $paths
-    if ($LASTEXITCODE -ne 0) { throw "commit failed" }
-    # Only the brain goes out on its own: unpushed code commits wait for their own push and release (D86).
-    git fetch -q origin main 2>$null
-    $ahead = [int](git rev-list --count origin/main..HEAD)
-    if (-not $NoPush -and $ahead -gt 1) { Log "learning: committed; other commits are waiting to be pushed, so it goes with them"; return }
-    if (-not $NoPush) {
-        git push -q origin HEAD:main
-        if ($LASTEXITCODE -ne 0) { Log "learning: committed but the push failed; it goes with the next push"; exit 1 }
+    $index = Join-Path ([IO.Path]::GetTempPath()) "ga-brain-index-$PID"
+    $env:GIT_INDEX_FILE = $index
+    try {
+        git read-tree origin/main
+        git add -- $paths
+        $tree = (git write-tree).Trim()
+        $base = (git rev-parse origin/main).Trim()
+        $same = $tree -eq (git rev-parse "origin/main^{tree}").Trim()
+        $commit = if ($same) { $null } else { (git commit-tree $tree -p $base -m "Brain: learned from real use (D81, D84, D102, counts only)").Trim() }
     }
-    Log "learning: published $(git rev-parse --short HEAD)"
+    finally { Remove-Item Env:GIT_INDEX_FILE; Remove-Item $index -ErrorAction SilentlyContinue }
+    git checkout -q HEAD -- $paths           # the checkout back as it was
+    if (-not $commit) { Log "learning: nothing new to publish"; return }
+    if (-not $NoPush) {
+        git push -q --force origin "${commit}:refs/heads/brain-candidate"
+        if ($LASTEXITCODE -ne 0) { Log "learning: the push to brain-candidate failed: tried again tomorrow"; exit 1 }
+    }
+    Log "learning: candidate $($commit.Substring(0, 7)) $(if ($NoPush) { 'made (not sent: -NoPush)' } else { 'sent to the brain gate (D138)' })"
 }
 finally { Pop-Location }

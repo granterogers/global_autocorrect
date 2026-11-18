@@ -1,0 +1,75 @@
+# D138 (after D137: one placed failure on one PC switched placed fixes off in Edge, Teams and WhatsApp, and the brain
+# shipped that to every PC within 15 minutes). What a PC learns no longer goes straight to every PC:
+# scripts/publish-learning.ps1 sends it to the brain-candidate branch, built on main. This runs the stress suite
+# (chaos typing, varied messages, the right and the misbehaving model) and the real-model test with that brain built
+# into the app, and only if both pass merges it into main, from where every running copy downloads it. If not, the
+# lesson is held back and an issue labelled "brain" says why.
+name: Brain gate
+
+on:
+  push:
+    branches: [brain-candidate]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+concurrency:
+  group: brain-gate
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    strategy:
+      fail-fast: false
+      matrix:
+        adversary: [false, true]
+    uses: ./.github/workflows/e2e.yml
+    with:
+      slot: ${{ format('9{0}{1}', github.run_number, matrix.adversary && '1' || '0') }}
+      chaos: true
+      varied: true
+      adversary: ${{ matrix.adversary }}
+      repeat: '1'
+      editors: 'notepad,wpf,textarea,contenteditable,prosemirror,lexical,ckeditor,quill,tinymce,slate,intercom,email,chat,teams'
+
+  real-use:
+    uses: ./.github/workflows/real-use.yml
+
+  promote:
+    needs: [stress, real-use]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: brain-candidate
+          fetch-depth: 0
+      - name: Merge the lesson into main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch -q origin main
+          # Only brain/ and data/learning/ may change: anything else is not a lesson.
+          if git diff --name-only origin/main...HEAD | grep -v -E '^(brain/|data/learning/)'; then echo "not a brain-only change"; exit 1; fi
+          git rebase origin/main
+          git push origin HEAD:main
+          echo "Lesson $(git rev-parse --short HEAD) passed the stress runs and the real-model test: merged into main." >> "$GITHUB_STEP_SUMMARY"
+
+  held:
+    needs: [stress, real-use]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say why the lesson was held back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body="A brain lesson was held back: with it built in, the stress runs or the real-model test failed. Every PC keeps the brain on main. Run: $URL"
+          gh label create brain --repo "$REPO" --color 5319E7 --description "A learned brain change held back by the Brain gate (D138)" 2>/dev/null || true
+          open=$(gh issue list --repo "$REPO" --label brain --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then gh issue comment "$open" --repo "$REPO" --body "$body"
+          else gh issue create --repo "$REPO" --label brain --title "A brain lesson was held back" --body "$body"; fi

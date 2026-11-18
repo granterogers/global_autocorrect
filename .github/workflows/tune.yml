@@ -1,0 +1,68 @@
+# D139, user: "how things can be automatically improved". Every week, on GitHub: scripts/tune.ps1 tries one step either
+# way on each of the brain's correction settings with the real model (CPU), and keeps the best only if it fixes more,
+# changes no more correct words and makes no stupid mistake on the real-life messages. A winner goes to the
+# brain-candidate branch and through the Brain gate (D138: stress runs and the real-model test) before any PC gets it.
+name: Tune
+
+on:
+  schedule:
+    - cron: '0 1 * * 0'   # Sundays 01:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tune:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.403' # PLAN.md "Pinned versions" (2.4.c)
+
+      - name: Model cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\GlobalAutocorrect\cache
+          key: models-${{ hashFiles('scripts/manifest.json') }}
+
+      - name: Download the model and llama.cpp
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: pwsh scripts/setup.ps1
+
+      - name: Build the evaluation
+        run: dotnet build tools/GlobalAutocorrect.Eval -c Release
+
+      - name: Tune
+        run: |
+          pwsh scripts/tune.ps1
+          if (Test-Path artifacts/tune/summary.md) { Get-Content artifacts/tune/summary.md >> $env:GITHUB_STEP_SUMMARY }
+
+      - name: Send a winner to the Brain gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git diff --quiet -- brain/brain.json
+          if ($LASTEXITCODE -eq 0) { "No change this week."; exit 0 }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Brain: weekly tuning (D139)" -- brain/brain.json
+          git push -q --force origin HEAD:refs/heads/brain-candidate
+          # A push made with this token starts no workflow, so the gate is started by hand.
+          gh workflow run brain-gate.yml --ref brain-candidate
+          "Sent to the Brain gate." >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: tune
+          path: artifacts/tune/
