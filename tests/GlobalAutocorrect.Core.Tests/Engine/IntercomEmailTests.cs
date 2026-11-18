@@ -18,6 +18,10 @@ public sealed class IntercomEmailTests
     [InlineData("miial", null)]
     [InlineData("ofth", null)]
     [InlineData("thaskas", null)]
+    [InlineData("weh", null)]      // D140: "we" or "when"? the AI decides in context
+    [InlineData("yi", null)]       // D140: "I" or "hi"?
+    [InlineData("teh", "the")]     // a swap, not a dropped letter: still instant
+    [InlineData("thhe", "the")]
     public void R4_3_D95_WhatTheInstantLayerMakesOfTheEmailsWords(string typed, string? expected)
     {
         var c = new InstantCorrector(HunspellTests.Shared, Suggester.Value, _ => false);
