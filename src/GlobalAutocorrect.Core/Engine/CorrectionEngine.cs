@@ -156,6 +156,11 @@ public sealed class CorrectionEngine
         if (effect.Word is { } fw && _o.InstantEnabled && !foreign)
         {
             fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby);   // 4.3, D92
+            // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
+            // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
+            // With tidying on, the fix carries the sentence start's capital itself.
+            if (fix is { Length: > 0 } && fw.IsSentenceStart && _o.TidySpacing && char.IsLower(fix[0]))
+                fix = char.ToUpperInvariant(fix[0]) + fix[1..];
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });

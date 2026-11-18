@@ -15,6 +15,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D98 (4.6.c, 10.7.a):** in a program where an arrow-key fix has gone wrong (Edge/Intercom), a fix far from the caret waits for a 600 ms pause instead of landing between two keys. 2 tests.
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
+- **D141 (4.3):** an instant fix at a sentence start carries the capital ("fungers" → "Fingers"). 2 tests.
 - **D140 (4.3):** the instant layer no longer guesses "weh" → "we" or "Yi" → "I" (dropping a letter to leave a 1-2 letter word): the AI decides in context. 4 tests.
 - **D138, D139 (D102, 11.3, 4.5.e):** brain lessons go through the Brain gate (stress + real-model test) before any PC gets them; known flaky screen tests reported apart; weekly automatic tuning of the correction settings with the real model.
 - **D137 (4.6.d):** one placed failure no longer switches placed fixes off in Edge/Teams/WhatsApp (it takes 2+ and over 1 in 20); held keys are never replayed away from the end of the field. With D136 (no doubled comma). 1 test.
