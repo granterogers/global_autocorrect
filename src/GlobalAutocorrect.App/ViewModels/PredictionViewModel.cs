@@ -50,7 +50,7 @@ public sealed partial class PredictionViewModel : ObservableObject
         foreach (var (phrase, _) in kept) Phrases.Add(phrase);
         PhrasesText = kept.Count == 0
             ? "None yet. A phrase appears here once you've typed it three times, on two different days."
-            : kept.Count == 1 ? "1 phrase learned" : $"{kept.Count} phrases learned";
+            : kept.Count == 1 ? "1 phrase learnt" : $"{kept.Count} phrases learnt";
     }
 
     public PredictionViewModel(ISettingsService settings)

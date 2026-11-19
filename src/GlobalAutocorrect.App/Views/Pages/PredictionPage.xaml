@@ -51,7 +51,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock VerticalAlignment="Center" Style="{StaticResource RowTitle}" Text="{Binding PhrasesText}" TextWrapping="Wrap" />
                     <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="{ui:SymbolIcon Delete24}" Content="Forget all"
-                               Command="{Binding ForgetAllCommand}" AutomationProperties.Name="Forget all learned phrases" />
+                               Command="{Binding ForgetAllCommand}" AutomationProperties.Name="Forget all learnt phrases" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding Phrases}" ItemTemplate="{StaticResource RemovableChip}" IsTabStop="False">
                     <ItemsControl.ItemsPanel>
