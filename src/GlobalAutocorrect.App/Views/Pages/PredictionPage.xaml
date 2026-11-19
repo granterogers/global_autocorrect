@@ -29,6 +29,40 @@
             <ui:ToggleSwitch IsChecked="{Binding AlwaysSuggestNextWord, Mode=TwoWay}" AutomationProperties.Name="Always guess the next word" />
         </ui:CardControl>
 
+        <!-- D142 -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon TextQuote24}"
+                        IsEnabled="{Binding PredictionEnabled}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Learn phrases I repeat" />
+                    <TextBlock Style="{StaticResource RowCaption}" TextWrapping="Wrap"
+                               Text="Once you've typed a phrase three times on two different days, its first words bring up the rest: press Tab to take it all. Only phrases you repeat are kept, never one-off sentences, numbers, links or anything pasted. They're stored encrypted for your Windows account only and never leave this PC." />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding LearnPhrases, Mode=TwoWay}" AutomationProperties.Name="Learn phrases I repeat" />
+        </ui:CardControl>
+
+        <Border Style="{StaticResource CardBorder}" Padding="20,16" Margin="0,0,0,8">
+            <StackPanel>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource RowTitle}" Text="{Binding PhrasesText}" TextWrapping="Wrap" />
+                    <ui:Button Grid.Column="1" Margin="8,0,0,0" Icon="{ui:SymbolIcon Delete24}" Content="Forget all"
+                               Command="{Binding ForgetAllCommand}" AutomationProperties.Name="Forget all learned phrases" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Phrases}" ItemTemplate="{StaticResource RemovableChip}" IsTabStop="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <Border Style="{StaticResource CardBorder}" Padding="20,16">
             <Grid>
                 <Grid.ColumnDefinitions>

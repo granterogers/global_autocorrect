@@ -185,10 +185,12 @@ public sealed class AppUnderTest : IDisposable
     private readonly string _label;
 
     /// <param name="label">D64: names this test's timings file (defaults to the calling test).</param>
-    public AppUnderTest(MockLlm llm, bool prediction = false, string? label = null, [System.Runtime.CompilerServices.CallerMemberName] string caller = "")
+    /// <param name="seed">D142: puts files in the app's data folder before it starts (a learned phrase, say).</param>
+    public AppUnderTest(MockLlm llm, bool prediction = false, string? label = null, [System.Runtime.CompilerServices.CallerMemberName] string caller = "", Action<string>? seed = null)
     {
         _label = label ?? caller;
         Directory.CreateDirectory(DataDir);
+        seed?.Invoke(DataDir);
         File.WriteAllText(Path.Combine(DataDir, "settings.json"),
             $$"""{ "FirstRunDone": true, "StartWithWindows": false, "PredictionEnabled": {{(prediction ? "true" : "false")}} }""");
         // GA_E2E_APP: a copy of the build outside the repo, so a rebuild during the run can't hit a locked exe.

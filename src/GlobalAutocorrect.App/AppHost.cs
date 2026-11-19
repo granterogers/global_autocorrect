@@ -130,6 +130,34 @@ public sealed class AppHost : IAsyncDisposable
     // Feature B (7.x) and the overlays (4.7, 7.6).
     public UserHistory History { get; } = new(Path.Combine(DataDir, "history.txt"));
 
+    /// <summary>D142: the phrases the user repeats, kept encrypted for this Windows user only (phrases.dat).</summary>
+    public PhraseMemory Phrases { get; } = new(() => DateOnly.FromDateTime(DateTime.Now));
+
+    private static string PhrasesPath => Path.Combine(DataDir, "phrases.dat");
+
+    private void LoadPhrases()
+    {
+        try
+        {
+            if (!File.Exists(PhrasesPath)) return;
+            if (Windows.Security.UserOnlyCrypto.Unprotect(File.ReadAllBytes(PhrasesPath)) is { } plain) Phrases.Load(plain);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { }   // start afresh
+    }
+
+    /// <summary>D142: saved only when the kept list changed; written whole and then swapped in, never half a file.</summary>
+    public void SavePhrases(bool force = false)
+    {
+        if (!force && !Phrases.Dirty) return;
+        try
+        {
+            string tmp = PhrasesPath + ".tmp";
+            File.WriteAllBytes(tmp, Windows.Security.UserOnlyCrypto.Protect(Phrases.Save()));
+            File.Move(tmp, PhrasesPath, overwrite: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
+
     /// <summary>D81: per program, how fixes went (counts only), and so how carefully to write there.</summary>
     public AppHealth Health { get; } = new(Path.Combine(DataDir, "apphealth.json"));
 
@@ -169,7 +197,9 @@ public sealed class AppHost : IAsyncDisposable
         _speller = HunspellSpellChecker.FromAssets(AssetsDir);
         _suggester = SymSpellSuggester.FromAssets(AssetsDir);
         _ngram = NgramModel.FromAssets(AssetsDir);
-        Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare };   // D80
+        LoadPhrases();   // D142
+        Phrases.Enabled = Settings.LearnPhrases;
+        Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare, Phrases = Phrases };   // D80, D142
         Health.Load();     // D81: this PC's counts; what was learned elsewhere comes from the brain (D102)
         Mistakes.Load();   // D84: this PC's mistakes; those shared by other PCs come from the brain (D102)
         _brain = new BrainMonitor(Path.Combine(DataDir, "brain.json"), Path.Combine(AssetsDir, "brain.json"), FetchBrainAsync,
@@ -332,7 +362,8 @@ public sealed class AppHost : IAsyncDisposable
             NoteUnrecognised: Dictionary.NoteUnrecognised,     // 8.5
             ObservePhrase: (a, b, w) => History.ObservePhrase(a, b, w, CurrentApp),   // D40, D57
             PairCount: _ngram is null ? null : _ngram.PairCount,    // D37, D38
-            WordCount: _ngram is null ? null : _ngram.CountOf))     // D37
+            WordCount: _ngram is null ? null : _ngram.CountOf,      // D37
+            PhraseWord: w => { if (w is null) Phrases.Break(); else Phrases.Word(w); }))   // D142
         { Paused = Settings.Paused, Health = Health, Mistakes = Mistakes };   // D81, D84
         engine.Corrected += n => Corrected?.Invoke(n);
         // D126: every fix written, for the report shortcut: how and how far, never what (8.6).
@@ -383,6 +414,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         Dictionary.AutoLearnEnabled = s.AutoLearnWords;
         if (Predictor is not null) { Predictor.Enabled = s.PredictionEnabled; Predictor.MinNextShare = s.NextWordShare; }   // 7.7, D80
+        Phrases.Enabled = s.LearnPhrases;   // D142
         if (_llm is not null) _llm.IdleUnloadMinutes = s.IdleUnloadMinutes;
         if (_loop is not null)
         {
@@ -452,6 +484,7 @@ public sealed class AppHost : IAsyncDisposable
             _daily.Save(_counters);
             SaveTimings();
             History.Save();
+            SavePhrases();   // D142
             Health.Save();   // D81
             Mistakes.Save();   // D84
             if (_llm is not null && _llm.Host.State == ServerState.Ready && _loop is not null)
@@ -470,6 +503,7 @@ public sealed class AppHost : IAsyncDisposable
         Health.Save();   // D81
             Mistakes.Save();   // D84
         try { History.Save(); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }   // keep the last few seconds of counts
+        SavePhrases();   // D142
         _hotkeys?.Dispose();
         _focus?.Dispose();
         _loop?.Dispose();

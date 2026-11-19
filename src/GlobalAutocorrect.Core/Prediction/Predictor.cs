@@ -37,6 +37,9 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         @"\p{L}+(?:['’]\p{L}+)*|[.!?]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>D142: the phrases the user repeats; null when phrase learning isn't set up.</summary>
+    public PhraseMemory? Phrases { get; init; }
+
     /// <summary>Setting to turn prediction off (7.7).</summary>
     public bool Enabled { get; set; } = true;
 
@@ -62,6 +65,14 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         if (IsBlocked(token))
         {
             return null;
+        }
+
+        // D142: the rest of a phrase the user repeats, when what followed these words before agrees: the user's own way of
+        // finishing it beats a one-word guess. Tab takes it all; typing on keeps it while the letters match.
+        if (Phrases?.Continue(line) is { Length: > 0 } rest)
+        {
+            int sp = rest.IndexOf(' ');
+            return new Suggestion(rest, sp > 0 ? rest[..sp] : rest, IsNextWord: char.IsWhiteSpace(line[^1]));
         }
 
         char last = line[^1];

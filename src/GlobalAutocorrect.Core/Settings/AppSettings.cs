@@ -20,6 +20,7 @@ public sealed record AppSettings
     public string FallbackModel { get; init; } = "gemma-4-E2B-it-Q5_K_M.gguf";
     public string? PromptFile { get; init; }                         // 5.2: null = the built-in prompt
     public bool PredictionEnabled { get; init; } = true;           // 7.7
+    public bool LearnPhrases { get; init; } = true;                // D142: remember phrases repeated 3 times on 2 days, encrypted
     /// <summary>D80: show a next-word guess almost always (10% of the likelihood), not only when one word is clearly
     /// likeliest (60%); the user wants to keep pressing Tab through an obvious sentence.</summary>
     public bool AlwaysSuggestNextWord { get; init; } = true;

@@ -23,7 +23,8 @@ public sealed record EngineDeps(
     Func<string, bool>? NoteUnrecognised = null,  // 8.5: auto-learn after 3 uses; true when the word was added
     Action<string?, string?, string>? ObservePhrase = null,  // D40: (two back, one back, word) within a sentence
     Func<string, string, long>? PairCount = null,  // D37/D38: corpus count of a word pair
-    Func<string, long>? WordCount = null);         // D37: corpus count of a word
+    Func<string, long>? WordCount = null,          // D37: corpus count of a word
+    Action<string?>? PhraseWord = null);           // D142: each plain word finished, null where a phrase must stop
 
 /// <summary>
 /// Feature A end to end (0.2): instant layer on each finished word, AI layer on sentence ends and pauses, all writes
@@ -177,7 +178,11 @@ public sealed class CorrectionEngine
             _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, t.Start, t.End, t.Original, t.Replacement, _d.Clock.NowMs, k.Seq));
             _gate.TryWrite(Target);
         }
-        if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null, learnt.Start, fix);
+        if (effect.Word is { } learnt) Learn(learnt.Word, corrected: fix is not null, learnt.Start, fix, foreign);
+        // D142: a phrase stops at a sentence end, a line break, and anything that isn't typing on (a click, a paste, a
+        // shortcut, moving the caret, another field).
+        if (effect.SentenceEnded || (k.Kind == KeyKind.Char && k.Char == '\n') || k.Kind is not (KeyKind.Char or KeyKind.Backspace))
+            _d.PhraseWord?.Invoke(null);
         if (aiStartsNow)
             _ai!.Start(Session, Target, _gate.IsDesynced);   // 4.4.a sentence end
     }
@@ -213,15 +218,20 @@ public sealed class CorrectionEngine
     /// </summary>
     private (long Generation, int Start) _lastLearnt = (-1, -1);
 
-    private void Learn(string word, bool corrected, int start, string? fix)
+    private void Learn(string word, bool corrected, int start, string? fix, bool foreign = false)
     {
-        if (_d.ObserveWord is null && _d.NoteUnrecognised is null && _d.ObservePhrase is null) return;
+        if (_d.ObserveWord is null && _d.NoteUnrecognised is null && _d.ObservePhrase is null && _d.PhraseWord is null) return;
         // A word is finished by its punctuation and again by the space after it ("sir? "): learn it once.
         if (_lastLearnt == (Session.Generation, start)) return;
         _lastLearnt = (Session.Generation, start);
         _targetOk ??= Target!.ReadWindow().CaretKnown;
         if (_targetOk != true) return;
         string meant = fix ?? word;   // learn what the user meant: the instant fix if there was one
+        // D142: phrases are made of plain words only: a number, link, email, @mention, unknown word, pasted text or
+        // another language stops the phrase there, so none of them is ever kept.
+        bool plain = !foreign && start >= Session.ProtectedEnd && meant.All(c => char.IsLetter(c) || c is '\'' or '’' or '-')
+                     && (_d.Speller.IsValid(meant) || _d.IsPersonalWord(meant));
+        _d.PhraseWord?.Invoke(plain ? meant : null);
         if (_d.Speller.IsValid(meant) || _d.IsPersonalWord(meant))
         {
             _d.ObserveWord?.Invoke(meant.ToLowerInvariant());

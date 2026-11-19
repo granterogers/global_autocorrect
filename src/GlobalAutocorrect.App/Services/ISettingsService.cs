@@ -15,6 +15,12 @@ public interface ISettingsService
     /// <summary>Saves and applies new settings straight away. There is no Save button.</summary>
     void Update(AppSettings settings);
 
+    /// <summary>D142: the phrases learned from the user's repeats (null where there are none, e.g. tests).</summary>
+    GlobalAutocorrect.Core.Prediction.PhraseMemory? Phrases => null;
+
+    /// <summary>D142: saves the phrases now (after one was removed in Settings).</summary>
+    void SavePhrases() { }
+
     /// <summary>Settings changed (by us, a shortcut or the tray). Can fire on any thread.</summary>
     event Action? Changed;
 }

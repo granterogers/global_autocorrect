@@ -7,6 +7,9 @@ namespace GlobalAutocorrect.App.Services;
 /// <summary>Adapts the running <see cref="AppHost"/> to the small interfaces the settings and first-run windows use.</summary>
 public sealed class AppHostServices(AppHost host) : ISettingsService, IStatusSource
 {
+    public GlobalAutocorrect.Core.Prediction.PhraseMemory? Phrases => host.Phrases;   // D142
+    public void SavePhrases() => host.SavePhrases(force: true);
+
     public AppSettings Settings => host.Settings;
     public PersonalDictionary Dictionary => host.Dictionary;
     public void Update(AppSettings settings) => host.UpdateSettings(settings);
