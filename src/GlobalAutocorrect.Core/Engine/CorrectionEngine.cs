@@ -159,7 +159,7 @@ public sealed class CorrectionEngine
             // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
             // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
             // With tidying on, the fix carries the sentence start's capital itself.
-            if (fix is { Length: > 0 } && fw.IsSentenceStart && _o.TidySpacing && char.IsLower(fix[0]))
+            if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere())))
                 fix = char.ToUpperInvariant(fix[0]) + fix[1..];
             if (fix is not null)
             {
@@ -183,6 +183,19 @@ public sealed class CorrectionEngine
     }
 
     /// <summary>D116: the paragraph being typed, as far as the typed record goes.</summary>
+    /// <summary>
+    /// D141 (stress runs: the first word of a message, "fungers", stayed small): the typed record can't say what is before
+    /// its first word, but the field can. A sentence starts there if nothing is before it, or a ".", "?", "!" or line break.
+    /// </summary>
+    private bool FieldStartsASentenceHere()
+    {
+        if (Target?.ReadWindow() is not { CaretKnown: true } w) return false;
+        string before = TextNorm.Normalise(w.Before), typed = Session.Typed;
+        if (!before.EndsWith(typed, StringComparison.Ordinal)) return false;
+        string pre = before[..^typed.Length].TrimEnd(' ', '\t', '"', '\'', '(');
+        return pre.Length == 0 || pre[^1] is '.' or '!' or '?' or '\n';
+    }
+
     private string CurrentParagraph()
     {
         string t = Session.Typed;
