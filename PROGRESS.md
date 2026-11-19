@@ -17,6 +17,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
 - **D146 (4.6.c):** messages longer than 400 characters no longer lose their fixes (the read limit taken for a changed field). 1 test.
 - **D148 (4.5.b, 4.5.c):** a model's refused added or dropped first word no longer leaves a stray space at the line start or joins two words, and a repeated word ("by by") is never written. 6 tests.
+- **D149 (4.2, 4.3):** a character typed with no key (emoji panel, IME, "£" on a keyboard without it) no longer makes the line's fixes vanish; a fixed first word gets its capital even when the field is a key behind. 2 tests.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.

@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
   workflow_call:          # D138: the Brain gate runs it on a candidate brain
   push:
-    branches: [ci-reallife]
+    branches: [ci-reallife, gate-reallife]   # D149: gate-*: this PC's gates, apart from the cloud routine's ci-*
 
 permissions:
   contents: read

@@ -164,6 +164,7 @@ public static class NativeMethods
     public const ushort VK_RETURN = 0x0D;
     public const ushort VK_PAUSE = 0x13;
     public const ushort VK_CAPITAL = 0x14;
+    public const ushort VK_PACKET = 0xE7;   // D149: a character typed with no key; it is in the scan code
     public const ushort VK_ESCAPE = 0x1B;
     public const ushort VK_PRIOR = 0x21;
     public const ushort VK_NEXT = 0x22;

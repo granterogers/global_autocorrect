@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
   # D131: the cloud fix routine pushes a candidate fix here to run the same stress suite before it releases anything.
   push:
-    branches: [ci-stress]
+    branches: [ci-stress, gate-stress]   # D149: gate-*: this PC's gates, apart from the cloud routine's ci-*
 
 permissions:
   contents: read

@@ -160,7 +160,7 @@ public sealed class CorrectionEngine
             // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
             // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
             // With tidying on, the fix carries the sentence start's capital itself.
-            if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere())))
+            if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere(fw.End))))
                 fix = char.ToUpperInvariant(fix[0]) + fix[1..];
             if (fix is not null)
             {
@@ -192,13 +192,21 @@ public sealed class CorrectionEngine
     /// D141 (stress runs: the first word of a message, "fungers", stayed small): the typed record can't say what is before
     /// its first word, but the field can. A sentence starts there if nothing is before it, or a ".", "?", "!" or line break.
     /// </summary>
-    private bool FieldStartsASentenceHere()
+    /// <param name="wordEnd">Where the first word ends in the typed record: the field must show at least that much of it.</param>
+    private bool FieldStartsASentenceHere(int wordEnd)
     {
         if (Target?.ReadWindow() is not { CaretKnown: true } w) return false;
         string before = TextNorm.Normalise(w.Before), typed = Session.Typed;
-        if (!before.EndsWith(typed, StringComparison.Ordinal)) return false;
-        string pre = before[..^typed.Length].TrimEnd(' ', '\t', '"', '\'', '(');
-        return pre.Length == 0 || pre[^1] is '.' or '!' or '?' or '\n';
+        // D149 (stress run: "fungers" small again, in the chat box): keys held during a placed write reach the field a
+        // moment later, so the field can be a key or two behind the record. Any of the record's start that the field ends
+        // with will do, as long as it includes the whole word.
+        for (int shown = typed.Length; shown >= Math.Max(1, wordEnd); shown--)
+        {
+            if (!before.EndsWith(typed.AsSpan(0, shown), StringComparison.Ordinal)) continue;
+            string pre = before[..^shown].TrimEnd(' ', '\t', '"', '\'', '(');
+            return pre.Length == 0 || pre[^1] is '.' or '!' or '?' or '\n';
+        }
+        return false;
     }
 
     private string CurrentParagraph()

@@ -165,6 +165,16 @@ public sealed class WindowsLayerTests
     }
 
     [Fact]
+    public void R4_2_D149_ACharacterTypedWithNoKeyIsRecorded()
+    {
+        // The emoji panel, an IME or a Unicode typing tool sends VK_PACKET with the character in the scan code.
+        var tr = new KeyTranslator();
+        var k = tr.Translate(new RawInput(RawKind.Key, VK_PACKET, '£', 0, true, false, 1, 1)).Single();
+        Assert.Equal(GlobalAutocorrect.Core.Session.KeyKind.Char, k.Kind);
+        Assert.Equal('£', k.Char);
+    }
+
+    [Fact]
     public void R4_2_PasteAndInjectedInputBreakTheSession_R14_4()
     {
         var tr = new KeyTranslator();

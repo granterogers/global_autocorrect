@@ -32,6 +32,15 @@ public sealed class KeyTranslator
         }
         if (r.Injected) { yield return new KeyInput(KeyKind.Foreign, '\0', r.Seq, r.AtMs); yield break; }   // 4.2
         if (vk == VK_CAPITAL) { _caps = !_caps; yield return new KeyInput(KeyKind.Other, '\0', r.Seq, r.AtMs); yield break; }
+        // D149 (stress run: "£92" typed where the keyboard has no £): a character sent with no key (emoji panel, IME, a
+        // Unicode typing tool) carries it in the scan code. It was read as no character, so the record was a letter short,
+        // looked like a different field, and the line's queued fixes were thrown away.
+        if (vk == VK_PACKET)
+        {
+            char p = (char)r.Scan;
+            yield return char.IsControl(p) && p != '\n' ? new KeyInput(KeyKind.Other, '\0', r.Seq, r.AtMs) : KeyInput.Of(p, r.Seq, r.AtMs);
+            yield break;
+        }
 
         KeyKind? kind = Classify(vk);
         if (kind is { } k) { yield return new KeyInput(k, k == KeyKind.Char ? '\n' : '\0', r.Seq, r.AtMs); yield break; }

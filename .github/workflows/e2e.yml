@@ -37,7 +37,7 @@ on:
         type: string
         default: ''
   push:
-    branches: [main, ci-e2e]
+    branches: [main, ci-e2e, gate-e2e]   # D149: gate-*: this PC's gates, apart from the cloud routine's ci-*
   workflow_call:
     inputs:
       slot:

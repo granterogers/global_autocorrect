@@ -26,6 +26,20 @@ public sealed class SentenceStartFixTests
     }
 
     [Fact]
+    public void R4_3_D149_AFieldAKeyBehindStillShowsTheSentenceStart()
+    {
+        // The chat box in the stress run: held keys reached the field a moment after the record had them.
+        var h = new Harness(options: new EngineOptions());
+        h.Type("teh");
+        h.Ed.DistortBefore = s => s.EndsWith(' ') ? s[..^1] : s;   // the space isn't drawn yet
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Ed.DistortBefore = null;
+        h.Type("dog is fine. ");
+        h.Wait(300);
+        Assert.StartsWith("The dog", h.Text);
+    }
+
+    [Fact]
     public void R4_3_D141_MidSentenceTheCaseIsKept()
     {
         var h = new Harness(options: new EngineOptions());

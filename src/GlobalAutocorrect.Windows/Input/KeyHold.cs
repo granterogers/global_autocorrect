@@ -88,7 +88,6 @@ public static class KeyHold
 
     private static INPUT ToInput(uint vk, uint scan, uint llFlags, bool down)
     {
-        const uint VK_PACKET = 0xE7;
         uint flags = down ? 0 : KEYEVENTF_KEYUP;
         if ((llFlags & LLKHF_EXTENDED) != 0) flags |= KEYEVENTF_EXTENDEDKEY;
         ushort wVk = (ushort)vk;
