@@ -66,12 +66,23 @@ public static class WordDiff
                 AddEdit(original, cleaned, oCur, oLimit, cCur, cLimit, [], [], oCur, oLimit, edits);
                 return;
             }
-            foreach (var u in SequenceAligner.Align(aText, bText, PairCost))
+            var units = SequenceAligner.Align(aText, bText, PairCost).ToList();
+            for (int k = 0; k < units.Count; k++)
             {
+                var u = units[k];
                 var at = a.AsSpan(aFrom + u.AStart, u.ACount).ToArray();
                 var bt = b.AsSpan(bFrom + u.BStart, u.BCount).ToArray();
                 int oEnd = u.ACount > 0 ? at[^1].End : oCur;
                 int cEnd = u.BCount > 0 ? bt[^1].End : cCur;
+                // D148 (stress run, a model that added or dropped a line's first word): a word added or dropped brings its
+                // space with it. Mid-line that space sits before the word, inside the edit; at the start of the text it
+                // sits after it, and came out as an edit of its own, so with the word refused the space alone went in
+                // (" Fancy") or out ("Fancygetting"). The last word of the stretch takes the gap after it when it differs.
+                if (k == units.Count - 1 && (u.ACount == 0 || u.BCount == 0) && original[oEnd..oLimit] != cleaned[cEnd..cLimit])
+                {
+                    oEnd = oLimit;
+                    cEnd = cLimit;
+                }
                 int spanStart = u.ACount > 0 ? at[0].Start : oCur;
                 AddEdit(original, cleaned, oCur, oEnd, cCur, cEnd, at, bt, spanStart, oEnd, edits);
                 oCur = oEnd;

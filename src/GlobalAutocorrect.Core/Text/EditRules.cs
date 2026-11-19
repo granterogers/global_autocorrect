@@ -20,6 +20,7 @@ public enum RejectReason
     DoublesPunctuation,   // D136
     SpellingVariant,    // D133
     AfterNumber,        // D133
+    RepeatsAWord,       // D148
 }
 
 public sealed record EditVerdict(TextEdit Edit, bool Accepted, RejectReason Reason);
@@ -80,6 +81,31 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
 
     private static int ToneMarks(string s) => s.Count(c => c is '?' or '!');
 
+    /// <summary>D148: the word before the edit, its words, and the word after: a pair the same, which the typed words didn't have.</summary>
+    private static bool MakesRepeat(IReadOnlyList<Token> origTokens, TextEdit e)
+    {
+        string? before = null, after = null;
+        foreach (var t in origTokens)
+        {
+            if (!t.IsWord) continue;
+            if (t.End <= Math.Min(e.Start, e.SpanStart)) before = t.Text;
+            else if (t.Start >= Math.Max(e.End, e.SpanEnd)) { after = t.Text; break; }
+        }
+        static bool HasPair(IEnumerable<string?> words)
+        {
+            string? last = null;
+            foreach (var w in words)
+            {
+                if (w is null) continue;
+                string t = Trim(w);
+                if (t.Length > 0 && last is not null && string.Equals(t, last, StringComparison.OrdinalIgnoreCase)) return true;
+                last = t;
+            }
+            return false;
+        }
+        return HasPair([before, .. e.NewWords, after]) && !HasPair([before, .. e.OriginalWords, after]);
+    }
+
     private EditVerdict Judge(string original, IReadOnlyList<Token> origTokens, TextEdit e, IReadOnlyList<TextEdit> all)
     {
         RejectReason Why()
@@ -118,6 +144,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             if (e.OriginalWords.Count == e.NewWords.Count
                 && e.OriginalWords.Zip(e.NewWords).Any(p => EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second), IsKnown(Trim(p.First)))))   // either way, known to the dictionary or not ("adaptor" isn't)
                 return RejectReason.SpellingVariant;
+            // D148 (stress run, a model that repeats a word: "by th" → "by by the"): an edit never makes the same word twice
+            // in a row where the user hadn't typed it twice.
+            if (MakesRepeat(origTokens, e)) return RejectReason.RepeatsAWord;
             switch (e.Kind)
             {
                 // D37: a space never splits a real word: "inorganic" → "in organic" keeps every letter but changes the

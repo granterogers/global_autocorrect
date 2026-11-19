@@ -372,4 +372,30 @@ public sealed class EditRulesTests
     {
         Assert.Equal(RejectReason.ProtectedTokenChanged, Run("meet at 9am today", "meet at 9 am today").WholeRejection);
     }
+    [Theory]
+    [InlineData("going home today", "really going home today")]     // a word added before the first one
+    [InlineData("going home today", "home today")]                  // the first word dropped
+    [InlineData("going home today", "home going today")]            // the first two swapped
+    public void R4_5_b_D148_AWordAddedOrDroppedAtTheStartTakesItsSpaceWithIt(string typed, string model)
+    {
+        var r = Run(typed, model);
+        Assert.Equal(typed, Apply(typed, r));   // refused whole: no lone space added (" going") or taken ("goinghome")
+    }
+
+    [Theory]
+    [InlineData("I sat on teh mat", "I sat on on the mat")]
+    [InlineData("see you at the station", "see you at at the station")]
+    public void R4_5_b_D148_AFixNeverMakesTheSameWordTwiceInARow(string typed, string model)
+    {
+        string got = Apply(typed, Run(typed, model));
+        var w = got.Split(' ');
+        Assert.DoesNotContain(w.Zip(w.Skip(1)), p => string.Equals(p.First, p.Second, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void R4_5_b_D148_ATypedRepeatIsStillTheUsersToKeep()
+    {
+        // "that that" typed by the user is theirs: a fix next to it is judged as before.
+        Assert.Equal("I am glad that that is the colour", Apply("I am glad that that is teh colour", Run("I am glad that that is teh colour", "I am glad that that is the colour")));
+    }
 }
