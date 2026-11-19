@@ -240,7 +240,7 @@ public sealed class RealTypingTests
         int allowedMisses = editor is "chat" ? score.NeedFix / 2 : Adversary ? score.NeedFix : score.NeedFix / 20;   // D141: with a misbehaving model only damage counts: refusing its answers is the point   // D125: CKEditor (Teams) is placed now, no longer retyped
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
-            $"[{string.Join("; ", score.Damaged)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
+            $"[{string.Join("; ", score.Damaged)}], missed words [{string.Join("; ", score.MissedWords)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
     }
 
     /// <summary>
@@ -257,7 +257,11 @@ public sealed class RealTypingTests
         }
         """;
 
-    private sealed record Result(int NeedFix, int Fixed, int Missed, List<string> Damaged);
+    private sealed record Result(int NeedFix, int Fixed, int Missed, List<string> Damaged)
+    {
+        /// <summary>D143: which words were left as typed, so a run with misses says which.</summary>
+        public List<string> MissedWords { get; } = [];
+    }
 
     /// <summary>
     /// Each line against its message, word by word: the right answer (fixed), as typed (missed, when it needed a fix), or
@@ -270,6 +274,7 @@ public sealed class RealTypingTests
             .Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).ToList();
         int need = 0, fixedCount = 0, missed = 0;
         var damaged = new List<string>();
+        var missedWords = new List<string>();
         if (got.Count != script.Lines.Count) damaged.Add($"{got.Count} lines instead of {script.Lines.Count}");
         for (int l = 0; l < script.Lines.Count; l++)
         {
@@ -280,11 +285,13 @@ public sealed class RealTypingTests
             for (int i = 0; i < c.Length; i++)
             {
                 if (g[i] == c[i]) { if (n[i] != c[i]) fixedCount++; }
-                else if (g[i] == n[i]) missed++;
+                else if (g[i] == n[i]) { missed++; missedWords.Add($"line {l + 1} word {i + 1}: \"{n[i]}\" (meant \"{c[i]}\")"); }
                 else damaged.Add($"line {l + 1} word {i + 1}: \"{g[i]}\" (typed \"{n[i]}\", meant \"{c[i]}\")");
             }
         }
-        return new Result(need, fixedCount, missed, damaged);
+        var result = new Result(need, fixedCount, missed, damaged);
+        result.MissedWords.AddRange(missedWords);
+        return result;
     }
 
     /// <summary>Waits for the fixes to finish: the text unchanged for 3 s, at most 30 s.</summary>
