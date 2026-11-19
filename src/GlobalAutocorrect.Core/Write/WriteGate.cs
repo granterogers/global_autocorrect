@@ -259,6 +259,15 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
                       && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
         // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
         if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
+        // D136 (stress run 15, Intercom/email stand-ins: "Behaviour" came out "behaviouB"): where placing has gone wrong in
+        // a Chromium program (PlaceUnsafe) a fix 9 characters back fell through to arrow keys, which Intercom applies late.
+        // D125's rule is no arrow keys in Chromium: a short fix on the caret's own line is retyped instead, anything else
+        // is left (a miss, never damage).
+        if (!placed && w.Layer != Layer.Undo && caretDistance > 0 && !retype && target.CanPlaceCaret)
+        {
+            if (tail.Contains('\n') || caretDistance > options.LongFixDistance) { Drop(w, "place-unsafe"); return false; }
+            retype = true;
+        }
         if (placed) retype = false;
         else if ((target.RetypeInsteadOfArrows || learntRetype) && caretDistance > 0)
         {

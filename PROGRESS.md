@@ -188,3 +188,4 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **Done:** 2.2.a (BRIEF.md first commit `0850a00`, pushed with baseline tag `v0.1.0`, D1), 2.12.a (implementer agent), 3.6 (CLAUDE.md, .claude/settings.json), 2.3.b–e (PLAN.md, DECISIONS.md, pinned versions §4, traceability §9: all 223 IDs present).
 - **Spike B targets available:** Notepad 11.2607, Word, Outlook (classic and new), Edge, Chrome.
 - **Next task:** T0.1 scaffold (implementer), then M1 data, then Spike A and Spike B.
+- **D136 (4.6.d, 4.6.e):** after a placed fix has failed in Chromium, short fixes are retyped and long ones left, never stepped to with arrow keys (stress issue #1). 2 tests. Core 894 pass.

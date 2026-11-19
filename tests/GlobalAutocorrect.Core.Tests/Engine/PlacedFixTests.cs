@@ -82,6 +82,31 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D136_WherePlacingWentWrongAShortFixIsRetypedNeverSteppedToWithArrows()
+    {
+        var health = new AppHealth();
+        health.PlaceFailed("msedge");
+        var h = Make(health);
+        h.Type("we went their today. ");
+        h.Wait(3000);
+        Assert.Equal("we went there today. ", h.Text);
+        Assert.Equal(0, h.Ed.CaretMoves);   // no arrow keys: Intercom applies them late
+        Assert.Equal(0, h.Ed.PlacedEdits);
+    }
+
+    [Fact]
+    public void R4_6_d_D136_WherePlacingWentWrongALongFixIsLeftNotArrowed()
+    {
+        var health = new AppHealth();
+        health.PlaceFailed("msedge");
+        var h = Make(health);
+        h.Type("We went their today and then we walked all the way along the river path. ");
+        h.Wait(3000);
+        Assert.Equal(0, h.Ed.CaretMoves);
+        Assert.Equal(0, h.Counters.Desyncs);
+    }
+
+    [Fact]
     public void R4_6_d_D122_TheFieldsWayOfShowingTheTailIsFound()
     {
         // Typed: "their" then " today.\n\nI walked" — the field shows the blank line as one line break (D42).
