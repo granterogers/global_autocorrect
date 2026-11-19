@@ -219,6 +219,9 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
     /// <summary>D122: the field never shows the selection asked for, so nothing is typed.</summary>
     public bool PlaceRefuses { get; set; }
 
+    /// <summary>D144: the next N placements are refused (the field slow to show the selection), then they work.</summary>
+    public int RefuseNextPlacements { get; set; }
+
     public bool LastEditRefused { get; private set; }
     public int PlacedEdits { get; private set; }
 
@@ -230,6 +233,7 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         if (LastEditBlocked) { BlockFencedEdits--; return false; }
         BeforeApply?.Invoke(this);
         string before = Text[..Caret];
+        if (RefuseNextPlacements > 0) { RefuseNextPlacements--; LastEditRefused = true; return false; }
         if (PlaceRefuses || !before.EndsWith(original + tail, StringComparison.Ordinal)) { LastEditRefused = true; return false; }
         int start = Caret - tail.Length - original.Length;
         LastEdit = new AppliedEdit(Text, start, original, replacement);

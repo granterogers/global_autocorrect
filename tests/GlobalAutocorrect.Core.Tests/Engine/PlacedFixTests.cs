@@ -71,6 +71,16 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D144_ARefusedPlacementIsTriedAgain()
+    {
+        var h = Make(new AppHealth());
+        h.Ed.RefuseNextPlacements = 2;   // Chrome/Slate: the selection shown too late, twice
+        h.Type("We went their today and then we walked all the way along the river path. ");
+        h.Wait(4000);
+        Assert.Equal("We went there today and then we walked all the way along the river path. ", h.Text);
+    }
+
+    [Fact]
     public void R4_6_d_D122_WhenTheFieldWontShowTheFixNothingIsTyped()
     {
         var health = new AppHealth();

@@ -22,6 +22,9 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     public long CreatedAtMs { get; } = createdAtMs;
     public long KeySeqAtDecision { get; } = keySeqAtDecision;
 
+    /// <summary>D144: times placing this write was refused (the field didn't show the selection in time).</summary>
+    public int PlaceRefusals { get; set; }
+
     /// <summary>D124: what the write was last waiting for, logged if it expires (a reason, never text).</summary>
     public string Waiting { get; set; } = "nothing";
 
@@ -311,6 +314,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             sent = target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail, seqAtWrite);
             if (!sent && target.LastEditBlocked) return false;
         }
+        // D144 (Chrome/Slate on GitHub: "not-selected", and "their" stayed): a refusal is often only the field being slow to
+        // show the selection; nothing was typed, so the fix waits for the next tick and is tried again, three times in all.
+        if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < 3) { w.Waiting = "place-refused"; return false; }
         if (!sent && placed && target.LastEditRefused) { Drop(w, "place-refused"); return false; }   // D122: nothing typed
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
