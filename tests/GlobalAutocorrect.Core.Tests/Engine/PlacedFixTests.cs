@@ -57,6 +57,20 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D143_AFixJustBehindTheCaretIsPlacedInABrowserNotRetyped()
+    {
+        // Heavy Intercom page: "tye " retyped with Backspaces became "tythe" when two Backspaces landed late.
+        var h = new Harness();
+        h.Ed.AppName = "msedge";
+        h.Ed.CanPlaceCaret = true;
+        h.Engine.Health = new AppHealth();
+        h.Type("I saw teh ");
+        h.Wait(500);
+        Assert.Equal("I saw the ", h.Text);
+        Assert.Equal(1, h.Ed.PlacedEdits);   // selected and typed over: no Backspace sent
+    }
+
+    [Fact]
     public void R4_6_d_D122_WhenTheFieldWontShowTheFixNothingIsTyped()
     {
         var health = new AppHealth();

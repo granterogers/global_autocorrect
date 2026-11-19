@@ -255,10 +255,14 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D125, user report (Intercom note: "unfortunatelytunately"): short arrow-key fixes went wrong there too (6 and 5
         // characters back: text doubled, then a learnt retype lost 10). Every fix that would step with arrows is placed;
         // only D28's short retype of the space or punctuation after the word stays as it is.
-        bool placed = w.Layer != Layer.Undo && caretDistance > 0 && !retype
+        // D143 (screen test on the heavy Intercom page: "tye " retyped came out "tythe", and the next word lost its "We"):
+        // two of the retype's four Backspaces were applied after the keys that followed. In a browser the short retype is
+        // placed too, so no Backspace is ever sent there; desktop programs keep D28's retype.
+        bool placed = w.Layer != Layer.Undo && caretDistance > 0
                       && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
         // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
         if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
+        bool shortRetype = retype;   // D143: the fall-back when placing is refused
         if (placed) retype = false;
         else if ((target.RetypeInsteadOfArrows || learntRetype) && caretDistance > 0)
         {
@@ -298,6 +302,15 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D105: a key seen between that look and the send most likely reached the app first (logged with the outcome).
         bool raced = keys.LatestKeySeq != seqAtWrite;
         if (!sent && target.LastEditBlocked) return false;   // nothing reached the app: the next tick tries again
+        // D143: a short fix the field wouldn't show selected (Claude and ChatGPT do now and then) is retyped as before (D28)
+        // rather than missed; any other refused fix is dropped, nothing typed (D122).
+        if (!sent && placed && target.LastEditRefused && shortRetype && w.Layer != Layer.Undo)
+        {
+            placed = false;
+            retype = true;
+            sent = target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail, seqAtWrite);
+            if (!sent && target.LastEditBlocked) return false;
+        }
         if (!sent && placed && target.LastEditRefused) { Drop(w, "place-refused"); return false; }   // D122: nothing typed
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
