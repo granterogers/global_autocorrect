@@ -322,7 +322,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
         string before = TextNorm.Comparable(win.Before);
         string newTyped = typed[..w.Start] + w.Replacement + tail;
-        string expectedBefore = before[..^TextNorm.Comparable(typed).Length] + TextNorm.Comparable(newTyped);
+        // D146: the read may be shorter than the record (read only so far back): then the expected text is the record's.
+        int typedLen = TextNorm.Comparable(typed).Length;
+        string expectedBefore = (before.Length >= typedLen ? before[..^typedLen] : "") + TextNorm.Comparable(newTyped);
         if (!sent)
         {
             // Nothing was sent (focus had moved to another app): nothing to verify, nothing damaged.

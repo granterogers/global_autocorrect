@@ -17,6 +17,9 @@ public readonly record struct KeyEffect(FinishedWord? Word, bool SentenceEnded);
 public sealed class TypingSession
 {
     private const int MaxLength = 4000;
+
+    /// <summary>D146: how far back the field is read (the UI Automation target reads 400; a little less to be safe).</summary>
+    public const int ReadLimit = 390;
     private readonly StringBuilder _typed = new();
 
     public string Typed => _typed.ToString();
@@ -127,6 +130,10 @@ public sealed class TypingSession
     {
         // D42: line-break runs compare as one, so a blank line reported differently by the editor still matches.
         string f = TextNorm.Comparable(fieldBefore), t = TextNorm.Comparable(Typed);
+        // D146 (stress run: a 414-character message lost its AI fixes): the field is read at most ReadLimit characters
+        // back, so past that the read looks like the field's start. A full-length read that is the end of the record is the
+        // limit, not a different field.
+        if (fieldBefore.Length >= ReadLimit && t.Length > f.Length && t.EndsWith(f, StringComparison.Ordinal)) return true;
         // D77: a line break right at the caret is reported differently by browsers: just after Enter the new empty line
         // may not show yet, and Edge can report a break after the caret's line that wasn't typed (in real use this left
         // the app retrying one mismatch every 25 ms for a minute). Compare without line breaks at the end; what comes
