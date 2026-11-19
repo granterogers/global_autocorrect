@@ -60,7 +60,12 @@ public sealed class OverlayController
             bool light = _host.Target?.LastSnapshot?.ProcessName is { } app && _host.ReadCost.IsLight(app);
             await Task.Delay(FieldCatchUp.PauseFor(light));
             if (_host.Hook is not { } hook || !FieldCatchUp.Paused(seq, hook.LatestKeySeq, Environment.TickCount64 - keyAt, light)
-                || gen != Interlocked.Read(ref _generation)) { Why("typing", null); return; }
+                || gen != Interlocked.Read(ref _generation))
+            {
+                // D147: which of the two, under test only (numbers, never text): a later key, or a later check.
+                Why(UnderTest ? $"typing seq={seq} latest={_host.Hook?.LatestKeySeq} gen={gen}/{Interlocked.Read(ref _generation)}" : "typing", null);
+                return;
+            }
             try { Predict(seq, gen, key); }
             catch (Exception e) { Why("failed " + e.GetType().Name, null); throw; }
         });

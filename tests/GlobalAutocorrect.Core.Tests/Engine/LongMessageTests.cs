@@ -18,4 +18,15 @@ public sealed class LongMessageTests
         Assert.Equal(0, h.Counters.FieldMismatches);   // the read limit isn't a different field
         Assert.Equal(0, h.Counters.Desyncs);
     }
+
+    [Fact]
+    public void R4_6_c_D146_PastTheReadAndJustAfterEnterItIsStillTheSameField()
+    {
+        var h = new Harness(model: s => s.Replace("teh deadline", "the deadline"), latencyMs: 300);
+        string filler = string.Concat(Enumerable.Repeat("We spoke about the plan and agreed the next steps together. ", 7));
+        h.Type(filler + "\nteh deadline moved. ");
+        h.Wait(4000);
+        Assert.EndsWith("\nthe deadline moved. ", h.Text);
+        Assert.Equal(0, h.Counters.FieldMismatches);
+    }
 }

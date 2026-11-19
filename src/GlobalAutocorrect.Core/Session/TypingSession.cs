@@ -133,15 +133,19 @@ public sealed class TypingSession
         // D146 (stress run: a 414-character message lost its AI fixes): the field is read at most ReadLimit characters
         // back, so past that the read looks like the field's start. A full-length read that is the end of the record is the
         // limit, not a different field.
-        if (fieldBefore.Length >= ReadLimit && t.Length > f.Length && t.EndsWith(f, StringComparison.Ordinal)) return true;
+        bool cut = fieldBefore.Length >= ReadLimit;
+        // D146: every comparison below allows for it (D146's second run: just after Enter at 462 characters, the D77 path
+        // compared without it, mismatched again and again, and confused the record around that line).
+        bool Fits(string field, string typed) =>
+            field.EndsWith(typed, StringComparison.Ordinal) || (cut && typed.Length > field.Length && typed.EndsWith(field, StringComparison.Ordinal));
+        if (Fits(f, t)) return true;
         // D77: a line break right at the caret is reported differently by browsers: just after Enter the new empty line
         // may not show yet, and Edge can report a break after the caret's line that wasn't typed (in real use this left
         // the app retrying one mismatch every 25 ms for a minute). Compare without line breaks at the end; what comes
         // before them must still match exactly.
         string ft = f.TrimEnd('\n'), tt = t.TrimEnd('\n');
-        if (ft.Length != f.Length || tt.Length != t.Length) return ft.EndsWith(tt, StringComparison.Ordinal);
-        if (t.Length != _typed.Length) return f.EndsWith(t, StringComparison.Ordinal);   // CRs or blank lines differ: compare only
-        if (f.EndsWith(t, StringComparison.Ordinal)) return true;
+        if (ft.Length != f.Length || tt.Length != t.Length) return Fits(ft, tt);
+        if (t.Length != _typed.Length) return Fits(f, t);   // CRs or blank lines differ: compare only
         if (f.Length >= t.Length && f.EndsWith(t, StringComparison.OrdinalIgnoreCase))
         {
             _typed.Clear().Append(f, f.Length - t.Length, t.Length);
