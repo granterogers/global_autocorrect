@@ -77,14 +77,17 @@ public sealed class OverlayController
         var hook = _host.Hook;
         if (target is null || hook is null) return;
         bool light = target.LastSnapshot?.ProcessName is { } app && _host.ReadCost.IsLight(app);   // D97
-        if (!target.ReadForSuggestion(light).CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
         // D59: a browser may not have drawn this key yet; predicting from that read suggested for the previous letter.
-        for (int i = 0; i < FieldCatchUp.Retries && !FieldCatchUp.ShowsKey(target.LastSnapshot?.Before ?? "", key); i++)
+        // D150 (E2E, CKEditor, twice): one read said the field had no text just after the last key, and no suggestion
+        // came at all. A read that can't find the caret gets the same few retries as one that's behind.
+        bool known = target.ReadForSuggestion(light).CaretKnown;
+        for (int i = 0; i < FieldCatchUp.Retries && (!known || !FieldCatchUp.ShowsKey(target.LastSnapshot?.Before ?? "", key)); i++)
         {
             Thread.Sleep(FieldCatchUp.RetryDelayMs);
             if (hook.LatestKeySeq != seq || gen != Interlocked.Read(ref _generation)) { Why("stale", null); return; }
-            if (!target.ReadForSuggestion(light).CaretKnown) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
+            known = target.ReadForSuggestion(light).CaretKnown;
         }
+        if (!known) { Why("caret-unknown", target.LastSnapshot?.Before); return; }
         if (!FieldCatchUp.ShowsKey(target.LastSnapshot?.Before ?? "", key)) { Why("field-behind", target.LastSnapshot?.Before); return; }
         if (target.LastSnapshot is not { CaretRect: { } caret } snap) { Why("no-caret-rect", target.LastSnapshot?.Before); return; }
         // Stale if the user typed on while we read (7.4: the caret must not have moved since).
