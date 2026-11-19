@@ -12,7 +12,7 @@ public static class LanguageGuess
 {
     private static readonly HashSet<string> English = new(StringComparer.OrdinalIgnoreCase)
     {
-        "the", "and", "to", "of", "in", "is", "it", "you", "that", "for", "on", "with", "this", "are", "be", "was", "have",
+        "a", "the", "and", "to", "of", "in", "is", "it", "you", "that", "for", "on", "with", "this", "are", "be", "was", "have",
         "i", "we", "not", "but", "at", "your", "my", "can", "will", "do", "so", "if", "as", "all", "just", "from", "they",
         "or", "an", "our", "what", "there", "would", "about", "know", "please", "thanks", "hi", "hello", "dear", "regards",
         "could", "should", "been", "had", "has", "were", "which", "when", "how", "any", "some", "them", "their", "these",
@@ -68,8 +68,9 @@ public static class LanguageGuess
         int best = 0;
         foreach (var set in Others.Values) best = Math.Max(best, words.Count(set.Contains));
         int foreign = best + (best > 0 ? marks : text.Any(c => c is '¿' or '¡' or 'ñ' or 'Ñ') ? marks : 0);
-        // A short line with no English word in it ("Hola Jose,") needs only one.
-        return (foreign >= 2 && foreign > english * 1.5) || (english == 0 && foreign >= 1);
+        // A short line with no English word in it ("Hola Jose,") needs only one. D145: only a short one: a 14-word English
+        // line with typos and no common word ("…building pas, email account, adn a desk ear he window.") counted as French.
+        return (foreign >= 2 && foreign > english * 1.5) || (english == 0 && foreign >= 1 && words.Length <= 5);
     }
 
     /// <summary>The sentence of <paramref name="text"/> that holds position <paramref name="at"/> (to the nearest . ! ? or line break).</summary>

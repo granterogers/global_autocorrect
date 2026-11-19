@@ -22,6 +22,7 @@ public sealed class LanguageGuessTests
     [InlineData("We had a fiesta at the office and it was great.")]
     [InlineData("The café on the corner does a good résumé workshop.")]
     [InlineData("i went thier with teh dog yesterday")]
+    [InlineData("New starter checklist: laptop, building pas, email account, adn a desk ear he window.")]   // D145: typos, not French
     [InlineData("Thakms,")]
     [InlineData("Hi Jose,")]
     [InlineData("Can you send me the report before Friday? Thanks")]
