@@ -40,7 +40,10 @@ public sealed class PhraseTests
         using var app = new AppUnderTest(llm, prediction: true, seed: LearnedPhrase);
         using var box = new DesktopTests.WpfBox();
         Desk.Type("Thanks, let me know ");
-        Thread.Sleep(1200);   // the suggestion appears after a background read
+        // The suggestion appears after a background read, later where reads are slow (D97): wait until it is on screen,
+        // not a fixed time, or Tab can arrive first and simply move the focus.
+        Assert.True(Desk.WaitUntil(() => Screen.Overlays(app.ProcessId).Any(), 6000), $"no suggestion appeared; {app.Diagnostics()}");
+        Thread.Sleep(150);
         Desk.Keys(VK_TAB);
         Assert.True(Desk.WaitUntil(() => box.Text.StartsWith("Thanks, let me know if you have any questions", StringComparison.Ordinal), 4000),
             $"got \"{box.Text}\"; {app.Diagnostics()}");

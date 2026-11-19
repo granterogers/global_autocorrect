@@ -182,6 +182,18 @@ public sealed class AppUnderTest : IDisposable
     /// <summary>The app's process, whose windows include the overlays (7.6).</summary>
     public int ProcessId => _proc.Id;
 
+    /// <summary>The app's log while the app may be writing to it (a plain read failed a test with "being used by").</summary>
+    private static IEnumerable<string> SharedLines(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fs);
+            return reader.ReadToEnd().Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        }
+        catch (IOException) { return ["(the log couldn't be read just now)"]; }
+    }
+
     private readonly string _label;
 
     /// <param name="label">D64: names this test's timings file (defaults to the calling test).</param>
@@ -226,7 +238,7 @@ public sealed class AppUnderTest : IDisposable
         string exit = _proc.HasExited ? $" (exit 0x{_proc.ExitCode:X8})" : "";
         // The app's own reason codes (verify failures; under E2E also why a suggestion was or wasn't shown).
         string diag = File.Exists(Path.Combine(DataDir, "diagnostics.log"))
-            ? string.Join(" | ", File.ReadLines(Path.Combine(DataDir, "diagnostics.log")).TakeLast(12))
+            ? string.Join(" | ", SharedLines(Path.Combine(DataDir, "diagnostics.log")).TakeLast(12))
             : "(no diagnostics)";
         return $"app alive: {!_proc.HasExited}{exit}; counters: {counters}; crash: {crash}; diagnostics: {diag}";
     }

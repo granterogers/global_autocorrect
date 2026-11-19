@@ -55,7 +55,7 @@ internal sealed class WebViewBox : IDisposable
         if (!loaded || failed is not null)
         {
             Dispose();
-            if (!loaded) Assert.Fail("the WebView2 window did not load");
+            if (!loaded) Assert.Skip("WebView2 is not available here: the window did not load (a runner without a working WebView2)");
             Assert.Skip($"WebView2 is not available here: {failed!.GetType().Name} 0x{failed.HResult:X8} {failed.Message}");
         }
         if (!Desk.WaitUntil(() => Eval("typeof window.getText === 'function'") == "true", 15_000)) { Dispose(); Assert.Fail("the page did not start"); }
