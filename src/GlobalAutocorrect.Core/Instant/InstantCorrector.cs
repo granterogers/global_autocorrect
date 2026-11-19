@@ -65,10 +65,23 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
 
     private string? PickDistance1(string typed, SpellSuggestion[] d1)
     {
+        // D136: a short word is never made by dropping a letter that isn't a doubled key ("weh" → "we", "Yi" → "I"):
+        // the extra letter is as likely a slip for another word ("when", "Hi"), which the AI layer can judge in context.
         var scored = d1.Select(c => (c.Word, Score: c.Frequency * TypoChannel.Likelihood(typed, c.Word)))
                        .OrderByDescending(x => x.Score).ToArray();
-        if (scored.Length == 1 || scored[0].Score >= Distance1ScoreRatio * scored[1].Score) return scored[0].Word;
+        if (scored.Length == 1 || scored[0].Score >= Distance1ScoreRatio * scored[1].Score)
+        {
+            string w = scored[0].Word;
+            return w.Length <= 2 && w.Length < typed.Length && !DroppedLetterIsDoubled(typed, w) ? null : w;
+        }
         return null;
+    }
+
+    private static bool DroppedLetterIsDoubled(string typed, string word)
+    {
+        for (int i = 0; i < typed.Length; i++)
+            if (typed.Remove(i, 1) == word && ((i > 0 && typed[i] == typed[i - 1]) || (i + 1 < typed.Length && typed[i] == typed[i + 1]))) return true;
+        return false;
     }
 
     private bool SplitsIntoTwoWords(string w)

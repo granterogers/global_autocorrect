@@ -16,6 +16,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D99 (4.6.d, 10.7.a):** a fix that lands but leaves the caret short of the user's place (Intercom lost Right presses: "DWGfFile") is noticed and the caret put back before the next key. 5 tests.
 - **D100 (4.6.c):** instant fixes are never written while Shift (or another modifier) is held: one went out as you pressed Shift for the next capital and came out in capitals. 1 test.
 - **D135 (4.5):** a UK/US spelling swap is refused by the final write check, from every layer ("adaptor" stays). 3 tests.
+- **D136 (4.3.d, 4.5; stress issue #1):** the instant layer no longer makes a one- or two-letter word by dropping a letter that is not a doubled key ("weh" → "we", "Yi" → "I"); the AI decides. 3 tests.
 - **D134 (4.6.d):** a late AI answer adding a word can no longer write it twice or inside a word ("t thehe"); "9 Mya" is fixed again; "adaptor" stays. 4 tests.
 - **D133 (4.5):** from the first real-model run: short forms and units are words ("10 mins"), UK spellings are never Americanised, a fix brings at most one word of its own. 13 tests.
 - **D132 (11.2):** Real use workflow: the real model on 55 real-life messages, failing on any stupid mistake (capitals, repeats, added ?/!, changed correct words, names, times). Releases held until it passes. 8 tests.

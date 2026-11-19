@@ -40,6 +40,15 @@ public sealed class SymSpellTests
     }
 
     [Theory]
+    [InlineData("weh", "we")]   // D136: stress run 13: typed "weh" (meant "when"), became "we"
+    [InlineData("Yi", "I")]     // typed "Yi" (meant "Hi"), became "I"
+    public void R4_3_d_D136_AShortWordIsNotMadeByDroppingALetter(string word, string notThis) =>
+        Assert.NotEqual(notThis, Corrector().TryCorrect(word, false) ?? Corrector().TryCorrect(word, true));
+
+    [Fact]
+    public void R4_3_d_D136_ADoubledKeyIsStillDropped() => Assert.Equal("do", Corrector().TryCorrect("doo", false));
+
+    [Theory]
     [InlineData("whenI'm")]   // user-style set: became "when's", and the model's "when I'm" was then refused
     [InlineData("andI'll")]
     [InlineData("soI've")]
