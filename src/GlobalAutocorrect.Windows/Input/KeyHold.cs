@@ -16,7 +16,7 @@ public static class KeyHold
     /// <summary>"GAC3": replayed keys. The hook passes them straight on (they were counted when they were held).</summary>
     public const nuint ReplayTag = 0x47414333;
 
-    public const int MaxHoldMs = 3000;
+    public static int MaxHoldMs => Core.Learning.Tunables.KeyHoldMaxMs.Int;   // D155
 
     /// <summary>Sends the replayed keys; tests replace it so nothing is typed.</summary>
     public static Func<INPUT[], bool> Sender { get; set; } = Write.SendInputWriter.Send;

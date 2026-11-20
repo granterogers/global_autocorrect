@@ -70,7 +70,7 @@ public static class LanguageGuess
         int foreign = best + (best > 0 ? marks : text.Any(c => c is '¿' or '¡' or 'ñ' or 'Ñ') ? marks : 0);
         // A short line with no English word in it ("Hola Jose,") needs only one. D145: only a short one: a 14-word English
         // line with typos and no common word ("…building pas, email account, adn a desk ear he window.") counted as French.
-        return (foreign >= 2 && foreign > english * 1.5) || (english == 0 && foreign >= 1 && words.Length <= 5);
+        return (foreign >= 2 && foreign > english * Learning.Tunables.LangForeignRatio.Value) || (english == 0 && foreign >= 1 && words.Length <= Learning.Tunables.LangShortLineWords.Int);   // D155
     }
 
     /// <summary>The sentence of <paramref name="text"/> that holds position <paramref name="at"/> (to the nearest . ! ? or line break).</summary>

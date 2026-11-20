@@ -63,7 +63,7 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         // D140 (stress runs: "weh" → "we" meant "when", "Yi" → "I" meant "Hi", in every editor): a letter dropped to leave
         // a word of one or two letters is a guess between very different words; only frequency picked the short one. The
         // AI, which sees the sentence, decides those about a second later.
-        if (pick.Length < lower.Length && pick.Length <= 2) return null;
+        if (pick.Length < lower.Length && pick.Length <= Learning.Tunables.InstantShortPickMaxLength.Int) return null;   // D155
         return MatchCase(word, pick);
     }
 

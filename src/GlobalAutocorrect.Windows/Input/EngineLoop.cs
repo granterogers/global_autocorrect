@@ -86,7 +86,7 @@ public sealed class EngineLoop : IDisposable
     private void StepEnterGate()
     {
         var e = _engine;
-        EnterGate.Armed = !e.Paused && e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;
+        EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;   // D155: a switch in the brain
         if (EnterGate.TakeStarted()) e.CheckLineNow();
         if (EnterGate.Holding && !e.LineFixesPending) EnterGate.Release("fixes in");
     }

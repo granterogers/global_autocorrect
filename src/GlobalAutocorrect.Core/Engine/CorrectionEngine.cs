@@ -276,7 +276,7 @@ public sealed class CorrectionEngine
     /// corrected; a typo the AI keeps fixing must never end up in the dictionary.
     /// </summary>
     private readonly List<(string Word, long At)> _pendingLearn = [];
-    private const int LearnAfterMs = 5000;
+    private static int LearnAfterMs => Learning.Tunables.LearnAfterMs.Int;   // D155
 
     private void SettleLearning()
     {
@@ -309,7 +309,7 @@ public sealed class CorrectionEngine
     private void NoticeEnter()
     {
         _sendCheckHadText = Session.Typed.TrimEnd('\n').Trim().Length > 0;
-        _sendCheckAt = _d.Clock.NowMs + 300;
+        _sendCheckAt = _d.Clock.NowMs + Learning.Tunables.EnterSendCheckMs.Int;
     }
 
     private void CheckEnterSent()

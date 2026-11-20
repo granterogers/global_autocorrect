@@ -100,7 +100,7 @@ public sealed class TypingSession
     }
 
     /// <summary>D124: how long a field may look "behind" (<see cref="FieldBehind"/>) with no key before it counts as final.</summary>
-    public const int UnshownAfterMs = 1200;
+    public static int UnshownAfterMs => Learning.Tunables.SessionUnshownAfterMs.Int;   // D155
 
     /// <summary>
     /// D124, user report (WhatsApp: nothing fixed in a whole message, nothing in the log): a field that still looks behind

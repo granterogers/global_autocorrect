@@ -17,7 +17,7 @@ public static class EnterGate
     public const nuint ReplayTag = 0x47414345;   // "GACE"
 
     /// <summary>The longest Enter is ever held.</summary>
-    public const int MaxHoldMs = 1500;
+    public static int MaxHoldMs => Core.Learning.Tunables.EnterMaxHoldMs.Int;   // D155
 
     private enum State { Idle, Holding, Replaying }
 
@@ -92,7 +92,7 @@ public static class EnterGate
     /// selected word): never in the middle of a write. The engine's own release comes between writes; the timer waits for
     /// the write's key hold to end, up to <see cref="HardCapMs"/>.
     /// </summary>
-    public const int HardCapMs = 4000;
+    public static int HardCapMs => Core.Learning.Tunables.EnterHardCapMs.Int;   // D155
 
     public static Func<bool> WriteInProgress { get; set; } = () => KeyHold.Active;
 

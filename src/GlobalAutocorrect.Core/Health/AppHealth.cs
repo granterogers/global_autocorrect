@@ -134,7 +134,7 @@ public sealed class AppHealth
     }
 
     /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
-    public const double RetypeAfter = 0.25;
+    public static double RetypeAfter => Learning.Tunables.HealthRetypeAfter.Value;   // D155
 
     public void Written(string app) => Note(app, s => s.Writes++);
     public void VerifyFailed(string app) => Note(app, s => s.VerifyFailures++);
@@ -170,10 +170,10 @@ public sealed class AppHealth
     }
 
     /// <summary>D137: how many (faded) placed failures it takes, at the least.</summary>
-    public const double PlaceFailuresBeforeUnsafe = 2;
+    public static double PlaceFailuresBeforeUnsafe => Learning.Tunables.HealthPlaceFailuresBeforeUnsafe.Value;   // D155
 
     /// <summary>D137: and they must be more than one in this many fixes written in that program.</summary>
-    public const double PlaceFailureShare = 20;
+    public static double PlaceFailureShare => Learning.Tunables.HealthPlaceFailureShare.Value;   // D155
     public void Stuck(string app) => Note(app, s => s.Stuck++);
 
     /// <summary>D154: the field (<see cref="Targets.ITextTarget.FieldKey"/>) was empty just after Enter: it sends on Enter.</summary>
@@ -182,7 +182,7 @@ public sealed class AppHealth
     /// <summary>D154: a field that has sent on Enter twice (fading, like every count) gets its Enter held for a pending fix.</summary>
     public bool EnterSends(string field) => !string.IsNullOrEmpty(field) && StatsFor(field).EnterSends >= EnterSendsAfter;
 
-    public const double EnterSendsAfter = 1.5;
+    public static double EnterSendsAfter => Learning.Tunables.EnterSendsAfter.Value;   // D155
     public void Undone(string app) => Note(app, s => s.Undos++);
 
     private void Note(string app, Action<AppStats> change)

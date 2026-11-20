@@ -113,6 +113,7 @@ public static class Brain
     {
         if (Knobs.TryGetValue(name, out var k)) { (min, max) = (k.Min, k.Max); return true; }
         if (RuleKnobs.TryGetValue(name, out var r)) { (min, max) = (r.Min, r.Max); return true; }
+        if (Tunables.TryGet(name, out var t)) { (min, max) = (t.Min, t.Max); return true; }   // D155
         (min, max) = (0, 0);
         return false;
     }

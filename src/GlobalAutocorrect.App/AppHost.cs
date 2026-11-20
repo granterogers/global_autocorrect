@@ -309,6 +309,7 @@ public sealed class AppHost : IAsyncDisposable
         Health.UseShipped(Brain.LearntElsewhere(b, InstallId(), DateOnly.FromDateTime(DateTime.Now)), b.Write);
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
+        Tunables.Apply(b.Tuning);   // D155: read where they're used, so they take effect at once
         _brainPrompt = b.Prompt?.ToTemplate();   // D111
     }
 
