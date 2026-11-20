@@ -1,65 +1,71 @@
 {
-  "Updated": "2026-11-17",
+  "Updated": "2026-11-20",
   "Apps": {
     "chatgpt": {
-      "Writes": 12.6,
-      "VerifyFailures": 1.5,
-      "Stuck": 4.1,
+      "Writes": 12.4,
+      "VerifyFailures": 1.1,
+      "Stuck": 3,
       "Undos": 0,
-      "ArrowFailures": 0.31,
+      "ArrowFailures": 0.23,
       "RetypeFailures": 0,
-      "LineFailures": 0.48,
-      "PlaceFailures": 0
+      "LineFailures": 0.35,
+      "PlaceFailures": 0,
+      "EnterSends": 0
     },
     "claude": {
-      "Writes": 204.8,
-      "VerifyFailures": 20.1,
-      "Stuck": 1.5,
-      "Undos": 3.9,
-      "ArrowFailures": 6.35,
-      "RetypeFailures": 6.8,
-      "LineFailures": 3.19,
-      "PlaceFailures": 0
+      "Writes": 206.3,
+      "VerifyFailures": 14.6,
+      "Stuck": 1.1,
+      "Undos": 3.8,
+      "ArrowFailures": 4.63,
+      "RetypeFailures": 4.96,
+      "LineFailures": 2.32,
+      "PlaceFailures": 0,
+      "EnterSends": 0
     },
     "msedge": {
-      "Writes": 141.5,
-      "VerifyFailures": 19.2,
-      "Stuck": 0.3,
-      "Undos": 2,
-      "ArrowFailures": 5.1,
-      "RetypeFailures": 5.74,
-      "LineFailures": 5.77,
-      "PlaceFailures": 0.66
+      "Writes": 167.2,
+      "VerifyFailures": 15.9,
+      "Stuck": 0.2,
+      "Undos": 1.5,
+      "ArrowFailures": 4.62,
+      "RetypeFailures": 4.18,
+      "LineFailures": 4.2,
+      "PlaceFailures": 1.48,
+      "EnterSends": 0
     },
     "msedgewebview2": {
-      "Writes": 62.5,
+      "Writes": 92.5,
       "VerifyFailures": 4,
-      "Stuck": 12.8,
+      "Stuck": 22,
       "Undos": 0,
       "ArrowFailures": 0,
       "RetypeFailures": 0,
       "LineFailures": 0,
-      "PlaceFailures": 0.9
+      "PlaceFailures": 1.66,
+      "EnterSends": 0
     },
     "notepad": {
-      "Writes": 8.1,
-      "VerifyFailures": 1.6,
+      "Writes": 8.6,
+      "VerifyFailures": 1.1,
       "Stuck": 0,
       "Undos": 0,
-      "ArrowFailures": 0.63,
-      "RetypeFailures": 0.63,
+      "ArrowFailures": 0.46,
+      "RetypeFailures": 0.46,
       "LineFailures": 0,
-      "PlaceFailures": 0
+      "PlaceFailures": 0,
+      "EnterSends": 0
     },
     "whatsapp.root": {
-      "Writes": 98.6,
-      "VerifyFailures": 5.9,
+      "Writes": 94.1,
+      "VerifyFailures": 4.3,
       "Stuck": 0,
-      "Undos": 1.8,
-      "ArrowFailures": 2.11,
-      "RetypeFailures": 1.44,
+      "Undos": 3.1,
+      "ArrowFailures": 1.54,
+      "RetypeFailures": 1.05,
       "LineFailures": 0,
-      "PlaceFailures": 0.9
+      "PlaceFailures": 0.66,
+      "EnterSends": 0
     }
   }
 }
