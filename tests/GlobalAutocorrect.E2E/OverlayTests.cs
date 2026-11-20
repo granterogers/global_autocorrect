@@ -128,7 +128,12 @@ public sealed class OverlayTests
         var overlayInk = Screen.DiffInk(with, without, Rectangle.FromLTRB(ov.Left + 4, ov.Top, ov.Right, ov.Bottom));
         // Rows: the caret's and the overlay's together, so neither measurement is cut off by the other's box.
         var line = Local(Rectangle.FromLTRB(caret.Left, Math.Min(caret.Top, overlay.Rect.Top), caret.Right, Math.Max(caret.Bottom, overlay.Rect.Bottom)));
-        var fieldInk = Screen.TextInk(without, Rectangle.FromLTRB(line.Left - (int)(2.5 * h), line.Top, line.Left - 2, line.Bottom));
+        // D152 (E2E, CKEditor: the field measured 8 px against the same 12 px as the last passing run): one screenshot can
+        // catch the page mid-redraw. The strip left of the caret is in both screenshots and the overlay never covers it, so
+        // the fuller of the two is the field's text.
+        var strip = Rectangle.FromLTRB(line.Left - (int)(2.5 * h), line.Top, line.Left - 2, line.Bottom);
+        var fieldInk = new[] { Screen.TextInk(without, strip), Screen.TextInk(with, strip) }
+            .Where(r => r is not null).OrderByDescending(r => r!.Value.Bottom - r.Value.Top).FirstOrDefault();
 
         int? overlayInkH = overlayInk is { } o ? o.Bottom - o.Top + 1 : null;
         int? fieldInkH = fieldInk is { } f ? f.Bottom - f.Top + 1 : null;

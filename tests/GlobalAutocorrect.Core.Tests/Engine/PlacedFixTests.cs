@@ -71,6 +71,23 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D152_NoRetypeAfterARefusedPlacementWhileTheUserTyped()
+    {
+        // Stress run, Slate: placing was refused while 16 keys came in; the retype sent straight after was "blocked", but
+        // the hook was seconds behind, Backspaces got through, and "apologisw " and the user's "y in se" were lost.
+        var h = new Harness();
+        h.Ed.AppName = "msedge";
+        h.Ed.CanPlaceCaret = true;
+        h.Engine.Health = new AppHealth();
+        h.Ed.RefuseNextPlacements = 1;
+        int once = 1;
+        h.Ed.BeforeApply = ed => { if (once-- > 0) ed.TypeChar('c'); };   // a key reaches the field during the placement
+        h.Type("I saw teh ");
+        h.Wait(500);
+        Assert.StartsWith("I saw teh c", h.Text);   // nothing retyped over the key: the fix waits (or is missed), never damage
+    }
+
+    [Fact]
     public void R4_6_d_D144_ARefusedPlacementIsTriedAgain()
     {
         var h = Make(new AppHealth());

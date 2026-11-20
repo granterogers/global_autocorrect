@@ -309,6 +309,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // rather than missed; any other refused fix is dropped, nothing typed (D122).
         if (!sent && placed && target.LastEditRefused && shortRetype && w.Layer != Layer.Undo)
         {
+            // D152 (stress run, Slate: "apologisw " and the user's "y in se" lost): keys came in while placing was tried, so
+            // the record's caret distance is already out of date. The fence would refuse the retype, but on a busy PC the
+            // keyboard hook ran seconds behind and some of its Backspaces got through. Nothing is sent; the next quiet tick
+            // tries again (D144).
+            if (keys.LatestKeySeq != seqAtWrite) { w.Waiting = "place-refused"; return false; }
             placed = false;
             retype = true;
             sent = target.ApplyEdit(0, caretDistance + deleteCount, w.Replacement + tail, seqAtWrite);
