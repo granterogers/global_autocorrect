@@ -91,10 +91,10 @@ public sealed class EngineLoop : IDisposable
         bool chat = e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;
         // D156 (stress: "provided.Dear": the instant fix for the line's last word was placed after Enter, across the new
         // paragraph, and the line break was lost): in any field, Enter waits briefly for the word just finished.
-        bool instant = Core.Learning.Tunables.EnterInstantHoldMs.Int > 0 && e.InstantFixPending;
+        bool instant = Core.Learning.Tunables.EnterInstantHoldMs.Int > 0 && (e.InstantFixPending || e.WordAtEndWouldBeFixed());
         EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is not null && (chat || instant);   // D155: a switch in the brain
         EnterGate.HoldMs = chat ? EnterGate.MaxHoldMs : Core.Learning.Tunables.EnterInstantHoldMs.Int;
-        if (EnterGate.TakeStarted()) { _chatHold = chat; if (chat) e.CheckLineNow(); }
+        if (EnterGate.TakeStarted()) { _chatHold = chat; e.FinishWordForEnter(); if (chat) e.CheckLineNow(); }
         if (EnterGate.Holding && !(_chatHold ? e.LineFixesPending : e.InstantFixPending)) EnterGate.Release(_chatHold ? "fixes in" : "instant fix in");
     }
 

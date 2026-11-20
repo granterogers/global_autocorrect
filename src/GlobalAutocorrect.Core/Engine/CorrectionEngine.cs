@@ -157,12 +157,7 @@ public sealed class CorrectionEngine
         bool foreign = (effect.Word is not null || (k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char))) && Text.LanguageGuess.IsForeign(CurrentParagraph());
         if (effect.Word is { } fw && _o.InstantEnabled && !foreign)
         {
-            fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby);   // 4.3, D92
-            // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
-            // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
-            // With tidying on, the fix carries the sentence start's capital itself.
-            if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere(fw.End))))
-                fix = char.ToUpperInvariant(fix[0]) + fix[1..];
+            fix = InstantFixFor(fw);
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });
@@ -300,6 +295,48 @@ public sealed class CorrectionEngine
     }
 
     /// <summary>D154: an AI answer, a retry or a fix is still on its way for what has been typed.</summary>
+    /// <summary>The instant fix for a finished word (4.3, D92), with a sentence start's capital (D141), or null.</summary>
+    private string? InstantFixFor(FinishedWord fw)
+    {
+        string? fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target!.NamesNearby);
+        // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
+        // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
+        // With tidying on, the fix carries the sentence start's capital itself.
+        if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere(fw.End))))
+            fix = char.ToUpperInvariant(fix[0]) + fix[1..];
+        return fix;
+    }
+
+    private long _aheadSeq = -1, _aheadGeneration = -1;
+    private bool _aheadFix;
+
+    /// <summary>
+    /// D156 (stress: "provkded." then Enter: Enter itself finished the word, so its fix was placed across the new line
+    /// and the break was lost): would the word at the caret be fixed if it were finished now? Worked out once per key.
+    /// </summary>
+    public bool WordAtEndWouldBeFixed()
+    {
+        if (Paused || Target is null || !_o.InstantEnabled) return false;
+        if (_aheadSeq == Session.LastKeySeq && _aheadGeneration == Session.Generation) return _aheadFix;
+        _aheadSeq = Session.LastKeySeq; _aheadGeneration = Session.Generation;
+        _aheadFix = Session.WordAtEnd() is { } fw && !Text.LanguageGuess.IsForeign(CurrentParagraph())
+                    && _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby) is not null;
+        return _aheadFix;
+    }
+
+    /// <summary>
+    /// D156: Enter is held. Its word is fixed now, on its own line, as the Enter would have had it fixed after; the
+    /// Enter then goes once the fix is in. True if a fix was queued.
+    /// </summary>
+    public bool FinishWordForEnter()
+    {
+        if (Paused || Target is null || !_o.InstantEnabled || Session.WordAtEnd() is not { } fw) return false;
+        if (Text.LanguageGuess.IsForeign(CurrentParagraph()) || InstantFixFor(fw) is not { } fix) return false;
+        _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, _d.Keys.LatestKeySeq) { WholeWord = true });
+        _gate.TryWrite(Target);
+        return true;
+    }
+
     /// <summary>D156: an instant fix (the word just finished) is waiting to be written.</summary>
     public bool InstantFixPending => !Paused && Target is not null && _gate.Has(Layer.Instant);
 

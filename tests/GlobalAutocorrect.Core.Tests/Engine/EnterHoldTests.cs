@@ -54,6 +54,31 @@ public sealed class EnterHoldTests
     }
 
     [Fact]
+    public void R4_6_D156_TheWordEnterWouldFinishIsFixedBeforeTheEnterGoes()
+    {
+        // Stress, TinyMCE: "provkded." then Enter; Enter itself finished the word, so the fix was placed across the new
+        // line and the break was lost ("provided.Dear"). Now the word is fixed while Enter waits, then Enter goes.
+        var h = new Harness();
+        foreach (char c in "I saw teh.") { h.Clock.Advance(40); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        Assert.True(h.Engine.WordAtEndWouldBeFixed());   // so Enter is held
+        Assert.True(h.Engine.FinishWordForEnter());       // the held Enter's word, fixed on its own line
+        h.Wait(200);
+        Assert.Equal("I saw the.", h.Text);
+        h.Type("\nNext line ");                           // the Enter let go, and typing on
+        h.Wait(300);
+        Assert.Equal("I saw the.\nNext line ", h.Text);   // the break is there, the word fixed once
+    }
+
+    [Fact]
+    public void R4_6_D156_AWordThatNeedsNoFixDoesNotHoldEnter()
+    {
+        var h = new Harness();
+        foreach (char c in "I saw the.") { h.Clock.Advance(40); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        Assert.False(h.Engine.WordAtEndWouldBeFixed());
+        Assert.False(h.Engine.FinishWordForEnter());
+    }
+
+    [Fact]
     public void R4_6_D154_HeldEnterChecksTheLineNowAndSaysWhenItsFixesAreIn()
     {
         var h = new Harness(model: s => s.Replace("by th harbour", "by the harbour"), latencyMs: 300);
