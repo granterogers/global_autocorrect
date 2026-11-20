@@ -103,6 +103,12 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         return list;
     }
 
+    /// <summary>D154: something has been typed since the last request (the line isn't checked as it stands).</summary>
+    public bool Unchecked(TypingSession session) => session.Length > 0 && session.LastKeySeq != _lastTriggerSeq;
+
+    /// <summary>D154: a failed read is waiting for its retry.</summary>
+    public bool RetryPending => _retryPending;
+
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
         session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs

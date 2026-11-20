@@ -255,6 +255,7 @@ public sealed class AppHost : IAsyncDisposable
         _focus = new FocusTracker(_uia);
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") _focus.Trace += Diagnose;   // D71: screen tests only
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") GlobalAutocorrect.Windows.Input.WriteFence.Trace = Diagnose;   // D115: screen tests only
+        GlobalAutocorrect.Windows.Input.EnterGate.Diagnose = Diagnose;   // D154: numbers only
         _focus.FocusChanged += _ =>
         {
             _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));

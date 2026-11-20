@@ -34,6 +34,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>D81: the program of the last read field.</summary>
     public string AppName => LastSnapshot?.ProcessName ?? "";
 
+    /// <summary>D154: program and the field's class (its kind of editor), never text.</summary>
+    public string FieldKey => LastSnapshot is { } s ? $"{s.ProcessName}|{s.ClassName}" : "";
+
     /// <summary>D92: names shown near the last read field.</summary>
     public IReadOnlyList<string> NamesNearby => LastSnapshot?.Names ?? [];
 

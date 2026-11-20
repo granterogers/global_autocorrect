@@ -63,6 +63,12 @@ public interface ITextTarget
     /// <summary>D81: the program the field belongs to (process name, never text), for what the app learns per program.</summary>
     string AppName => "";
 
+    /// <summary>
+    /// D154: the kind of field as well as the program ("msedge|composer"), for what is learnt per field: in one browser
+    /// Intercom's chat box sends on Enter and its note editor doesn't. Never text.
+    /// </summary>
+    string FieldKey => AppName;
+
     /// <summary>D92: names the app shows near the field ("Reply Christopher Moyer"), memory only (8.6).</summary>
     IReadOnlyList<string> NamesNearby => [];
 

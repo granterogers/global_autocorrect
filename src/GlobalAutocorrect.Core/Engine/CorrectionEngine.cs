@@ -146,6 +146,7 @@ public sealed class CorrectionEngine
         if (k.Kind == KeyKind.FocusChange && Target is not null && Session.Length >= 3
             && Target.ReadWindow() is { CaretKnown: true } w && Session.MatchesField(w.Before))
             return;
+        if (k.Kind == KeyKind.Char && k.Char == '\n') NoticeEnter();   // D154: before Apply, while the record still has the line
         var effect = Session.Apply(k);
         if (k.Kind is KeyKind.FocusChange or KeyKind.Click) _targetOk = null;   // possibly a different field now
         if (Paused || Target is null) return;
@@ -288,10 +289,43 @@ public sealed class CorrectionEngine
         }
     }
 
+    /// <summary>
+    /// D154 (user: "hold Enter … until the fix is in"): Enter is held in a field that sends on Enter. Ask the AI about the
+    /// line now, without waiting for the pause, so its fixes can go in before the message is sent.
+    /// </summary>
+    public void CheckLineNow()
+    {
+        if (Paused || Target is null || _ai is null || !_o.AiEnabled) return;
+        if (_ai.Unchecked(Session) && !_ai.InFlight) _ai.Start(Session, Target, _gate.IsDesynced);
+    }
+
+    /// <summary>D154: an AI answer, a retry or a fix is still on its way for what has been typed.</summary>
+    public bool LineFixesPending => !Paused && Target is not null && ((_ai is not null && _o.AiEnabled && (_ai.InFlight || _ai.RetryPending)) || _gate.Count > 0);
+
+    // D154: just after Enter, one look at the field: empty means it sent the message (a chat box).
+    private long _sendCheckAt;
+    private bool _sendCheckHadText;
+
+    private void NoticeEnter()
+    {
+        _sendCheckHadText = Session.Typed.TrimEnd('\n').Trim().Length > 0;
+        _sendCheckAt = _d.Clock.NowMs + 300;
+    }
+
+    private void CheckEnterSent()
+    {
+        if (_sendCheckAt == 0 || _d.Clock.NowMs < _sendCheckAt) return;
+        _sendCheckAt = 0;
+        if (!_sendCheckHadText || Health is null || Target is null) return;
+        if (Target.ReadWindow() is { CaretKnown: true } w && TextNorm.Comparable(w.Before).Trim().Length == 0 && TextNorm.Comparable(w.After).Trim().Length == 0)
+            Health.EnterSent(Target.FieldKey);
+    }
+
     /// <summary>Called every ~25 ms (or as virtual time advances): pause trigger, AI results, queued writes.</summary>
     public void Tick()
     {
         if (Paused || Target is null) return;
+        CheckEnterSent();
         if (_pendingLearn.Count > 0) SettleLearning();
         if (_ai is not null && _o.AiEnabled)
         {

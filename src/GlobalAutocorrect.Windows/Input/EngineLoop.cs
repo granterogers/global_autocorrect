@@ -72,10 +72,23 @@ public sealed class EngineLoop : IDisposable
             while (_posted.TryDequeue(out var work)) Guard(() => work(_engine));
             if (_undo.Pending) Guard(() => _undo.Run(_engine.Undo));
             Guard(_engine.Tick);
+            Guard(StepEnterGate);
             // Wake as soon as input arrives, or at the next tick. One pending wait is reused until it completes.
             if (waitInput is null || waitInput.IsCompleted) waitInput = reader.WaitToReadAsync().AsTask();
             WaitHandle.WaitAny([((IAsyncResult)waitInput).AsyncWaitHandle, _wake], _undo.Pending ? 5 : 25);
         }
+    }
+
+    /// <summary>
+    /// D154: Enter is held only in a field that has sent on Enter before; once held, the line is checked straight away,
+    /// and Enter goes as soon as nothing is left on its way (EnterGate's own timer lets it go after 1.5 s regardless).
+    /// </summary>
+    private void StepEnterGate()
+    {
+        var e = _engine;
+        EnterGate.Armed = !e.Paused && e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;
+        if (EnterGate.TakeStarted()) e.CheckLineNow();
+        if (EnterGate.Holding && !e.LineFixesPending) EnterGate.Release("fixes in");
     }
 
     /// <summary>One bad event (a hung or odd app, a race) must never take the whole app and its keyboard hook down.</summary>
