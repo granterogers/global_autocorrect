@@ -89,6 +89,7 @@ public sealed class AppHost : IAsyncDisposable
     }
     private int _mismatchLines;
     private int _dropLines;   // D91
+    private int _writeLines;   // D151
     private Diagnostics.PerfSampler? _perf;   // D94
 
     /// <summary>D64: timings.json, typical and slowest-5% duration of each stage since the app started. Durations only.</summary>
@@ -390,6 +391,12 @@ public sealed class AppHost : IAsyncDisposable
             engine.Corrected += n => Diagnose($"write: {n.Layer} dist={n.CaretDistance} retype={n.Retyped} [{Codes(n.Original)}] -> [{Codes(n.Replacement)}] typed={engine.Session.Length}");
             engine.Session.Restarted += reason => Diagnose(
                 $"session: restart {reason} after [{(engine.Session.LastCharBeforeRestart is { } c ? ((int)c).ToString("X4") : "empty")}]");
+        }
+        else
+        {
+            // D151 (user report: "diOh.d" in the Claude app, and the log couldn't say whether the app had written there):
+            // each write as numbers only, never text (8.6): which program, which layer, how far back, how long.
+            engine.Corrected += n => { if (Interlocked.Increment(ref _writeLines) <= 2000) Diagnose($"write: app={Target?.LastSnapshot?.ProcessName ?? "?"} {n.Layer} dist={n.CaretDistance} retype={n.Retyped} chars={n.Original.Length}->{n.Replacement.Length} (no text)"); };
         }
         return engine;
     }

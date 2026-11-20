@@ -174,6 +174,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     public bool ApplyEditPlaced(string original, string tail, string replacement, long expectedKeySeq)
     {
         LastEditBlocked = LastEditRefused = false;
+        _placedReplacement = null;
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint pid);
         if (!SameFocus(pid)) return false;
         var tails = TextNorm.FieldTails(LastSnapshot?.Before ?? "", original, tail);
@@ -186,14 +187,23 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             // Counted before the hold decides, so an unchanged count means no key got past it to the app.
             if ((KeySeq is not null && KeySeq() != expectedKeySeq) || ModifiersDown?.Invoke() == true) { LastEditBlocked = true; return false; }
             if (!worker.Invoke(r => r.PlaceSelectFix(original, tails), false)) { Refuse("not-found"); return false; }
-            if (!Until(400, () => worker.Invoke(r => r.PlaceSelectionIsFix(), false)))
+            bool NotSelected()
             {
                 worker.Invoke(r => r.PlaceReturn(0, fixUntouched: true), false);
                 Until(400, () => worker.Invoke(r => r.PlaceReturned(original), false));
                 Refuse("not-selected");
                 return false;
             }
+            if (!Until(400, () => worker.Invoke(r => r.PlaceSelectionIsFix(), false))) return NotSelected();
             Thread.Sleep(30);   // the page's editor takes the selection from the browser's selectionchange event
+            // D151 (Teams, 20 Nov: "release" typed beside the word, not over it): CKEditor takes the browser's selection
+            // into its own model a moment later. Typed before then, the fix goes in at its old place. Give it longer, and
+            // type only if the selection is still the fix.
+            if (RetypeInsteadOfArrows)
+            {
+                Thread.Sleep(120);
+                if (!worker.Invoke(r => r.PlaceSelectionIsFix(), false)) return NotSelected();
+            }
             var writer = new SendInputWriter(GlobalAutocorrect.Windows.Input.InjectionTag.Value) { TypeAsUnicode = true };
             if (!writer.ApplyEdit(0, replacement.Length == 0 ? 1 : 0, replacement)) return false;   // a Backspace deletes the selection
             bool typed = Until(1000, () => worker.Invoke(r => r.PlaceTyped(replacement), false));
@@ -207,6 +217,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
                 back = Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
             timings?.Record("write.placed", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             if (!typed || !back) diagnose?.Invoke($"place: app={LastSnapshot?.ProcessName ?? "?"} typed={typed} back={back} (D122, no text)");
+            _placedReplacement = replacement;   // D151: for the check, in case it went in beside the word
             return true;   // typed: the gate's check decides
         }
         finally
@@ -252,11 +263,43 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
 
     public bool Verify(string expectedBefore, string expectedAfter, int reach)
     {
-        try { return VerifyCore(expectedBefore, expectedAfter, reach); }
+        string? placed = _placedReplacement;
+        _placedReplacement = null;
+        try
+        {
+            if (VerifyCore(expectedBefore, expectedAfter, reach)) return true;
+            return placed is not null && !_holdingUntilVerified && RemoveStrayCopy(placed, expectedBefore);
+        }
         finally
         {
             if (_holdingUntilVerified) { _holdingUntilVerified = false; GlobalAutocorrect.Windows.Input.KeyHold.Release(); }   // D128
         }
+    }
+
+    private string? _placedReplacement;
+
+    /// <summary>
+    /// D151 (Teams, 20 Nov: "releaserelease"): a placed fix went in beside the word instead of over it, the check saw the
+    /// field 7 letters long, and the fix was dropped with the extra copy left in the user's message. If taking out exactly
+    /// one copy of the fix leaves what was expected (or what was there before the write), that copy is taken out, the
+    /// same careful way the fix went in. True if the field then shows what was expected.
+    /// </summary>
+    private bool RemoveStrayCopy(string replacement, string expectedBefore)
+    {
+        string fix = TextNorm.Comparable(replacement);
+        if (fix.Trim().Length < 2) return false;   // a lone letter or mark matches too many places
+        var w = ReadWindow();
+        if (!w.CaretKnown) return false;
+        string now = TextNorm.Comparable(w.Before);
+        var (stray, restoresFix) = TextNorm.StrayCopy(now, fix, TextNorm.Comparable(expectedBefore), TextNorm.Comparable(_beforeWrite), MaxTypedDuringVerify);
+        if (stray < 0) { diagnose?.Invoke($"place: check failed, no single stray copy to take out (D151, no text)"); return false; }
+        string after = now[(stray + fix.Length)..];
+        bool removed = ApplyEditPlaced(replacement, after, "", KeySeq?.Invoke() ?? 0);
+        _placedReplacement = null;
+        var w2 = ReadWindow();
+        bool ok = removed && w2.CaretKnown && TextNorm.Comparable(w2.Before).EndsWith(now.Remove(stray, fix.Length) is var gone && gone.Length > 60 ? gone[^60..] : gone, StringComparison.Ordinal);
+        diagnose?.Invoke($"place: took out a stray copy of the fix ok={ok} fixKept={restoresFix} (D151, no text)");
+        return ok && restoresFix;
     }
 
     private bool VerifyCore(string expectedBefore, string expectedAfter, int reach)

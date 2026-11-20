@@ -202,4 +202,38 @@ public static class TextNorm
         }
         return found;
     }
+
+    /// <summary>
+    /// D151: where in <paramref name="now"/> (the field before the caret) one copy of <paramref name="fix"/> can be taken
+    /// out to leave <paramref name="want"/> (the fix landed, plus a stray copy: FixKept) or else <paramref name="before"/>
+    /// (the field as it was before the write: the fix went in beside the word). Up to <paramref name="maxTyped"/>
+    /// characters typed since may follow, untouched. -1 if no copy does. All texts already <see cref="Comparable"/>.
+    /// </summary>
+    public static (int Index, bool FixKept) StrayCopy(string now, string fix, string want, string before, int maxTyped)
+    {
+        if (fix.Length == 0) return (-1, false);
+        // Where the target's end is in the text with the copy taken out, or -1 if the target isn't there with at most
+        // maxTyped untouched characters after it.
+        int Leaves(string without, string target)
+        {
+            string end = target.Length > 60 ? target[^60..] : target;
+            if (end.Length == 0) return -1;
+            int at = without.LastIndexOf(end, StringComparison.Ordinal);
+            if (at < 0) return -1;
+            int typed = without.Length - (at + end.Length);
+            return typed <= maxTyped && now.EndsWith(without[(at + end.Length)..], StringComparison.Ordinal) ? at + end.Length : -1;
+        }
+        // A copy that went in beside the word is glued to it ("releaserelease"); a real second word isn't.
+        bool Glued(int i) => (i > 0 && char.IsLetter(now[i - 1])) || (i + fix.Length < now.Length && char.IsLetter(now[i + fix.Length]));
+        int stray = -1;
+        bool kept = false;
+        for (int i = now.IndexOf(fix, StringComparison.Ordinal); i >= 0; i = now.IndexOf(fix, i + 1, StringComparison.Ordinal))
+        {
+            string without = now.Remove(i, fix.Length);
+            if (Glued(i) && Leaves(without, want) >= 0) { stray = i; kept = true; }
+            // The fix not made and typed where the caret was when the write began (or glued to the word).
+            else if (!kept && Leaves(without, before) is var end && end >= 0 && (Glued(i) || i == end)) stray = i;
+        }
+        return (stray, kept);
+    }
 }
