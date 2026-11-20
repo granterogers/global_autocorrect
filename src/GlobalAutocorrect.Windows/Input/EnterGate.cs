@@ -26,6 +26,7 @@ public static class EnterGate
     private static State _state;
     private static int _replayLeft;
     private static nint _window;
+    private static long _heldAt;
     private static int _started;
     private static volatile bool _armed;
     private static Timer? _timer;
@@ -52,6 +53,7 @@ public static class EnterGate
             if (!down || vk != VK_RETURN || modifierDown || !_armed) return false;
             _state = State.Holding;
             _window = Foreground();
+            _heldAt = Environment.TickCount64;
             Held.Add((vk, scan, flags, down));
             Interlocked.Exchange(ref _started, 1);
             (_timer ??= new Timer(_ => Timeout())).Change(MaxHoldMs, System.Threading.Timeout.Infinite);
@@ -85,10 +87,24 @@ public static class EnterGate
         }
     }
 
+    /// <summary>
+    /// D154 (stress, chat: the timer let Enter and 27 keys go while a fix was being placed, and they typed over the
+    /// selected word): never in the middle of a write. The engine's own release comes between writes; the timer waits for
+    /// the write's key hold to end, up to <see cref="HardCapMs"/>.
+    /// </summary>
+    public const int HardCapMs = 4000;
+
+    public static Func<bool> WriteInProgress { get; set; } = () => KeyHold.Active;
+
     private static void Timeout()
     {
         lock (Gate)
         {
+            if (_state == State.Holding && WriteInProgress() && Environment.TickCount64 - _heldAt < HardCapMs)
+            {
+                _timer?.Change(30, System.Threading.Timeout.Infinite);
+                return;
+            }
             if (_state == State.Holding) { SendHeldLocked("timeout"); return; }
             // The replay never came round (the hook was removed): stop holding new keys, send what is left.
             if (_state == State.Replaying) { _replayLeft = 0; if (Held.Count > 0) SendHeldLocked("stuck"); else _state = State.Idle; }

@@ -72,6 +72,25 @@ public sealed class EnterGateTests : IDisposable
     }
 
     [Fact]
+    public void R4_6_D154_TheTimerNeverLetsKeysGoInTheMiddleOfAWrite()
+    {
+        // Stress, chat: released while a fix was being placed, the keys typed over the selected word ("o dnpelaera").
+        bool writing = true;
+        EnterGate.WriteInProgress = () => writing;
+        try
+        {
+            EnterGate.Armed = true;
+            Key(VK_RETURN, true);
+            Thread.Sleep(EnterGate.MaxHoldMs + 400);
+            Assert.Empty(_sent);       // still writing: held
+            writing = false;
+            for (int i = 0; i < 50 && _sent.Count == 0; i++) Thread.Sleep(10);
+            Assert.Single(_sent);      // the write is done: Enter goes
+        }
+        finally { EnterGate.WriteInProgress = () => KeyHold.Active; }
+    }
+
+    [Fact]
     public void R4_6_D154_EnterGoesAfterAtMostOneAndAHalfSecondsWhateverHappens()
     {
         EnterGate.Armed = true;

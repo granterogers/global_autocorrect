@@ -22,7 +22,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D151 (4.6.d):** a placed fix that lands beside the word instead of over it (Teams "releaserelease") is taken back out; CKEditor gets longer to take the selection; every write is logged as numbers only. 5 tests.
 - **D152 (4.6.d):** no retype is sent after a refused placement if the user typed meanwhile (stress: words lost in Slate); the overlay size test measures the field in both screenshots. 1 test.
 - **D153 (13.3):** the quiet updater and the install scripts no longer mistake typing for days of idle time. 3 tests.
-- **D154 (4.6):** in a chat box that sends on Enter, Enter waits (1.5 s at most) for the line's fixes, so a fast send keeps them. 8 tests.
+- **D154 (4.6):** in a chat box that sends on Enter, Enter waits (1.5 s at most) for the line's fixes, so a fast send keeps them; never let go in the middle of a write. 9 tests.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.
