@@ -34,6 +34,11 @@ public static class EnterGate
     /// <summary>Set by the app each tick: the focused field sends on Enter and the app is running.</summary>
     public static bool Armed { get => _armed; set => _armed = value; }
 
+    private static volatile int _holdMs = 1500;
+
+    /// <summary>D156: how long the next hold may last, set with <see cref="Armed"/> (a chat box's wait, or an instant fix's).</summary>
+    public static int HoldMs { get => _holdMs; set => _holdMs = value; }
+
     public static bool Holding { get { lock (Gate) return _state != State.Idle; } }
 
     /// <summary>Seams for tests.</summary>
@@ -56,7 +61,7 @@ public static class EnterGate
             _heldAt = Environment.TickCount64;
             Held.Add((vk, scan, flags, down));
             Interlocked.Exchange(ref _started, 1);
-            (_timer ??= new Timer(_ => Timeout())).Change(MaxHoldMs, System.Threading.Timeout.Infinite);
+            (_timer ??= new Timer(_ => Timeout())).Change(Math.Max(1, _holdMs), System.Threading.Timeout.Infinite);
             return true;
         }
     }
@@ -137,6 +142,6 @@ public static class EnterGate
     /// <summary>Tests only.</summary>
     public static void Reset()
     {
-        lock (Gate) { _state = State.Idle; Held.Clear(); _replayLeft = 0; _armed = false; _started = 0; _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite); }
+        lock (Gate) { _state = State.Idle; Held.Clear(); _replayLeft = 0; _armed = false; _started = 0; _holdMs = 1500; _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite); }
     }
 }

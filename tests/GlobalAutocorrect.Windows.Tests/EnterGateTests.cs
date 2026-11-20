@@ -91,6 +91,16 @@ public sealed class EnterGateTests : IDisposable
     }
 
     [Fact]
+    public void R4_6_D156_AnInstantFixHoldIsShort()
+    {
+        EnterGate.Armed = true;
+        EnterGate.HoldMs = 200;   // waiting only for the word just finished
+        Key(VK_RETURN, true);
+        for (int i = 0; i < 60 && _sent.Count == 0; i++) Thread.Sleep(10);
+        Assert.Single(_sent);     // gone well before a chat box's 1.5 s
+    }
+
+    [Fact]
     public void R4_6_D154_EnterGoesAfterAtMostOneAndAHalfSecondsWhateverHappens()
     {
         EnterGate.Armed = true;

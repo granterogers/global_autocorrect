@@ -83,12 +83,19 @@ public sealed class EngineLoop : IDisposable
     /// D154: Enter is held only in a field that has sent on Enter before; once held, the line is checked straight away,
     /// and Enter goes as soon as nothing is left on its way (EnterGate's own timer lets it go after 1.5 s regardless).
     /// </summary>
+    private bool _chatHold;
+
     private void StepEnterGate()
     {
         var e = _engine;
-        EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;   // D155: a switch in the brain
-        if (EnterGate.TakeStarted()) e.CheckLineNow();
-        if (EnterGate.Holding && !e.LineFixesPending) EnterGate.Release("fixes in");
+        bool chat = e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;
+        // D156 (stress: "provided.Dear": the instant fix for the line's last word was placed after Enter, across the new
+        // paragraph, and the line break was lost): in any field, Enter waits briefly for the word just finished.
+        bool instant = Core.Learning.Tunables.EnterInstantHoldMs.Int > 0 && e.InstantFixPending;
+        EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is not null && (chat || instant);   // D155: a switch in the brain
+        EnterGate.HoldMs = chat ? EnterGate.MaxHoldMs : Core.Learning.Tunables.EnterInstantHoldMs.Int;
+        if (EnterGate.TakeStarted()) { _chatHold = chat; if (chat) e.CheckLineNow(); }
+        if (EnterGate.Holding && !(_chatHold ? e.LineFixesPending : e.InstantFixPending)) EnterGate.Release(_chatHold ? "fixes in" : "instant fix in");
     }
 
     /// <summary>One bad event (a hung or odd app, a race) must never take the whole app and its keyboard hook down.</summary>

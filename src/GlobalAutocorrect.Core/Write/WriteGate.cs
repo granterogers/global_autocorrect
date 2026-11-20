@@ -57,6 +57,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     public event Action<string>? Desynced;
 
     public int Count => _queue.Count;
+
+    /// <summary>D156: a fix of this layer is waiting to be written.</summary>
+    public bool Has(Layer layer) => _queue.Any(w => w.Layer == layer);
     public bool IsDesynced(string targetId) => _desynced.TryGetValue(targetId, out long g) && g == session.Generation;
 
     private readonly Dictionary<string, List<long>> _verifyFailures = new(StringComparer.Ordinal);

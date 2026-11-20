@@ -300,6 +300,9 @@ public sealed class CorrectionEngine
     }
 
     /// <summary>D154: an AI answer, a retry or a fix is still on its way for what has been typed.</summary>
+    /// <summary>D156: an instant fix (the word just finished) is waiting to be written.</summary>
+    public bool InstantFixPending => !Paused && Target is not null && _gate.Has(Layer.Instant);
+
     public bool LineFixesPending => !Paused && Target is not null && ((_ai is not null && _o.AiEnabled && (_ai.InFlight || _ai.RetryPending)) || _gate.Count > 0);
 
     // D154: just after Enter, one look at the field: empty means it sent the message (a chat box).

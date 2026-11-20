@@ -41,6 +41,19 @@ public sealed class EnterHoldTests
     }
 
     [Fact]
+    public void R4_6_D156_AnInstantFixWaitingToBeWrittenIsReported()
+    {
+        // Stress, TinyMCE: "provkded." and Enter straight after; the fix was placed across the new paragraph and the break lost.
+        var h = new Harness();
+        h.Ed.BlockFencedEdits = 1;   // the next key was already on its way: the first try is refused, the fix waits
+        foreach (char c in "I saw teh ") { h.Clock.Advance(20); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        Assert.True(h.Engine.InstantFixPending, $"queued={h.Engine.QueuedWrites} text=[{h.Text}] drop={h.Engine.LastDropReason}");    // Enter now would wait for it
+        h.Wait(300);
+        Assert.False(h.Engine.InstantFixPending);
+        Assert.Equal("I saw the ", h.Text);
+    }
+
+    [Fact]
     public void R4_6_D154_HeldEnterChecksTheLineNowAndSaysWhenItsFixesAreIn()
     {
         var h = new Harness(model: s => s.Replace("by th harbour", "by the harbour"), latencyMs: 300);
