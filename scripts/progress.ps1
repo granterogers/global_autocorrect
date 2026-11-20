@@ -15,12 +15,12 @@ Add-Type -Namespace GaProgress -Name Idle -MemberDefinition @'
 [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public struct LII { public uint cbSize; public uint dwTime; }
 [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LII p);
+public static int IdleSeconds() { var i = new LII(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)((uint)System.Environment.TickCount - i.dwTime)); return d < 0 ? 0 : d / 1000; }   // D153
 '@
 function Esc([string] $s) { [System.Net.WebUtility]::HtmlEncode($s) }
 
 while ($true) {
-    $lii = New-Object GaProgress.Idle+LII; $lii.cbSize = 8; [void][GaProgress.Idle]::GetLastInputInfo([ref]$lii)
-    $idle = [int](([Environment]::TickCount - $lii.dwTime) / 1000)
+    $idle = [GaProgress.Idle]::IdleSeconds()
     $state = if (Test-Path $stepsFile) { Get-Content $stepsFile -Raw | ConvertFrom-Json } else { $null }
     if ($state.e2eLog) { $E2ELog = $state.e2eLog }
 

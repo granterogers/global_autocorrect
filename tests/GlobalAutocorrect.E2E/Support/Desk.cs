@@ -50,7 +50,7 @@ public static class Desk
         {
             var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
             GetLastInputInfo(ref info);
-            if (unchecked((uint)Environment.TickCount - info.dwTime) >= need.TotalMilliseconds) return;
+            if (GlobalAutocorrect.Core.Health.IdleTime.Since(info.dwTime, unchecked((uint)Environment.TickCount)) >= need) return;   // D153
             Thread.Sleep(2000);
         }
         _userBusy = true;

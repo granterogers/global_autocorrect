@@ -19,7 +19,7 @@ public partial class App
     {
         var info = new GlobalAutocorrect.Windows.Native.LASTINPUTINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<GlobalAutocorrect.Windows.Native.LASTINPUTINFO>() };
         if (!GlobalAutocorrect.Windows.Native.NativeMethods.GetLastInputInfo(ref info)) return TimeSpan.Zero;
-        return TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - info.dwTime));
+        return GlobalAutocorrect.Core.Health.IdleTime.Since(info.dwTime, unchecked((uint)Environment.TickCount));   // D153
     }
 
     private void StartUpdateChecks()

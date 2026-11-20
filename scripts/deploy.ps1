@@ -23,7 +23,7 @@ Add-Type -Namespace GaDeploy -Name Input -MemberDefinition @'
 [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
 [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
-public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); return unchecked((uint)System.Environment.TickCount - i.dwTime); }
+public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)((uint)System.Environment.TickCount - i.dwTime)); return d < 0 ? 0u : (uint)d; }   // D153: signed, never ~49 days
 '@
 $waited = [Diagnostics.Stopwatch]::StartNew()
 $said = $false
