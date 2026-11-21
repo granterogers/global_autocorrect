@@ -27,6 +27,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D156 (4.3):** Enter waits (400 ms at most) for the fix of the word just finished, so a line break is never lost to a fix placed across it (the word Enter would finish is fixed first). 4 tests.
 - **D157 (4.5.b, 4.6.d):** an instant fix never lands across a line break; a refused word keeps its comma. 3 tests.
 - **D158 (7.1, 7.5):** suggestions come back after Backspace; a close call offers the word both candidates start with ("opt" → "option"). 2 tests.
+- **D159 (7.1):** word completions are ranked by the AI model's reading of the sentence, on its own model slot so corrections stay as fast; the word list is the fallback. 5 tests.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.

@@ -40,6 +40,11 @@ public sealed class Predictor(NgramModel model, UserHistory history)
     /// <summary>D142: the phrases the user repeats; null when phrase learning isn't set up.</summary>
     public PhraseMemory? Phrases { get; init; }
 
+    /// <summary>
+    /// D159: the model's next pieces of text after a prompt (with its own time limit), or null; null when there is no model.
+    /// </summary>
+    public Func<string, IReadOnlyList<Ai.TokenChance>?>? ModelNext { get; set; }
+
     /// <summary>Setting to turn prediction off (7.7).</summary>
     public bool Enabled { get; set; } = true;
 
@@ -78,7 +83,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         char last = line[^1];
         if (char.IsLetter(last))
         {
-            return CompletePartial(line, app);
+            return CompletePartial(line, app, textBeforeCaret);
         }
 
         if (last == ' ' && line.Length >= 2 && !char.IsWhiteSpace(line[^2]))
@@ -107,7 +112,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
     private static string? RunnerUpWord(Dictionary<string, double> candidates, string best, double runnerUp) =>
         candidates.Where(c => c.Key != best && c.Value == runnerUp).Select(c => c.Key).Order(StringComparer.Ordinal).FirstOrDefault();
 
-    private Suggestion? CompletePartial(string line, string? app)
+    private Suggestion? CompletePartial(string line, string? app, string? before = null)
     {
         int start = line.Length;
         while (start > 0 && (char.IsLetter(line[start - 1]) || line[start - 1] is '\'' or '’'))
@@ -152,6 +157,12 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             if (word.StartsWith(lower, StringComparison.Ordinal))
                 candidates[word] = candidates.GetValueOrDefault(word, Score(Math.Max(1, model.CountOf(word)), Mine(word, app))) * (1 + (sameTwo ? 40.0 : 10.0) * ps * Blend(count, inApp));
         }
+
+        // D159 (user: "If this is still an op" should be "option", not "open"): the model reads the sentence and says which
+        // of the candidates comes next; a clear pick beats how common each word is on its own.
+        if (before is not null && ModelNext is not null && Learning.Tunables.PredictUseModel.On
+            && ModelPick(before, partial, lower, candidates) is { } picked)
+            return Finish(partial, lower, picked);
 
         // D51: the word as typed competes. "before" was completed to "beforehand", "Leeds" to "Leeds's": when the typed
         // letters are already a word, ending it there is usually what happens, so a longer word must clearly beat it.
@@ -198,6 +209,59 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             return null;
         }
 
+        return Finish(partial, lower, best);
+    }
+
+    /// <summary>
+    /// D159: the model's pick among the words that start with what was typed: each scored by the chance of the model's
+    /// next piece of text that leads into it, the list topped up with words the model itself leads to. Null unless one
+    /// stands out (<see cref="Learning.Tunables.PredictModelMinChance"/>, <see cref="Learning.Tunables.PredictModelLead"/>).
+    /// </summary>
+    private string? ModelPick(string before, string partial, string lower, Dictionary<string, double> candidates)
+    {
+        int keep = Learning.Tunables.PredictModelContextChars.Int;
+        string prompt = before.Length > keep ? before[^keep..] : before;
+        var next = ModelNext!(prompt);
+        if (next is null || next.Count == 0) return null;
+        var words = new HashSet<string>(candidates.Keys, StringComparer.Ordinal);
+        foreach (var (word, _) in model.Complete(lower, 30)) words.Add(word);
+        foreach (var t in next)
+        {
+            string piece = t.Token.ToLowerInvariant();
+            int n = 0;
+            while (n < piece.Length && (char.IsLetter(piece[n]) || piece[n] == '\'')) n++;
+            if (n > 0 && model.CountOf(lower + piece[..n]) > 0) words.Add(lower + piece[..n]);
+        }
+        var chance = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var word in words)
+        {
+            if (word.Length <= lower.Length + 1 || !word.StartsWith(lower, StringComparison.Ordinal) || word == lower + "'s") continue;
+            string rest = word[lower.Length..];
+            double p = 0;
+            foreach (var t in next)
+            {
+                string piece = t.Token.ToLowerInvariant();
+                if (piece.Length == 0) continue;
+                // The piece is the start of the rest of the word ("tion" for "option"), or the rest and then the word ends.
+                bool leads = rest.StartsWith(piece, StringComparison.Ordinal)
+                             || (piece.StartsWith(rest, StringComparison.Ordinal) && !char.IsLetter(piece[rest.Length]));
+                if (leads) p = Math.Max(p, t.P);
+            }
+            if (p > 0) chance[word] = p;
+        }
+        if (chance.Count == 0) return null;
+        double bestP = chance.Values.Max();
+        // The same piece leads into several words ("tion": "option", "options"): to the model they are one choice. Among
+        // them, the word they all start with if it is one of them, else the most common; the lead is over the rest.
+        var group = chance.Where(c => c.Value >= bestP - 1e-9).Select(c => c.Key).ToList();
+        double secondP = chance.Where(c => c.Value < bestP - 1e-9).Select(c => c.Value).DefaultIfEmpty(0).Max();
+        string shared = group.Aggregate((a, b) => a[..Enumerable.Range(0, Math.Min(a.Length, b.Length)).TakeWhile(i => a[i] == b[i]).Count()]);
+        string best = group.Contains(shared) ? shared : group.OrderByDescending(model.CountOf).ThenBy(w => w, StringComparer.Ordinal).First();
+        return bestP >= Learning.Tunables.PredictModelMinChance.Value && bestP >= Learning.Tunables.PredictModelLead.Value * secondP ? best : null;
+    }
+
+    private static Suggestion Finish(string partial, string lower, string best)
+    {
         var rest = best[lower.Length..];
         if (partial.Contains('’'))
         {

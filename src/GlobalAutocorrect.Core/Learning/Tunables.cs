@@ -83,6 +83,11 @@ public static class Tunables
     public static readonly Tunable PredictReadRetryMs = Define("Predict.ReadRetryMs", 25, 5, 200, "D59: between them");
     public static readonly Tunable PredictWaitForPauseMs = Define("Predict.WaitForPauseMs", 90, 20, 1000, "D94: typing pause before a suggestion is looked for");
     public static readonly Tunable PredictLightWaitForPauseMs = Define("Predict.LightWaitForPauseMs", 300, 50, 2000, "D97: in programs whose reads are slow");
+    public static readonly Tunable PredictUseModel = Define("Predict.UseModel", 1, 0, 1, "D159: rank word completions by the AI model's reading of the sentence (0 = the word list only)");
+    public static readonly Tunable PredictModelTimeoutMs = Define("Predict.ModelTimeoutMs", 250, 50, 1500, "D159: how long a suggestion waits for the model before using the word list");
+    public static readonly Tunable PredictModelContextChars = Define("Predict.ModelContextChars", 300, 50, 1500, "D159: how much text before the caret the model reads");
+    public static readonly Tunable PredictModelMinChance = Define("Predict.ModelMinChance", 0.15, 0, 1, "D159: the model's pick needs at least this chance");
+    public static readonly Tunable PredictModelLead = Define("Predict.ModelLead", 2, 1, 10, "D159: and this many times the next candidate's");
     public static readonly Tunable PhrasesMinUses = Define("Phrases.MinUses", 3, 2, 20, "D142: uses before a phrase is offered");
     public static readonly Tunable PhrasesMinDays = Define("Phrases.MinDays", 2, 1, 30, "D142: on at least this many days");
     public static readonly Tunable PhrasesAgreeShare = Define("Phrases.AgreeShare", 0.7, 0.5, 1, "D142: share of times the same words followed");

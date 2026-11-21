@@ -87,6 +87,13 @@ public sealed class LlmRuntime : ILlmClient, IAsyncDisposable
         return await client.CleanAsync(text, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>D159: on the suggestion slot; null unless the model is up (a suggestion never starts or waits for it).</summary>
+    public async Task<IReadOnlyList<TokenChance>?> NextAsync(string prompt, int top, CancellationToken cancellationToken)
+    {
+        if (_host.State != ServerState.Ready) return null;
+        return await GetClient().NextAsync(prompt, top, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>One watchdog/idle pass, run every few seconds by the host app.</summary>
     /// <summary>D112: how often the model server's working set is handed back to Windows while idle.</summary>
     public const long TrimEveryMs = 10 * 60_000;

@@ -62,6 +62,11 @@ Switches are 1 (on) or 0 (off).
 | `Predict.ReadRetryMs` | 25 | 5–200 | D59: between them |
 | `Predict.WaitForPauseMs` | 90 | 20–1000 | D94: typing pause before a suggestion is looked for |
 | `Predict.LightWaitForPauseMs` | 300 | 50–2000 | D97: in programs whose reads are slow |
+| `Predict.UseModel` | 1 | 0–1 | D159: rank word completions by the AI model's reading of the sentence (0 = the word list only) |
+| `Predict.ModelTimeoutMs` | 250 | 50–1500 | D159: how long a suggestion waits for the model before using the word list |
+| `Predict.ModelContextChars` | 300 | 50–1500 | D159: how much text before the caret the model reads |
+| `Predict.ModelMinChance` | 0.15 | 0–1 | D159: the model's pick needs at least this chance |
+| `Predict.ModelLead` | 2 | 1–10 | D159: and this many times the next candidate's |
 | `Phrases.MinUses` | 3 | 2–20 | D142: uses before a phrase is offered |
 | `Phrases.MinDays` | 2 | 1–30 | D142: on at least this many days |
 | `Phrases.AgreeShare` | 0.7 | 0.5–1 | D142: share of times the same words followed |

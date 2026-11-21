@@ -118,7 +118,7 @@ public sealed partial class LlamaServerHost : IAsyncDisposable
             ArgumentList =
             {
                 "-m", modelPath, "--host", "127.0.0.1", "--port", port.ToString(),
-                "-ngl", gpuLayers.ToString(), "-c", _o.ContextSize.ToString(), "-np", "1",
+                "-ngl", gpuLayers.ToString(), "-c", (_o.ContextSize * 2).ToString(), "-np", "2",   // D159: a slot each for clean-up and suggestions, each the old size
                 "--reasoning-budget", "0", "-lv", "4", "--no-slots", "--api-key", ApiKey,
             },
             UseShellExecute = false,

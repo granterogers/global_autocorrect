@@ -49,6 +49,7 @@ public sealed class LlamaServerClient : ILlmClient, IDisposable
             ["max_tokens"] = PromptTemplate.MaxTokensFor(text),
             ["cache_prompt"] = true,
             ["chat_template_kwargs"] = new JsonObject { ["enable_thinking"] = false },
+            ["id_slot"] = CleanSlot,   // D159: the clean-up keeps its own slot (and prompt cache); suggestions use the other
         };
 
         var sw = Stopwatch.StartNew();
@@ -74,6 +75,55 @@ public sealed class LlamaServerClient : ILlmClient, IDisposable
         {
             throw new LlmUnavailableException("Model server returned an unreadable reply.", ex);
         }
+    }
+
+    /// <summary>D159: the model's two slots: the clean-up's (its long prompt stays cached) and the suggestions'.</summary>
+    public const int CleanSlot = 0, SuggestSlot = 1;
+
+    /// <summary>D159: the likeliest next pieces of text after <paramref name="prompt"/>, on <see cref="SuggestSlot"/>.</summary>
+    public async Task<IReadOnlyList<TokenChance>?> NextAsync(string prompt, int top, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject
+        {
+            ["prompt"] = prompt,
+            ["n_predict"] = 1,
+            ["n_probs"] = top,
+            ["temperature"] = 0,
+            ["cache_prompt"] = true,
+            ["id_slot"] = SuggestSlot,
+        };
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync("/completion", body, cancellationToken).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return null;
+            return ParseChances(await resp.Content.ReadFromJsonAsync<JsonNode>(cancellationToken).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException or FormatException
+                                       || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// D159: the first position's choices, in whichever form the server writes them: "top_logprobs" (token, logprob),
+    /// "top_probs" (token, prob) or the older "probs" (tok_str, prob).
+    /// </summary>
+    public static IReadOnlyList<TokenChance>? ParseChances(JsonNode? json)
+    {
+        var first = json?["completion_probabilities"]?[0];
+        if (first is null) return null;
+        var list = new List<TokenChance>();
+        if (first["top_logprobs"] is JsonArray logs)
+            foreach (var e in logs)
+                if (e?["token"]?.GetValue<string>() is { } t && e["logprob"] is { } lp) list.Add(new(t, Math.Exp(lp.GetValue<double>())));
+        if (list.Count == 0 && first["top_probs"] is JsonArray probs)
+            foreach (var e in probs)
+                if (e?["token"]?.GetValue<string>() is { } t && e["prob"] is { } pr) list.Add(new(t, pr.GetValue<double>()));
+        if (list.Count == 0 && first["probs"] is JsonArray old)
+            foreach (var e in old)
+                if (e?["tok_str"]?.GetValue<string>() is { } t && e["prob"] is { } pr) list.Add(new(t, pr.GetValue<double>()));
+        return list.Count > 0 ? list : null;
     }
 
     /// <summary>True when GET /health returns 200. Any failure is false; only caller cancellation throws.</summary>

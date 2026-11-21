@@ -188,6 +188,24 @@ public sealed class AppHost : IAsyncDisposable
     public event Action<GlobalAutocorrect.Core.Write.CorrectionNotice>? Corrected;
     public event Action<KeyInput>? KeyProcessed;
 
+    /// <summary>
+    /// D159: the model's next pieces of text for a suggestion, waiting at most <see cref="Tunables.PredictModelTimeoutMs"/>
+    /// (called off the UI thread). Null if the model is off, busy or slow: the word list decides then.
+    /// </summary>
+    private IReadOnlyList<GlobalAutocorrect.Core.Ai.TokenChance>? ModelNext(string prompt)
+    {
+        if (_llm is not { } llm || Settings.Paused) return null;
+        try
+        {
+            using var cts = new CancellationTokenSource(Tunables.PredictModelTimeoutMs.Int);
+            return llm.NextAsync(prompt, 20, cts.Token).WaitAsync(cts.Token).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is OperationCanceledException or TimeoutException or GlobalAutocorrect.Llm.LlmUnavailableException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>D158: see <see cref="EngineLoop.TypedTail"/>; only from a <see cref="KeyProcessed"/> handler.</summary>
     public char? TypedTail => _loop?.TypedTail;
 
@@ -204,6 +222,7 @@ public sealed class AppHost : IAsyncDisposable
         LoadPhrases();   // D142
         Phrases.Enabled = Settings.LearnPhrases;
         Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare, Phrases = Phrases };   // D80, D142
+        Predictor.ModelNext = ModelNext;   // D159: the model's reading of the sentence, within its time limit
         Health.Load();     // D81: this PC's counts; what was learned elsewhere comes from the brain (D102)
         Mistakes.Load();   // D84: this PC's mistakes; those shared by other PCs come from the brain (D102)
         _brain = new BrainMonitor(Path.Combine(DataDir, "brain.json"), Path.Combine(AssetsDir, "brain.json"), FetchBrainAsync,
