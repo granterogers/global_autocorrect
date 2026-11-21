@@ -53,6 +53,7 @@ public sealed class LlamaServerClient : ILlmClient, IDisposable
         };
 
         var sw = Stopwatch.StartNew();
+        Interlocked.Increment(ref _cleaning);
         try
         {
             using var resp = await _http.PostAsJsonAsync("/v1/chat/completions", body, cancellationToken).ConfigureAwait(false);
@@ -75,7 +76,16 @@ public sealed class LlamaServerClient : ILlmClient, IDisposable
         {
             throw new LlmUnavailableException("Model server returned an unreadable reply.", ex);
         }
+        finally { Interlocked.Decrement(ref _cleaning); }
     }
+
+    private int _cleaning;
+
+    /// <summary>
+    /// D160 (benchmark on this PC: the clean-up took 667 ms instead of 419 with suggestions asked on the other slot; the
+    /// two slots share the GPU): while a clean-up is running, a suggestion doesn't ask the model (the word list answers).
+    /// </summary>
+    public bool Cleaning => Volatile.Read(ref _cleaning) > 0;
 
     /// <summary>D159: the model's two slots: the clean-up's (its long prompt stays cached) and the suggestions'.</summary>
     public const int CleanSlot = 0, SuggestSlot = 1;
@@ -83,6 +93,7 @@ public sealed class LlamaServerClient : ILlmClient, IDisposable
     /// <summary>D159: the likeliest next pieces of text after <paramref name="prompt"/>, on <see cref="SuggestSlot"/>.</summary>
     public async Task<IReadOnlyList<TokenChance>?> NextAsync(string prompt, int top, CancellationToken cancellationToken)
     {
+        if (Cleaning) return null;   // D160: corrections first
         var body = new JsonObject
         {
             ["prompt"] = prompt,

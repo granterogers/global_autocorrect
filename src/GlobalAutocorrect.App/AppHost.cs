@@ -198,7 +198,7 @@ public sealed class AppHost : IAsyncDisposable
         try
         {
             using var cts = new CancellationTokenSource(Tunables.PredictModelTimeoutMs.Int);
-            return llm.NextAsync(prompt, 20, cts.Token).WaitAsync(cts.Token).GetAwaiter().GetResult();
+            return llm.NextAsync(prompt, 100, cts.Token).WaitAsync(cts.Token).GetAwaiter().GetResult();
         }
         catch (Exception e) when (e is OperationCanceledException or TimeoutException or GlobalAutocorrect.Llm.LlmUnavailableException)
         {

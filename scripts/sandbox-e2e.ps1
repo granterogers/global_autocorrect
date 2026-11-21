@@ -23,6 +23,9 @@ param(
     [int]$TimeoutMinutes = 60,
     [string]$Editors = '',   # D108: only these editors of the real-typing test, comma-separated
     [int]$Repeat = 1,
+    [switch]$Chaos,     # D126: real-use typing habits, as the stress runs type
+    [switch]$Varied,    # D130: each seed types its own messages from the tuning set
+    [string]$Seed = '', # D143: the slot whose messages to type
 
     [switch]$KeepOpen
 )
@@ -58,6 +61,9 @@ set GA_E2E_APP=C:\ga\app
 set GA_PROBE=1
 set GA_RT_EDITORS=$Editors
 set GA_RT_REPEAT=$Repeat
+set GA_RT_CHAOS=$(if ($Chaos) { '1' } else { '' })
+set GA_RT_VARIED=$(if ($Varied) { '1' } else { '' })
+set GA_RT_SEED=$Seed
 powershell -NoProfile -Command "Set-WinUserLanguageList -LanguageList en-GB -Force; Set-WinDefaultInputMethodOverride -InputTip '0809:00000809'" > C:\ga\out\setup.log 2>&1
 C:\ga\e2e\GlobalAutocorrect.E2E.exe -class $($Filter -replace ',', ' -class ') > C:\ga\out\run.log 2>&1
 echo %ERRORLEVEL% > C:\ga\out\done.txt

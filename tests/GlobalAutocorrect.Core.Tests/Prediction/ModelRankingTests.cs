@@ -19,17 +19,17 @@ public sealed class ModelRankingTests : IDisposable
     public void R7_1_D159_TheModelsReadingOfTheSentencePicksTheWord()
     {
         string? asked = null;
-        var p = Make(prompt => { asked = prompt; return [new("tion", 0.55), new("en", 0.12), new("portunity", 0.05)]; });
+        var p = Make(prompt => { asked = prompt; return [new(" option", 0.40), new(" open", 0.08), new(" opportunity", 0.04), new(" the", 0.30)]; });
         var got = p.Suggest("I received a letter offering me more credit.\nIf this is still an op");
         Assert.True(got?.Word == "option", $"got={got} asked={(asked is null ? "never" : asked.Length.ToString())}");
-        Assert.EndsWith("If this is still an op", asked);   // the sentence so far, earlier lines included
+        Assert.EndsWith("If this is still an", asked);   // D160: up to the word, earlier lines included
         Assert.Contains("letter", asked);
     }
 
     [Fact]
     public void R7_1_D159_NoClearPickOrNoModelFallsBackToTheWordList()
     {
-        var flat = Make(_ => [new("tion", 0.2), new("en", 0.19)]);
+        var flat = Make(_ => [new(" option", 0.2), new(" open", 0.19)]);
         var none = Make(_ => null);
         var plain = new Predictor(Model.Value, new UserHistory(_path));
         string text = "If this is still an op";

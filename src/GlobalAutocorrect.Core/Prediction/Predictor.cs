@@ -45,6 +45,9 @@ public sealed class Predictor(NgramModel model, UserHistory history)
     /// </summary>
     public Func<string, IReadOnlyList<Ai.TokenChance>?>? ModelNext { get; set; }
 
+    /// <summary>D160: the model's chance for its last pick (benchmarks and tuning only).</summary>
+    public double LastModelChance { get; private set; }
+
     /// <summary>Setting to turn prediction off (7.7).</summary>
     public bool Enabled { get; set; } = true;
 
@@ -219,38 +222,48 @@ public sealed class Predictor(NgramModel model, UserHistory history)
     /// </summary>
     private string? ModelPick(string before, string partial, string lower, Dictionary<string, double> candidates)
     {
+        // D160 (benchmark: the model's chances didn't track whether it was right): asked to go on from "…still an op", the
+        // model continues from a fragment it never sees in real text ("option" is one piece, " option"). It is asked
+        // from the word's start instead ("…still an"), for its next whole-word pieces; those that fit the typed letters
+        // are compared among themselves.
         int keep = Learning.Tunables.PredictModelContextChars.Int;
-        string prompt = before.Length > keep ? before[^keep..] : before;
+        string head = before[..^partial.Length];
+        bool lineStart = head.Length == 0 || head[^1] is '\n' or '\r';
+        head = head.TrimEnd(' ', '\t');
+        string prompt = head.Length > keep ? head[^keep..] : head;
         var next = ModelNext!(prompt);
         if (next is null || next.Count == 0) return null;
-        var words = new HashSet<string>(candidates.Keys, StringComparer.Ordinal);
-        foreach (var (word, _) in model.Complete(lower, 30)) words.Add(word);
+        var fits = new List<(string Word, double P)>();
         foreach (var t in next)
         {
-            string piece = t.Token.ToLowerInvariant();
+            if (!lineStart && !t.Token.StartsWith(' ')) continue;   // not the start of a new word
+            string w = t.Token.TrimStart(' ').ToLowerInvariant();
+            if (w.Length == 0 || !char.IsLetter(w[0])) continue;
+            if (w.StartsWith(lower, StringComparison.Ordinal) || lower.StartsWith(w, StringComparison.Ordinal)) fits.Add((w, t.P));
+        }
+        double total = fits.Sum(f => f.P);
+        if (total <= 0) return null;
+        var words = new HashSet<string>(candidates.Keys, StringComparer.Ordinal);
+        foreach (var (word, _) in model.Complete(lower, 30)) words.Add(word);
+        foreach (var (w, _) in fits)
+        {
             int n = 0;
-            while (n < piece.Length && (char.IsLetter(piece[n]) || piece[n] == '\'')) n++;
-            if (n > 0 && model.CountOf(lower + piece[..n]) > 0) words.Add(lower + piece[..n]);
+            while (n < w.Length && (char.IsLetter(w[n]) || w[n] == '\'')) n++;
+            if (n > lower.Length && model.CountOf(w[..n]) > 0) words.Add(w[..n]);
         }
         var chance = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var word in words)
         {
             if (word.Length <= lower.Length + 1 || !word.StartsWith(lower, StringComparison.Ordinal) || word == lower + "'s") continue;
-            string rest = word[lower.Length..];
-            double p = 0;
-            foreach (var t in next)
-            {
-                string piece = t.Token.ToLowerInvariant();
-                if (piece.Length == 0) continue;
-                // The piece is the start of the rest of the word ("tion" for "option"), or the rest and then the word ends.
-                bool leads = rest.StartsWith(piece, StringComparison.Ordinal)
-                             || (piece.StartsWith(rest, StringComparison.Ordinal) && !char.IsLetter(piece[rest.Length]));
-                if (leads) p = Math.Max(p, t.P);
-            }
+            // Each fitting piece that leads into the word: its start (" opt" for "option") or the word and then its end.
+            double p = fits.Where(f => word.StartsWith(f.Word, StringComparison.Ordinal)
+                                       || (f.Word.StartsWith(word, StringComparison.Ordinal) && !char.IsLetter(f.Word[word.Length])))
+                           .Sum(f => f.P) / total;
             if (p > 0) chance[word] = p;
         }
         if (chance.Count == 0) return null;
         double bestP = chance.Values.Max();
+        LastModelChance = bestP;
         // The same piece leads into several words ("tion": "option", "options"): to the model they are one choice. Among
         // them, the word they all start with if it is one of them, else the most common; the lead is over the rest.
         var group = chance.Where(c => c.Value >= bestP - 1e-9).Select(c => c.Key).ToList();
