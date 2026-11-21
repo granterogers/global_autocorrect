@@ -30,6 +30,28 @@ public sealed class EnterHoldTests
     }
 
     [Fact]
+    public void R4_6_D161_ASendIsSeenWhenTypingHasResumedAndTheRecordStartsAgain()
+    {
+        // Teams: the box emptied on Enter, the user went straight on with the next message, and the record kept the old
+        // one: 201 mismatches in 3 days, up to 57 a minute.
+        var h = new Harness();
+        h.Ed.AppName = "teams";
+        h.Engine.Health = new AppHealth();
+        for (int round = 0; round < 2; round++)
+        {
+            h.Type("See you at five");
+            h.Engine.OnInput(h.Ed.TypeChar('\n'));
+            h.Ed.Text = ""; h.Ed.Caret = 0;   // sent
+            h.Type("Hi");                     // already typing the next one
+            h.Wait(400);
+            Assert.Equal("Hi", h.Engine.Session.Typed);   // the record is the box again, not "See you at five\nHi"
+            h.Ed.Text = ""; h.Ed.Caret = 0;
+            h.Engine.Session.Resync("");
+        }
+        Assert.True(h.Engine.Health.EnterSends("teams"));
+    }
+
+    [Fact]
     public void R4_6_D154_AnOrdinaryLineBreakIsNotASend()
     {
         var h = new Harness();

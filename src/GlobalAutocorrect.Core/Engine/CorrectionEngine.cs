@@ -346,9 +346,12 @@ public sealed class CorrectionEngine
     private long _sendCheckAt;
     private bool _sendCheckHadText;
 
+    private int _sendNewlineAt;
+
     private void NoticeEnter()
     {
         _sendCheckHadText = Session.Typed.TrimEnd('\n').Trim().Length > 0;
+        _sendNewlineAt = Session.Length;   // where this Enter's line break goes in the record
         _sendCheckAt = _d.Clock.NowMs + Learning.Tunables.EnterSendCheckMs.Int;
     }
 
@@ -357,8 +360,19 @@ public sealed class CorrectionEngine
         if (_sendCheckAt == 0 || _d.Clock.NowMs < _sendCheckAt) return;
         _sendCheckAt = 0;
         if (!_sendCheckHadText || Health is null || Target is null) return;
-        if (Target.ReadWindow() is { CaretKnown: true } w && TextNorm.Comparable(w.Before).Trim().Length == 0 && TextNorm.Comparable(w.After).Trim().Length == 0)
+        // D161: sent if the box shows only what was typed after this Enter, nothing of the message before it: empty, or
+        // the start of the next message for a fast typist, who has usually begun it by the time of this look.
+        string typed = Session.Typed;
+        if (_sendNewlineAt >= typed.Length || typed[_sendNewlineAt] != '\n') return;   // the record has changed since
+        string since = TextNorm.Comparable(typed[(_sendNewlineAt + 1)..]);
+        if (Target.ReadWindow() is { CaretKnown: true } w && TextNorm.Comparable(w.Before) == since && TextNorm.Comparable(w.After).Trim().Length == 0)
+        {
             Health.EnterSent(Target.FieldKey);
+            // D161 (Teams, the user's PC: 201 "typed has a line break, the field a letter" mismatches in 3 days, up to 57
+            // a minute): the message was sent and the box emptied, but the record kept the old text and every check
+            // disagreed with the field. The record starts again from what the box shows.
+            Session.Resync(w.Before);
+        }
     }
 
     /// <summary>Called every ~25 ms (or as virtual time advances): pause trigger, AI results, queued writes.</summary>

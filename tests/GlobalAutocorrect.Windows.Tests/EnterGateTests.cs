@@ -36,14 +36,17 @@ public sealed class EnterGateTests : IDisposable
         Assert.True(EnterGate.TakeStarted());
         Assert.True(Key(VK_RETURN, false));
         Assert.True(Key('H', true));   // the next message begun meanwhile
+        var released = System.Diagnostics.Stopwatch.StartNew();
         EnterGate.Release("fixes in");
-        var sent = Assert.Single(_sent);
-        Assert.Equal([(ushort)VK_RETURN, (ushort)VK_RETURN, (ushort)'H'], sent.Select(i => i.U.ki.wVk));
-        Assert.All(sent, i => Assert.Equal(EnterGate.ReplayTag, i.U.ki.dwExtraInfo));
-        // Just after the release, new keys still wait behind it, and go a moment later, in order (D156).
+        // D161: Enter goes on its own (the page sends the message or makes the paragraph a moment later) ...
+        var first = Assert.Single(_sent);
+        Assert.Equal([(ushort)VK_RETURN, (ushort)VK_RETURN], first.Select(i => i.U.ki.wVk));
+        Assert.All(first, i => Assert.Equal(EnterGate.ReplayTag, i.U.ki.dwExtraInfo));
+        // ... and the keys typed after it follow after a gap, in order, with any typed meanwhile (D156).
         Assert.True(Key('I', true));
         for (int i = 0; i < 100 && _sent.Count < 2; i++) Thread.Sleep(10);
-        Assert.Equal((ushort)'I', Assert.Single(_sent[1]).U.ki.wVk);
+        Assert.True(released.ElapsedMilliseconds >= Core.Learning.Tunables.EnterGapMs.Int - 5, $"{released.ElapsedMilliseconds} ms");
+        Assert.Equal([(ushort)'H', (ushort)'I'], _sent[1].Select(i => i.U.ki.wVk));
         for (int i = 0; i < 100 && EnterGate.Holding; i++) Thread.Sleep(10);
         Assert.False(EnterGate.Holding);   // nothing more came: done, without waiting to see the replay come back
         Assert.False(Key('J', true));

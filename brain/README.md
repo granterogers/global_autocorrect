@@ -18,6 +18,7 @@ Switches are 1 (on) or 0 (off).
 | `Enter.HardCapMs` | 4000 | 1000–8000 | D154: the longest, even while a write is in progress |
 | `Enter.SendsAfter` | 1.5 | 1–5 | D154: sends seen (fading) before a field counts as sending on Enter |
 | `Enter.InstantHoldMs` | 400 | 0–1500 | D156: in any field, Enter waits this long at most for the instant fix of the word just finished (0 = off) |
+| `Enter.GapMs` | 60 | 0–300 | D161: after a held Enter is let go, the keys typed after it follow this much later (an editor handles Enter a moment late) |
 | `Enter.SendCheckMs` | 300 | 100–1500 | D154: how long after Enter the field is looked at |
 
 ## Fixes placed through UI Automation (D122–D152)

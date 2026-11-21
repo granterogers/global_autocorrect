@@ -51,6 +51,7 @@ public static class Tunables
     public static readonly Tunable EnterHardCapMs = Define("Enter.HardCapMs", 4000, 1000, 8000, "D154: the longest, even while a write is in progress");
     public static readonly Tunable EnterSendsAfter = Define("Enter.SendsAfter", 1.5, 1, 5, "D154: sends seen (fading) before a field counts as sending on Enter");
     public static readonly Tunable EnterInstantHoldMs = Define("Enter.InstantHoldMs", 400, 0, 1500, "D156: in any field, Enter waits this long at most for the instant fix of the word just finished (0 = off)");
+    public static readonly Tunable EnterGapMs = Define("Enter.GapMs", 60, 0, 300, "D161: after a held Enter is let go, the keys typed after it follow this much later (an editor handles Enter a moment late)");
     public static readonly Tunable EnterSendCheckMs = Define("Enter.SendCheckMs", 300, 100, 1500, "D154: how long after Enter the field is looked at");
 
     // ---- Fixes placed through UI Automation (D122–D152) ----

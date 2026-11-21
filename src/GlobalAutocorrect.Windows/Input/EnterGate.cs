@@ -128,17 +128,24 @@ public static class EnterGate
 
     private static void SendHeldLocked(string why)
     {
-        var keys = Held.ToArray();
-        Held.Clear();
+        // D161 (stress, chat: "thanks for letting" came out "ltehtatniksn forg"; sandbox: "Hi Joanna," as "HiJ oanna,"):
+        // let go together, Enter and the keys typed after it arrived within microseconds, and the page was still sending
+        // the message, or making the new paragraph, when they came. Enter goes on its own; the rest follow a moment later.
+        int upTo = Held.FindIndex(k => k.Vk == VK_RETURN && !k.Down);
+        int take = upTo >= 0 && upTo < Held.Count - 1 ? upTo + 1 : Held.Count;
+        var keys = Held.Take(take).ToArray();
+        Held.RemoveRange(0, take);
+        int next = Held.Count > 0 ? Math.Max(DrainMs, Core.Learning.Tunables.EnterGapMs.Int) : DrainMs;
         if (Foreground() != _window)
         {
+            Held.Clear();
             _state = State.Idle;
             Diagnose?.Invoke($"enter-hold: {keys.Length} held key events dropped, the window changed (D154, no text)");
             return;
         }
         if (keys.Length == 0) { _state = State.Idle; return; }
         _state = State.Draining;
-        (_timer ??= new Timer(_ => Timeout())).Change(DrainMs, System.Threading.Timeout.Infinite);
+        (_timer ??= new Timer(_ => Timeout())).Change(next, System.Threading.Timeout.Infinite);
         if (!Send(keys.Select(k => KeyHold.ToInput(k.Vk, k.Scan, k.Flags, k.Down, ReplayTag)).ToArray()))
         {
             _state = State.Idle;
