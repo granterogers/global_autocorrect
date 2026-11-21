@@ -26,6 +26,25 @@ public sealed class LateAnswerTests
     }
 
     [Fact]
+    public void R4_6_d_D169_AnInsertionWhoseTextBeforeHasChangedIsLeft()
+    {
+        // Stress, misbehaving model: "Pizz aor" was fixed to "Pizza" by the instant layer, then an older answer's letter
+        // went in at the old place: "Pizza for". An insertion checks the text just before it is as the model saw it.
+        var h = new Harness();
+        h.Type("We saw dog today. ");
+        h.Wait(500);
+        int at = h.Text.IndexOf("dog", StringComparison.Ordinal);
+        long gen = h.Engine.Session.Generation;
+        h.Engine.EnqueueForTest(new PendingWrite(Layer.Ai, gen, at, at, "", "a ", h.Clock.NowMs, h.Ed.LatestKeySeq, []) { Before = "zz " });
+        h.Wait(2000);
+        Assert.Equal("We saw dog today. ", h.Text);   // the text before isn't what the model saw: left
+        Assert.Equal("context-moved", h.Engine.LastDropReason);
+        h.Engine.EnqueueForTest(new PendingWrite(Layer.Ai, h.Engine.Session.Generation, at, at, "", "a ", h.Clock.NowMs, h.Ed.LatestKeySeq, []) { Before = "aw " });
+        h.Wait(2000);
+        Assert.Equal("We saw a dog today. ", h.Text);   // it is: written
+    }
+
+    [Fact]
     public void R4_6_d_D134_ALateAddedWordIsNotWrittenTwiceOrInsideAWord()
     {
         // Real-use run on GitHub's CPU: "for project" fixed to "for the project", then a late answer added "the" again.

@@ -230,7 +230,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
             if (LanguageGuess.IsForeign(LanguageGuess.SentenceAt(p.Context, e.Start))) continue;   // D116: a sentence in another language
             int s = p.ContextStartInTyped + _pendingShift + e.Start, en = p.ContextStartInTyped + _pendingShift + e.End;
             if (s < 0) continue;   // D5: outside what the user typed this session
-            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords) { KeyAtMs = p.KeyAtMs });
+            writes.Add(new PendingWrite(Layer.Ai, p.Generation, s, en, p.Context[e.Start..e.End], e.Replacement, clock.NowMs, p.KeySeq, e.OriginalWords)
+            { KeyAtMs = p.KeyAtMs, Before = e.Start == e.End ? p.Context[Math.Max(0, e.Start - 3)..e.Start] : null });   // D169
         }
         if (Sweep is not null && rules.Settings.LenientWithNonWords)
         {

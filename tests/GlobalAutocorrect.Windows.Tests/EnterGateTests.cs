@@ -94,6 +94,25 @@ public sealed class EnterGateTests : IDisposable
     }
 
     [Fact]
+    public void R4_6_D168_AKeyPressedWhileHeldKeysAreSentNeverWaitsForTheGate()
+    {
+        // Teams' editor: SendInput waits for the hook to take the keys; a key the user pressed meanwhile was in the hook,
+        // waiting for the gate's lock, held by the send. Each waited until Windows gave up on the hook, ~3 s later.
+        bool hookWaited = false;
+        EnterGate.Send = inputs =>
+        {
+            lock (_sent) _sent.Add(inputs);
+            var hook = Task.Run(() => Key('X', true));   // the user's next key, arriving at the hook during the send
+            hookWaited |= !hook.Wait(500);
+            return true;
+        };
+        EnterGate.Armed = true;
+        Key(VK_RETURN, true);
+        EnterGate.Release("fixes in");
+        Assert.False(hookWaited);
+    }
+
+    [Fact]
     public void R4_6_D166_TheHoldKeepsTimeWhenTheThreadPoolIsBusy()
     {
         // Stress: suggestions waiting on the model had taken up the thread pool, and keys after a released Enter came out

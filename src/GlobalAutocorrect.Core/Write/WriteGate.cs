@@ -34,6 +34,12 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     /// </summary>
     public bool CapitalIfSentenceStart { get; init; }
 
+    /// <summary>
+    /// D169 (stress, misbehaving model: "Pizz aor" became "Pizza for"): an insertion has no letters of its own to check
+    /// where it lands. The few characters before it, as the model saw them; the write checks they are still there.
+    /// </summary>
+    public string? Before { get; init; }
+
     /// <summary>D124: what the write was last waiting for, logged if it expires (a reason, never text).</summary>
     public string Waiting { get; set; } = "nothing";
 
@@ -219,6 +225,11 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         _refusedResyncs = 0;
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
         if (typed[w.Start..w.End] != w.Original) { Drop(w, "changed-on-read"); return false; }
+        // D169: an insertion whose text before it isn't as the model saw it is out of date (an instant fix went in beside
+        // it since): left (a miss, never a letter in the wrong place). An answer's own fixes go right to left, so they
+        // never change what is before a later one of theirs.
+        if (w.Original.Length == 0 && w.Before is { Length: > 0 } seen && (w.Start < seen.Length || typed[(w.Start - seen.Length)..w.Start] != seen))
+        { Drop(w, "context-moved"); return false; }
         // D167: the sentence start's capital, if the field now shows nothing (or a sentence's end) before the word.
         if (w.CapitalIfSentenceStart && w.Replacement.Length > 0 && char.IsLower(w.Replacement[0]))
         {

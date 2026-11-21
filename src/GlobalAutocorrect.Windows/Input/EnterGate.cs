@@ -118,11 +118,16 @@ public static class EnterGate
     /// <summary>Let the held keys go, Enter first, in the order they came.</summary>
     public static void Release(string why)
     {
-        lock (Gate)
+        lock (SendGate)
         {
-            if (_state != State.Holding) return;
-            Cancel();
-            SendHeldLocked(why);
+            Batch batch;
+            lock (Gate)
+            {
+                if (_state != State.Holding) return;
+                Cancel();
+                batch = TakeHeldLocked(why);
+            }
+            Deliver(batch);
         }
     }
 
@@ -147,20 +152,36 @@ public static class EnterGate
 
     private static void Timeout()
     {
-        lock (Gate)
+        lock (SendGate)
         {
-            if (_state == State.Holding && WriteInProgress() && Environment.TickCount64 - _heldAt < HardCapMs)
+            Batch batch = default;
+            lock (Gate)
             {
-                Schedule(30);
-                return;
+                if (_state == State.Holding && WriteInProgress() && Environment.TickCount64 - _heldAt < HardCapMs)
+                {
+                    Schedule(30);
+                    return;
+                }
+                if (_state == State.Holding) batch = TakeHeldLocked("timeout");
+                // Draining: keys that came after the release go now, behind it; none came: done.
+                else if (_state == State.Draining) { if (Held.Count > 0) batch = TakeHeldLocked("after"); else _state = State.Idle; }
             }
-            if (_state == State.Holding) { SendHeldLocked("timeout"); return; }
-            // Draining: keys that came after the release go now, behind it; none came: done.
-            if (_state == State.Draining) { if (Held.Count > 0) SendHeldLocked("after"); else _state = State.Idle; }
+            Deliver(batch);
         }
     }
 
-    private static void SendHeldLocked(string why)
+    /// <summary>
+    /// D168 (stress, Teams' editor: "Many thanks" as "haanyn ktshs", keys let go 3 s late): the keys were sent while the
+    /// gate's lock was held. SendInput waits for our keyboard hook to take them; a key the user pressed meanwhile was in
+    /// the hook, waiting for that same lock; each waited for the other until Windows gave up on the hook (about 3 s) and
+    /// passed keys on without it. The batch is now taken under the lock and sent after it is let go. Sends keep their
+    /// order under a lock of their own, which the hook never takes.
+    /// </summary>
+    private static readonly Lock SendGate = new();
+
+    private readonly record struct Batch(INPUT[]? Keys, string? Note);
+
+    private static Batch TakeHeldLocked(string why)
     {
         // D161 (stress, chat: "thanks for letting" came out "ltehtatniksn forg"; sandbox: "Hi Joanna," as "HiJ oanna,"):
         // let go together, Enter and the keys typed after it arrived within microseconds, and the page was still sending
@@ -174,19 +195,26 @@ public static class EnterGate
         {
             Held.Clear();
             _state = State.Idle;
-            Diagnose?.Invoke($"enter-hold: {keys.Length} held key events dropped, the window changed (D154, no text)");
-            return;
+            return new Batch(null, $"enter-hold: {keys.Length} held key events dropped, the window changed (D154, no text)");
         }
-        if (keys.Length == 0) { _state = State.Idle; return; }
+        if (keys.Length == 0) { _state = State.Idle; return default; }
         _state = State.Draining;
         Schedule(next);
-        if (!Send(keys.Select(k => KeyHold.ToInput(k.Vk, k.Scan, k.Flags, k.Down, ReplayTag)).ToArray()))
+        return new Batch(keys.Select(k => KeyHold.ToInput(k.Vk, k.Scan, k.Flags, k.Down, ReplayTag)).ToArray(),
+                         $"enter-hold: released {keys.Length} key events ({why}) (D154, no text)");
+    }
+
+    /// <summary>Sends a taken batch, outside the gate's lock (D168).</summary>
+    private static void Deliver(Batch batch)
+    {
+        if (batch.Keys is null) { if (batch.Note is { } n) Diagnose?.Invoke(n); return; }
+        if (!Send(batch.Keys))
         {
-            _state = State.Idle;
-            Diagnose?.Invoke($"enter-hold: replay failed (D154, no text)");
+            lock (Gate) { _state = State.Idle; Held.Clear(); }
+            Diagnose?.Invoke("enter-hold: replay failed (D154, no text)");
             return;
         }
-        Diagnose?.Invoke($"enter-hold: released {keys.Length} key events ({why}) (D154, no text)");
+        if (batch.Note is { } note) Diagnose?.Invoke(note);
     }
 
     /// <summary>Tests only.</summary>
