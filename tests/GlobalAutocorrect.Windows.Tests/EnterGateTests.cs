@@ -6,7 +6,7 @@ using static GlobalAutocorrect.Windows.Native.NativeMethods;
 namespace GlobalAutocorrect.Windows.Tests;
 
 /// <summary>D154: Enter held in a field that sends on Enter, while a fix for the line is on its way.</summary>
-[Collection("EnterGate")]
+[Collection("KeyHold")]   // D170: shares KeyHold's state, and one test ties up the thread pool: never alongside KeyHold's tests
 public sealed class EnterGateTests : IDisposable
 {
     private readonly List<INPUT[]> _sent = [];

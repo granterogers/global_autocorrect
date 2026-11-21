@@ -25,7 +25,9 @@ public static class KeyHold
     private static readonly List<INPUT> Held = [];
     private static bool _on;
     private static int _generation;
-    private static Timer? _safety;
+    // D170: the safety release on a clock thread of its own, never waiting for a pool thread.
+    private static int _safetyGeneration;
+    private static readonly ClockThread Safety = new("KeyHold safety", () => { lock (Gate) if (!_on || _generation != _safetyGeneration) return; Release(); });
 
     public static bool Active { get { lock (Gate) return _on; } }
 
@@ -43,8 +45,8 @@ public static class KeyHold
             _on = true;
             Interlocked.Exchange(ref _heldCounted, 0);
             int gen = ++_generation;
-            _safety?.Dispose();
-            _safety = new Timer(_ => { lock (Gate) if (_generation != gen) return; Release(); }, null, MaxHoldMs, Timeout.Infinite);
+            _safetyGeneration = gen;
+            Safety.Schedule(MaxHoldMs);
         }
     }
 
@@ -74,8 +76,7 @@ public static class KeyHold
                 {
                     _on = false;
                     _generation++;
-                    _safety?.Dispose();
-                    _safety = null;
+                    Safety.Cancel();
                     return replayed;
                 }
                 batch = [.. Held];
