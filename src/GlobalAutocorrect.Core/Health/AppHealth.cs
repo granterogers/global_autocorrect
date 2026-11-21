@@ -39,16 +39,25 @@ public sealed class AppStats
     /// <summary>D162: placed fixes dropped because the field never showed the fix selected (nothing typed).</summary>
     public double PlaceRefusals { get; set; }
 
+    /// <summary>D165: word completions shown, and taken with Tab: how often a suggestion is worth showing.</summary>
+    public double SuggestShown { get; set; }
+    public double SuggestTaken { get; set; }
+
+    /// <summary>D165: next-word suggestions (nothing typed yet) shown, and taken with Tab.</summary>
+    public double NextShown { get; set; }
+    public double NextTaken { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
         ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures, LineFailures = LineFailures + o.LineFailures,
         PlaceFailures = PlaceFailures + o.PlaceFailures, EnterSends = EnterSends + o.EnterSends, PlaceRefusals = PlaceRefusals + o.PlaceRefusals,
+        SuggestShown = SuggestShown + o.SuggestShown, SuggestTaken = SuggestTaken + o.SuggestTaken, NextShown = NextShown + o.NextShown, NextTaken = NextTaken + o.NextTaken,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by; EnterSends *= by; PlaceRefusals *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by; EnterSends *= by; PlaceRefusals *= by; SuggestShown *= by; SuggestTaken *= by; NextShown *= by; NextTaken *= by;
     }
 
     internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures + LineFailures + PlaceFailures;
@@ -154,6 +163,12 @@ public sealed class AppHealth
 
     public void PlaceFailed(string app) => Note(app, s => s.PlaceFailures++);   // D122
     public void PlaceRefused(string app) => Note(app, s => s.PlaceRefusals++);   // D162
+
+    /// <summary>D165: a suggestion was drawn in this program (a next word or a completion).</summary>
+    public void SuggestionShown(string app, bool nextWord) => Note(app, s => { if (nextWord) s.NextShown++; else s.SuggestShown++; });
+
+    /// <summary>D165: the user took the suggestion with Tab.</summary>
+    public void SuggestionTaken(string app, bool nextWord) => Note(app, s => { if (nextWord) s.NextTaken++; else s.SuggestTaken++; });
 
     /// <summary>
     /// D122: putting the caret on a fix through UI Automation has gone wrong in this program: fixes on an earlier line are

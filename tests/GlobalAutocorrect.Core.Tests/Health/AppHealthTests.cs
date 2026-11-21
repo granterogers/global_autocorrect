@@ -133,4 +133,15 @@ public sealed class AppHealthTests : IDisposable
         Assert.Equal(6, combined.Apps["claude"].Stuck);   // 1 here + 5 there; the shipped file isn't added again
         Assert.Equal("2026-11-04", combined.Updated);
     }
+    [Fact]
+    public void R7_1_D165_SuggestionsShownAndTakenAreCountedPerProgram()
+    {
+        var h = new AppHealth();
+        h.SuggestionShown("msedge", nextWord: false);
+        h.SuggestionShown("msedge", nextWord: false);
+        h.SuggestionTaken("msedge", nextWord: false);
+        h.SuggestionShown("msedge", nextWord: true);
+        var s = h.StatsFor("msedge");
+        Assert.Equal((2.0, 1.0, 1.0, 0.0), (s.SuggestShown, s.SuggestTaken, s.NextShown, s.NextTaken));
+    }
 }

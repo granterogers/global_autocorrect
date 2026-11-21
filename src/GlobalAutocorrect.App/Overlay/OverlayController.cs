@@ -99,7 +99,7 @@ public sealed class OverlayController
         var s = _host.Predictor?.Suggest(snap.Before, snap.ProcessName);   // D57: this app's own history counts for more
         if (s is null || s.Completion.Length == 0) { Why("no-suggestion", snap.Before); return; }
         Why("shown", snap.Before);
-        Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight, snap.FontSizePt);
+        Show(s.Completion, caret, seq, snap.FontName, snap.CaretIsFontHeight, snap.FontSizePt, snap.ProcessName, s.IsNextWord);
     }
 
     private static readonly bool UnderTest = Environment.GetEnvironmentVariable("GA_E2E") == "1";
@@ -115,7 +115,10 @@ public sealed class OverlayController
         AppHost.Diagnose($"predict: {reason} beforeLength={before?.Length ?? -1} last=[{tail}]");
     }
 
-    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false, double? fontSizePt = null)
+    private string _shownApp = "";
+    private bool _shownIsNext;
+
+    private void Show(string completion, (double X, double Y, double W, double H) caret, long seq, string? fontName, bool caretIsFontHeight = false, double? fontSizePt = null, string? app = null, bool nextWord = false)
     {
         var hook = _host.Hook;
         if (completion.Length == 0 || hook is null) { Hide(); return; }
@@ -126,6 +129,9 @@ public sealed class OverlayController
             Why($"drawn h={caret.H:F0}", null);
             _shown = completion;
             hook.SuggestionArm.ArmAt(seq);   // Tab now means "accept", until anything else happens
+            // D165: counted per program, numbers only, so the brain can learn how often a suggestion is worth showing.
+            _shownApp = app ?? ""; _shownIsNext = nextWord;
+            _host.Health.SuggestionShown(_shownApp, nextWord);
         });
     }
 
@@ -142,6 +148,7 @@ public sealed class OverlayController
         string text = _shown;
         Hide();
         if (text.Length == 0) return;
+        _host.Health.SuggestionTaken(_shownApp, _shownIsNext);   // D165
         // D80: the word and the space after it, as phone keyboards do, then straight away a guess at the next word, so
         // Tab can be pressed again and again through an obvious sentence. A full stop typed next takes the space back
         // (D55). No key reaches the hook while we type, so the guess starts from the Tab's place in the key order.
