@@ -17,6 +17,9 @@ public sealed class EnterGateTests : IDisposable
         EnterGate.Reset();
         EnterGate.Send = i => { lock (_sent) _sent.Add(i); return true; };
         EnterGate.Foreground = () => _window;
+        // Release build on GitHub: KeyHold's tests run alongside these, and a hold they left active made the gate wait
+        // for "a write" (D154, rightly) and these timing tests fail. Only the test about writes sets this itself.
+        EnterGate.WriteInProgress = () => false;
     }
 
     public void Dispose()
@@ -24,6 +27,7 @@ public sealed class EnterGateTests : IDisposable
         EnterGate.Reset();
         EnterGate.Send = GlobalAutocorrect.Windows.Write.SendInputWriter.Send;
         EnterGate.Foreground = GetForegroundWindow;
+        EnterGate.WriteInProgress = () => KeyHold.Active;
     }
 
     private static bool Key(uint vk, bool down, bool modifier = false) => EnterGate.TryHold(vk, 0, 0, down, modifier);
