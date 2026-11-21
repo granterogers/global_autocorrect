@@ -57,6 +57,7 @@ public static class Tunables
     // ---- Fixes placed through UI Automation (D122–D152) ----
     public static readonly Tunable PlaceEnabled = Define("Place.Enabled", 1, 0, 1, "D122/D125/D143: place fixes in browsers (0 = arrows and retyping, as before)");
     public static readonly Tunable PlaceRetries = Define("Place.Retries", 3, 1, 6, "D144: tries for a refused placement");
+    public static readonly Tunable PlaceRetryGapMs = Define("Place.RetryGapMs", 150, 0, 2000, "D167: a refused placement's next try waits this long (the editor settling)");
     public static readonly Tunable PlaceSelectWaitMs = Define("Place.SelectWaitMs", 400, 100, 2000, "D122: wait for the field to show the fix selected");
     public static readonly Tunable PlaceSettleMs = Define("Place.SettleMs", 30, 0, 300, "D122: pause for the page's editor to take the selection");
     public static readonly Tunable PlaceCkEditorSettleMs = Define("Place.CkEditorSettleMs", 120, 0, 1000, "D151: extra pause in CKEditor (Teams)");

@@ -27,6 +27,7 @@ Switches are 1 (on) or 0 (off).
 |---|---|---|---|
 | `Place.Enabled` | 1 | 0–1 | D122/D125/D143: place fixes in browsers (0 = arrows and retyping, as before) |
 | `Place.Retries` | 3 | 1–6 | D144: tries for a refused placement |
+| `Place.RetryGapMs` | 150 | 0–2000 | D167: a refused placement's next try waits this long (the editor settling) |
 | `Place.SelectWaitMs` | 400 | 100–2000 | D122: wait for the field to show the fix selected |
 | `Place.SettleMs` | 30 | 0–300 | D122: pause for the page's editor to take the selection |
 | `Place.CkEditorSettleMs` | 120 | 0–1000 | D151: extra pause in CKEditor (Teams) |

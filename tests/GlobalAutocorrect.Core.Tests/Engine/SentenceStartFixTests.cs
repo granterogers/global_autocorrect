@@ -40,6 +40,20 @@ public sealed class SentenceStartFixTests
     }
 
     [Fact]
+    public void R4_3_D167_AnUnreadableFieldAtTheMomentOfTheFixStillGetsTheCapital()
+    {
+        // Stress, Quill: "fungers" fixed to "fingers" while the field couldn't be read; the capital is checked at write time.
+        var h = new Harness(options: new EngineOptions());
+        h.Type("teh");
+        h.Ed.FailNextReads = 2;   // the sentence-start check and the first write attempt see nothing
+        h.Engine.OnInput(h.Ed.TypeChar(' '));
+        h.Wait(300);
+        h.Type("dog is fine. ");
+        h.Wait(300);
+        Assert.StartsWith("The dog", h.Text);
+    }
+
+    [Fact]
     public void R4_3_D141_MidSentenceTheCaseIsKept()
     {
         var h = new Harness(options: new EngineOptions());

@@ -160,7 +160,7 @@ public sealed class CorrectionEngine
             fix = InstantFixFor(fw);
             if (fix is not null)
             {
-                _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });
+                _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true, CapitalIfSentenceStart = fw.Start == 0 && _o.TidySpacing });   // D167
                 _gate.TryWrite(Target);   // straight away if nothing else was typed (4.3.a)
             }
         }

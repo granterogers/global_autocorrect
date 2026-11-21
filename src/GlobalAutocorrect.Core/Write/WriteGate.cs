@@ -18,12 +18,21 @@ public sealed class PendingWrite(Layer layer, long generation, int start, int en
     public int Start { get; set; } = start;
     public int End { get; set; } = end;
     public string Original { get; } = original;
-    public string Replacement { get; } = replacement;
+    public string Replacement { get; set; } = replacement;   // D167: a sentence start's capital may be added at write time
     public long CreatedAtMs { get; } = createdAtMs;
     public long KeySeqAtDecision { get; } = keySeqAtDecision;
 
     /// <summary>D144: times placing this write was refused (the field didn't show the selection in time).</summary>
     public int PlaceRefusals { get; set; }
+
+    /// <summary>D167: a refused placement is tried again no sooner than this (the editor settling after a new paragraph).</summary>
+    public long NotBeforeMs { get; set; }
+
+    /// <summary>
+    /// D167 (stress, Quill: the first word "fungers" fixed to "fingers", no capital): decided while the field couldn't be
+    /// read, the sentence start couldn't be seen. Checked again when the fix is written, against the field then.
+    /// </summary>
+    public bool CapitalIfSentenceStart { get; init; }
 
     /// <summary>D124: what the write was last waiting for, logged if it expires (a reason, never text).</summary>
     public string Waiting { get; set; } = "nothing";
@@ -148,6 +157,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     private bool Ready(PendingWrite w, long now)
     {
         if (w.Layer == Layer.Undo) return true;   // the user asked for it and is waiting
+        if (now < w.NotBeforeMs) return false;    // D167: a refused placement waits a moment before its next try
         // D119 (screen tests on GitHub): two fixes sent in the same instant. After the first returned with Ctrl+End, Slate's
         // own idea of the caret hadn't caught up, so the second's 277 Left presses started from the first fix's place and
         // changed "Wi-fi" to "Wi-ri"; on a heavy page two long retypes back to back left the read behind and the queue was
@@ -209,6 +219,16 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         _refusedResyncs = 0;
         typed = session.Typed;   // may have adopted host autocorrect case/quotes
         if (typed[w.Start..w.End] != w.Original) { Drop(w, "changed-on-read"); return false; }
+        // D167: the sentence start's capital, if the field now shows nothing (or a sentence's end) before the word.
+        if (w.CapitalIfSentenceStart && w.Replacement.Length > 0 && char.IsLower(w.Replacement[0]))
+        {
+            string fieldBefore = TextNorm.Comparable(win.Before), sinceWord = TextNorm.Comparable(typed[w.Start..]);
+            if (fieldBefore.EndsWith(sinceWord, StringComparison.Ordinal))
+            {
+                string pre = fieldBefore[..^sinceWord.Length].TrimEnd(' ', '\t', '"', '\'', '(');
+                if (pre.Length == 0 || pre[^1] is '.' or '!' or '?' or '\n') w.Replacement = char.ToUpperInvariant(w.Replacement[0]) + w.Replacement[1..];
+            }
+        }
         if (keys.LatestKeySeq != session.LastKeySeq) return false;   // a key slipped in during the read
         // D60: a fix that starts where the typed record starts must not be the tail of a longer word in the field. A
         // session that began mid-word ("Lo|oking") saw "oking" as a word and the instant layer made it "king", leaving
@@ -328,7 +348,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
         // D144 (Chrome/Slate on GitHub: "not-selected", and "their" stayed): a refusal is often only the field being slow to
         // show the selection; nothing was typed, so the fix waits for the next tick and is tried again, three times in all.
-        if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < Learning.Tunables.PlaceRetries.Int) { w.Waiting = "place-refused"; return false; }
+        if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < Learning.Tunables.PlaceRetries.Int) { w.Waiting = "place-refused"; w.NotBeforeMs = clock.NowMs + Learning.Tunables.PlaceRetryGapMs.Int; return false; }
         if (!sent && placed && target.LastEditRefused) { Health?.PlaceRefused(target.AppName); Drop(w, "place-refused"); return false; }   // D122: nothing typed; D162: counted
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
