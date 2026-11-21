@@ -146,6 +146,7 @@ public sealed class CorrectionEngine
         if (k.Kind == KeyKind.FocusChange && Target is not null && Session.Length >= 3
             && Target.ReadWindow() is { CaretKnown: true } w && Session.MatchesField(w.Before))
             return;
+        if (k.Kind == KeyKind.Char && k.Char == '\n') NoticeEnter();   // D154: before Apply, while the record still has the line
         var effect = Session.Apply(k);
         if (k.Kind is KeyKind.FocusChange or KeyKind.Click) _targetOk = null;   // possibly a different field now
         if (Paused || Target is null) return;
@@ -156,12 +157,7 @@ public sealed class CorrectionEngine
         bool foreign = (effect.Word is not null || (k.Kind == KeyKind.Char && char.IsWhiteSpace(k.Char))) && Text.LanguageGuess.IsForeign(CurrentParagraph());
         if (effect.Word is { } fw && _o.InstantEnabled && !foreign)
         {
-            fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby);   // 4.3, D92
-            // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
-            // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
-            // With tidying on, the fix carries the sentence start's capital itself.
-            if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere(fw.End))))
-                fix = char.ToUpperInvariant(fix[0]) + fix[1..];
+            fix = InstantFixFor(fw);
             if (fix is not null)
             {
                 _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, k.Seq) { WholeWord = true });
@@ -275,7 +271,7 @@ public sealed class CorrectionEngine
     /// corrected; a typo the AI keeps fixing must never end up in the dictionary.
     /// </summary>
     private readonly List<(string Word, long At)> _pendingLearn = [];
-    private const int LearnAfterMs = 5000;
+    private static int LearnAfterMs => Learning.Tunables.LearnAfterMs.Int;   // D155
 
     private void SettleLearning()
     {
@@ -288,10 +284,88 @@ public sealed class CorrectionEngine
         }
     }
 
+    /// <summary>
+    /// D154 (user: "hold Enter … until the fix is in"): Enter is held in a field that sends on Enter. Ask the AI about the
+    /// line now, without waiting for the pause, so its fixes can go in before the message is sent.
+    /// </summary>
+    public void CheckLineNow()
+    {
+        if (Paused || Target is null || _ai is null || !_o.AiEnabled) return;
+        if (_ai.Unchecked(Session) && !_ai.InFlight) _ai.Start(Session, Target, _gate.IsDesynced);
+    }
+
+    /// <summary>D154: an AI answer, a retry or a fix is still on its way for what has been typed.</summary>
+    /// <summary>The instant fix for a finished word (4.3, D92), with a sentence start's capital (D141), or null.</summary>
+    private string? InstantFixFor(FinishedWord fw)
+    {
+        string? fix = _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target!.NamesNearby);
+        // D141 (stress runs: "fungers" at a line's start became "fingers"): D55 capitalises a sentence start only on a
+        // key where no word was fixed, and the instant fix keeps the case as typed, so a fixed first word stayed small.
+        // With tidying on, the fix carries the sentence start's capital itself.
+        if (fix is { Length: > 0 } && _o.TidySpacing && char.IsLower(fix[0]) && (fw.IsSentenceStart || (fw.Start == 0 && FieldStartsASentenceHere(fw.End))))
+            fix = char.ToUpperInvariant(fix[0]) + fix[1..];
+        return fix;
+    }
+
+    private long _aheadSeq = -1, _aheadGeneration = -1;
+    private bool _aheadFix;
+
+    /// <summary>
+    /// D156 (stress: "provkded." then Enter: Enter itself finished the word, so its fix was placed across the new line
+    /// and the break was lost): would the word at the caret be fixed if it were finished now? Worked out once per key.
+    /// </summary>
+    public bool WordAtEndWouldBeFixed()
+    {
+        if (Paused || Target is null || !_o.InstantEnabled) return false;
+        if (_aheadSeq == Session.LastKeySeq && _aheadGeneration == Session.Generation) return _aheadFix;
+        _aheadSeq = Session.LastKeySeq; _aheadGeneration = Session.Generation;
+        _aheadFix = Session.WordAtEnd() is { } fw && !Text.LanguageGuess.IsForeign(CurrentParagraph())
+                    && _instant.TryCorrect(fw.Word, fw.IsSentenceStart, fw.PreviousWord, Target.NamesNearby) is not null;
+        return _aheadFix;
+    }
+
+    /// <summary>
+    /// D156: Enter is held. Its word is fixed now, on its own line, as the Enter would have had it fixed after; the
+    /// Enter then goes once the fix is in. True if a fix was queued.
+    /// </summary>
+    public bool FinishWordForEnter()
+    {
+        if (Paused || Target is null || !_o.InstantEnabled || Session.WordAtEnd() is not { } fw) return false;
+        if (Text.LanguageGuess.IsForeign(CurrentParagraph()) || InstantFixFor(fw) is not { } fix) return false;
+        _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, _d.Keys.LatestKeySeq) { WholeWord = true });
+        _gate.TryWrite(Target);
+        return true;
+    }
+
+    /// <summary>D156: an instant fix (the word just finished) is waiting to be written.</summary>
+    public bool InstantFixPending => !Paused && Target is not null && _gate.Has(Layer.Instant);
+
+    public bool LineFixesPending => !Paused && Target is not null && ((_ai is not null && _o.AiEnabled && (_ai.InFlight || _ai.RetryPending)) || _gate.Count > 0);
+
+    // D154: just after Enter, one look at the field: empty means it sent the message (a chat box).
+    private long _sendCheckAt;
+    private bool _sendCheckHadText;
+
+    private void NoticeEnter()
+    {
+        _sendCheckHadText = Session.Typed.TrimEnd('\n').Trim().Length > 0;
+        _sendCheckAt = _d.Clock.NowMs + Learning.Tunables.EnterSendCheckMs.Int;
+    }
+
+    private void CheckEnterSent()
+    {
+        if (_sendCheckAt == 0 || _d.Clock.NowMs < _sendCheckAt) return;
+        _sendCheckAt = 0;
+        if (!_sendCheckHadText || Health is null || Target is null) return;
+        if (Target.ReadWindow() is { CaretKnown: true } w && TextNorm.Comparable(w.Before).Trim().Length == 0 && TextNorm.Comparable(w.After).Trim().Length == 0)
+            Health.EnterSent(Target.FieldKey);
+    }
+
     /// <summary>Called every ~25 ms (or as virtual time advances): pause trigger, AI results, queued writes.</summary>
     public void Tick()
     {
         if (Paused || Target is null) return;
+        CheckEnterSent();
         if (_pendingLearn.Count > 0) SettleLearning();
         if (_ai is not null && _o.AiEnabled)
         {

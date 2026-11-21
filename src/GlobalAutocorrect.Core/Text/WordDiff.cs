@@ -66,7 +66,7 @@ public static class WordDiff
                 AddEdit(original, cleaned, oCur, oLimit, cCur, cLimit, [], [], oCur, oLimit, edits);
                 return;
             }
-            var units = SequenceAligner.Align(aText, bText, PairCost).ToList();
+            var units = MergeAddedOrDropped(SequenceAligner.Align(aText, bText, PairCost).ToList());
             for (int k = 0; k < units.Count; k++)
             {
                 var u = units[k];
@@ -91,6 +91,25 @@ public static class WordDiff
         }
         // Whatever sits between the last unit and the next anchor (spaces only) may differ too.
         AddEdit(original, cleaned, oCur, oLimit, cCur, cLimit, [], [], oCur, oLimit, edits);
+    }
+
+    /// <summary>
+    /// D157 (stress, misbehaving model: "butter, pasta, tinned" lost the comma after "pasta"): a model that drops a
+    /// word drops its punctuation too, and the two came out as separate edits; the word was refused, the lone comma
+    /// allowed. Next to each other in one stretch, things dropped (or added) are one edit, judged together.
+    /// </summary>
+    private static List<AlignedUnit> MergeAddedOrDropped(List<AlignedUnit> units)
+    {
+        var merged = new List<AlignedUnit>(units.Count);
+        foreach (var u in units)
+        {
+            if (merged.Count > 0 && merged[^1] is var p
+                && ((p.BCount == 0 && u.BCount == 0 && p.AStart + p.ACount == u.AStart)
+                    || (p.ACount == 0 && u.ACount == 0 && p.BStart + p.BCount == u.BStart)))
+                merged[^1] = p with { ACount = p.ACount + u.ACount, BCount = p.BCount + u.BCount };
+            else merged.Add(u);
+        }
+        return merged;
     }
 
     private static void AddEdit(string original, string cleaned, int os, int oe, int cs, int ce,

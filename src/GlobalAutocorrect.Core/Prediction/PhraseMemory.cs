@@ -17,11 +17,14 @@ namespace GlobalAutocorrect.Core.Prediction;
 /// </summary>
 public sealed class PhraseMemory(Func<DateOnly> today)
 {
-    public const int MinWords = 3, MaxWords = 8, MinUses = 3, MinDays = 2, ForgetAfterDays = 90;
+    public const int MinWords = 3, MaxWords = 8;
+    public static int MinUses => Learning.Tunables.PhrasesMinUses.Int;   // D155
+    public static int MinDays => Learning.Tunables.PhrasesMinDays.Int;
+    public static int ForgetAfterDays => Learning.Tunables.PhrasesForgetAfterDays.Int;
     public const int MaxCandidates = 20_000, MaxKept = 5_000;
 
     /// <summary>A continuation is shown only when at least this share of what followed these words before agrees.</summary>
-    public const double AgreeShare = 0.7;
+    public static double AgreeShare => Learning.Tunables.PhrasesAgreeShare.Value;   // D155
 
     private sealed class Entry
     {

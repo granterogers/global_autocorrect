@@ -22,6 +22,12 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D151 (4.6.d):** a placed fix that lands beside the word instead of over it (Teams "releaserelease") is taken back out; CKEditor gets longer to take the selection; every write is logged as numbers only. 5 tests.
 - **D152 (4.6.d):** no retype is sent after a refused placement if the user typed meanwhile (stress: words lost in Slate); the overlay size test measures the field in both screenshots. 1 test.
 - **D153 (13.3):** the quiet updater and the install scripts no longer mistake typing for days of idle time. 3 tests.
+- **D154 (4.6):** in a chat box that sends on Enter, Enter waits (1.5 s at most) for the line's fixes, so a fast send keeps them; never let go in the middle of a write. 9 tests.
+- **D155 (D102):** 35 more values (timings, retries, thresholds, three on/off switches) can be changed from the brain without a rebuild; `brain/README.md` lists them all. 3 tests.
+- **D156 (4.3):** Enter waits (400 ms at most) for the fix of the word just finished, so a line break is never lost to a fix placed across it (the word Enter would finish is fixed first). 4 tests.
+- **D157 (4.5.b, 4.6.d):** an instant fix never lands across a line break; a refused word keeps its comma. 3 tests.
+- **D158 (7.1, 7.5):** suggestions come back after Backspace; a close call offers the word both candidates start with ("opt" → "option"). 2 tests.
+- **D159 (7.1):** word completions are ranked by the AI model's reading of the sentence, on its own model slot so corrections stay as fast; the word list is the fallback. 5 tests.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.

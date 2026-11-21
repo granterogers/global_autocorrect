@@ -115,9 +115,15 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
                        WriteFence.Trace is null ? null : $"hookShift={_shift} hookCtrl={_ctrl} asyncShift={IsDown(VK_SHIFT)} sinceModMs={unchecked(Environment.TickCount - Volatile.Read(ref _modifierChangedTick))}")
                 ? 1 : CallNextHookEx(_kb, nCode, wParam, lParam);
 
-        bool injected = (k.flags & LLKHF_INJECTED) != 0 && !_untaggedInjectedIsPhysical;
+        // D154: keys held behind Enter come back with this tag and are the user's own, seen now for the first time.
+        bool enterReplay = k.dwExtraInfo == EnterGate.ReplayTag;
+        if (enterReplay) EnterGate.Replayed();
+        bool injected = !enterReplay && (k.flags & LLKHF_INJECTED) != 0 && !_untaggedInjectedIsPhysical;
         bool down = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;
         long at = NowMs(Stopwatch.GetTimestamp());
+        // D154: Enter in a field that sends on Enter, while a fix for the line is on its way, waits (with any key after it).
+        if (!injected && !enterReplay && EnterGate.TryHold(k.vkCode, k.scanCode, k.flags, down, _shift || _ctrl || _alt || _win))
+            return 1;
 
         // Modifier state as this hook has seen it. Windows' own key state can lag behind back-to-back events (a modifier
         // then a key in one burst), so the key looked unmodified (found by E2E).

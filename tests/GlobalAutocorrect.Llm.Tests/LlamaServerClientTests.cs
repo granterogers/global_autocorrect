@@ -160,4 +160,19 @@ public sealed class LlamaServerClientTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.CleanAsync("text", cts.Token));
     }
+    [Theory]
+    [InlineData("""{ "completion_probabilities": [ { "token": "tion", "top_logprobs": [ { "token": "tion", "logprob": -0.5 }, { "token": "en", "logprob": -2.0 } ] } ] }""")]
+    [InlineData("""{ "completion_probabilities": [ { "token": "tion", "top_probs": [ { "token": "tion", "prob": 0.6065 }, { "token": "en", "prob": 0.1353 } ] } ] }""")]
+    [InlineData("""{ "completion_probabilities": [ { "content": "tion", "probs": [ { "tok_str": "tion", "prob": 0.6065 }, { "tok_str": "en", "prob": 0.1353 } ] } ] }""")]
+    public void R7_1_D159_TheModelsNextPiecesAreReadInEachForm(string json)
+    {
+        var c = GlobalAutocorrect.Llm.LlamaServerClient.ParseChances(System.Text.Json.Nodes.JsonNode.Parse(json))!;
+        Assert.Equal(["tion", "en"], c.Select(x => x.Token));
+        Assert.Equal(0.6065, c[0].P, 2);
+        Assert.Equal(0.1353, c[1].P, 2);
+    }
+
+    [Fact]
+    public void R7_1_D159_NoChancesIsNull() =>
+        Assert.Null(GlobalAutocorrect.Llm.LlamaServerClient.ParseChances(System.Text.Json.Nodes.JsonNode.Parse("{}")));
 }

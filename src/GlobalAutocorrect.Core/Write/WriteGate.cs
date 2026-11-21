@@ -57,6 +57,9 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     public event Action<string>? Desynced;
 
     public int Count => _queue.Count;
+
+    /// <summary>D156: a fix of this layer is waiting to be written.</summary>
+    public bool Has(Layer layer) => _queue.Any(w => w.Layer == layer);
     public bool IsDesynced(string targetId) => _desynced.TryGetValue(targetId, out long g) && g == session.Generation;
 
     private readonly Dictionary<string, List<long>> _verifyFailures = new(StringComparer.Ordinal);
@@ -69,8 +72,8 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
     /// <see cref="StuckMs"/>, is stuck: the queue is dropped and the field left alone for the rest of the session. Before,
     /// the gate retried every tick until the write expired (the Claude app: 340 identical mismatches in one day).
     /// </summary>
-    public const int StuckLimit = 8;
-    public const long StuckMs = 1500;
+    public static int StuckLimit => Learning.Tunables.WriteStuckLimit.Int;   // D155
+    public static long StuckMs => Learning.Tunables.WriteStuckMs.Int;   // D155
 
 
     private int _refusedResyncs;
@@ -243,6 +246,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             Drop(w, "mention-in-way");
             return false;
         }
+        // D157 (E2E, CKEditor: an instant fix that couldn't be placed before Enter landed after it, across the new
+        // paragraph, and the next line came out "HIi"): an instant fix is for the word just typed. Once a line break
+        // follows it the moment has passed: it is left (a miss, never damage), and the AI may still fix the word.
+        if (w.Layer == Layer.Instant && tail.Contains('\n')) { Drop(w, "instant-across-line"); return false; }
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
         // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed
@@ -262,7 +269,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // two of the retype's four Backspaces were applied after the keys that followed. In a browser the short retype is
         // placed too, so no Backspace is ever sent there; desktop programs keep D28's retype.
         bool placed = w.Layer != Layer.Undo && caretDistance > 0
-                      && target.CanPlaceCaret && Health?.PlaceUnsafe(target.AppName) != true;
+                      && target.CanPlaceCaret && Learning.Tunables.PlaceEnabled.On && Health?.PlaceUnsafe(target.AppName) != true;   // D155: a switch in the brain
         // D121: a program where a fix on an earlier line went wrong gets fixes on the caret's own line only (D122: unless placed).
         if (!placed && w.Layer != Layer.Undo && tail.Contains('\n') && Health?.SameLineOnly(target.AppName) == true) { Drop(w, "same-line-only"); return false; }
         bool shortRetype = retype;   // D143: the fall-back when placing is refused
@@ -321,7 +328,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         }
         // D144 (Chrome/Slate on GitHub: "not-selected", and "their" stayed): a refusal is often only the field being slow to
         // show the selection; nothing was typed, so the fix waits for the next tick and is tried again, three times in all.
-        if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < 3) { w.Waiting = "place-refused"; return false; }
+        if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < Learning.Tunables.PlaceRetries.Int) { w.Waiting = "place-refused"; return false; }
         if (!sent && placed && target.LastEditRefused) { Drop(w, "place-refused"); return false; }   // D122: nothing typed
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.

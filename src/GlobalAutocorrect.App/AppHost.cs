@@ -188,6 +188,27 @@ public sealed class AppHost : IAsyncDisposable
     public event Action<GlobalAutocorrect.Core.Write.CorrectionNotice>? Corrected;
     public event Action<KeyInput>? KeyProcessed;
 
+    /// <summary>
+    /// D159: the model's next pieces of text for a suggestion, waiting at most <see cref="Tunables.PredictModelTimeoutMs"/>
+    /// (called off the UI thread). Null if the model is off, busy or slow: the word list decides then.
+    /// </summary>
+    private IReadOnlyList<GlobalAutocorrect.Core.Ai.TokenChance>? ModelNext(string prompt)
+    {
+        if (_llm is not { } llm || Settings.Paused) return null;
+        try
+        {
+            using var cts = new CancellationTokenSource(Tunables.PredictModelTimeoutMs.Int);
+            return llm.NextAsync(prompt, 20, cts.Token).WaitAsync(cts.Token).GetAwaiter().GetResult();
+        }
+        catch (Exception e) when (e is OperationCanceledException or TimeoutException or GlobalAutocorrect.Llm.LlmUnavailableException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>D158: see <see cref="EngineLoop.TypedTail"/>; only from a <see cref="KeyProcessed"/> handler.</summary>
+    public char? TypedTail => _loop?.TypedTail;
+
     public async Task StartAsync()
     {
         _ui = SynchronizationContext.Current;
@@ -201,6 +222,7 @@ public sealed class AppHost : IAsyncDisposable
         LoadPhrases();   // D142
         Phrases.Enabled = Settings.LearnPhrases;
         Predictor = new Predictor(_ngram, History) { Enabled = Settings.PredictionEnabled, MinNextShare = Settings.NextWordShare, Phrases = Phrases };   // D80, D142
+        Predictor.ModelNext = ModelNext;   // D159: the model's reading of the sentence, within its time limit
         Health.Load();     // D81: this PC's counts; what was learned elsewhere comes from the brain (D102)
         Mistakes.Load();   // D84: this PC's mistakes; those shared by other PCs come from the brain (D102)
         _brain = new BrainMonitor(Path.Combine(DataDir, "brain.json"), Path.Combine(AssetsDir, "brain.json"), FetchBrainAsync,
@@ -255,6 +277,7 @@ public sealed class AppHost : IAsyncDisposable
         _focus = new FocusTracker(_uia);
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") _focus.Trace += Diagnose;   // D71: screen tests only
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") GlobalAutocorrect.Windows.Input.WriteFence.Trace = Diagnose;   // D115: screen tests only
+        GlobalAutocorrect.Windows.Input.EnterGate.Diagnose = Diagnose;   // D154: numbers only
         _focus.FocusChanged += _ =>
         {
             _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));
@@ -308,6 +331,7 @@ public sealed class AppHost : IAsyncDisposable
         Health.UseShipped(Brain.LearntElsewhere(b, InstallId(), DateOnly.FromDateTime(DateTime.Now)), b.Write);
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
+        Tunables.Apply(b.Tuning);   // D155: read where they're used, so they take effect at once
         _brainPrompt = b.Prompt?.ToTemplate();   // D111
     }
 

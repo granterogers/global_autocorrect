@@ -100,7 +100,7 @@ public sealed class TypingSession
     }
 
     /// <summary>D124: how long a field may look "behind" (<see cref="FieldBehind"/>) with no key before it counts as final.</summary>
-    public const int UnshownAfterMs = 1200;
+    public static int UnshownAfterMs => Learning.Tunables.SessionUnshownAfterMs.Int;   // D155
 
     /// <summary>
     /// D124, user report (WhatsApp: nothing fixed in a whole message, nothing in the log): a field that still looks behind
@@ -251,26 +251,27 @@ public sealed class TypingSession
         _typed.Append(c);
         if (!IsWordEnd(c)) return default;
 
-        int end = _typed.Length - 1;   // before the delimiter
-        int start = end;
-        while (start > 0 && !char.IsWhiteSpace(_typed[start - 1])) start--;
-        FinishedWord? word = null;
-        if (end > start)
-        {
-            string chunk = _typed.ToString(start, end - start);
-            var tokens = Tokeniser.Tokenise(chunk);
-            // Only a chunk that is one plain word (plus surrounding punctuation) is a candidate; URLs, emails and
-            // code-like chunks are left alone (4.3.c).
-            var wordTokens = tokens.Where(t => t.IsWord).ToArray();
-            if (wordTokens.Length == 1 && !wordTokens[0].IsProtected)
-            {
-                var w = wordTokens[0];
-                word = new FinishedWord(start + w.Start, start + w.End, w.Text, IsSentenceStart(start + w.Start), PreviousPlainWord(start));
-            }
-        }
+        FinishedWord? word = WordEndingAt(_typed.Length - 1);   // before the delimiter
         // Enter finishes a line even without a full stop (D44: "...to see that" Enter, typing on, never reached the AI).
         bool sentenceEnded = c == '\n' || (char.IsWhiteSpace(c) && EndsSentence);
         return new KeyEffect(word, sentenceEnded);
+    }
+
+    /// <summary>D156: the word the caret is at the end of, as the next space or Enter would finish it. Changes nothing.</summary>
+    public FinishedWord? WordAtEnd() => _typed.Length > 0 && !char.IsWhiteSpace(_typed[^1]) ? WordEndingAt(_typed.Length) : null;
+
+    private FinishedWord? WordEndingAt(int end)
+    {
+        int start = end;
+        while (start > 0 && !char.IsWhiteSpace(_typed[start - 1])) start--;
+        if (end <= start) return null;
+        string chunk = _typed.ToString(start, end - start);
+        // Only a chunk that is one plain word (plus surrounding punctuation) is a candidate; URLs, emails and
+        // code-like chunks are left alone (4.3.c).
+        var wordTokens = Tokeniser.Tokenise(chunk).Where(t => t.IsWord).ToArray();
+        if (wordTokens.Length != 1 || wordTokens[0].IsProtected) return null;
+        var w = wordTokens[0];
+        return new FinishedWord(start + w.Start, start + w.End, w.Text, IsSentenceStart(start + w.Start), PreviousPlainWord(start));
     }
 
     /// <summary>

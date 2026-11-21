@@ -16,7 +16,7 @@ public static class KeyHold
     /// <summary>"GAC3": replayed keys. The hook passes them straight on (they were counted when they were held).</summary>
     public const nuint ReplayTag = 0x47414333;
 
-    public const int MaxHoldMs = 3000;
+    public static int MaxHoldMs => Core.Learning.Tunables.KeyHoldMaxMs.Int;   // D155
 
     /// <summary>Sends the replayed keys; tests replace it so nothing is typed.</summary>
     public static Func<INPUT[], bool> Sender { get; set; } = Write.SendInputWriter.Send;
@@ -86,7 +86,7 @@ public static class KeyHold
         }
     }
 
-    private static INPUT ToInput(uint vk, uint scan, uint llFlags, bool down)
+    internal static INPUT ToInput(uint vk, uint scan, uint llFlags, bool down, nuint tag = 0)
     {
         uint flags = down ? 0 : KEYEVENTF_KEYUP;
         if ((llFlags & LLKHF_EXTENDED) != 0) flags |= KEYEVENTF_EXTENDEDKEY;
@@ -95,7 +95,7 @@ public static class KeyHold
         return new INPUT
         {
             type = INPUT_KEYBOARD,
-            U = new InputUnion { ki = new KEYBDINPUT { wVk = wVk, wScan = (ushort)scan, dwFlags = flags, dwExtraInfo = ReplayTag } },
+            U = new InputUnion { ki = new KEYBDINPUT { wVk = wVk, wScan = (ushort)scan, dwFlags = flags, dwExtraInfo = tag == 0 ? ReplayTag : tag } },
         };
     }
 

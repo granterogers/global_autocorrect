@@ -398,4 +398,11 @@ public sealed class EditRulesTests
         // "that that" typed by the user is theirs: a fix next to it is judged as before.
         Assert.Equal("I am glad that that is the colour", Apply("I am glad that that is teh colour", Run("I am glad that that is teh colour", "I am glad that that is the colour")));
     }
+    [Theory]
+    [InlineData("I sat on the mat, cat and colour today", "I sat on the cat and colour today")]      // a word dropped with its comma
+    [InlineData("I sat on the mat, cat and colour today", "I sat on the mat, really, cat and colour today")]   // one added with one
+    public void R4_5_b_D157_ARefusedWordTakesItsPunctuationWithIt(string typed, string model)
+    {
+        Assert.Equal(typed, Apply(typed, Run(typed, model)));   // no lone comma taken out or put in
+    }
 }

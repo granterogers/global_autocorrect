@@ -282,11 +282,12 @@ public sealed class PredictionTests : IDisposable
     }
 
     [Fact]
-    public void R7_1_AmbiguousPartialWordGivesNoSuggestion()
+    public void R7_1_D158_AmbiguousPartialWordOffersOnlyWhatBothShare()
     {
-        // "documents" (1601) and "document" (1555) are too close for the 1.5x rule, so nothing is shown.
+        // "documents" (1601) and "document" (1555) are too close for the 1.5x rule. Nothing was shown; D158 offers the
+        // word both start with, right either way ("s" is one key more).
         var predictor = NewPredictor(out _);
-        Assert.Null(predictor.Suggest("I'll send you the docum"));
+        Assert.Equal("document", predictor.Suggest("I'll send you the docum")?.Word);
     }
 
     [Fact]

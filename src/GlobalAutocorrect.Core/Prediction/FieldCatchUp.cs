@@ -9,7 +9,8 @@ namespace GlobalAutocorrect.Core.Prediction;
 public static class FieldCatchUp
 {
     /// <summary>Re-reads while the field lags: 6 × 25 ms, then no suggestion for this key.</summary>
-    public const int Retries = 6, RetryDelayMs = 25;
+    public static int Retries => Learning.Tunables.PredictReadRetries.Int;   // D155
+    public static int RetryDelayMs => Learning.Tunables.PredictReadRetryMs.Int;
 
     /// <summary>
     /// D94, user report "sometimes it takes ages for letters to appear": every read is answered on the typed-in app's own
@@ -17,10 +18,11 @@ public static class FieldCatchUp
     /// suggestion is predicted only once typing pauses this long; a suggestion during a burst was hidden by the next key
     /// anyway (7.5).
     /// </summary>
-    public const int WaitForPauseMs = 90;
+    public static int WaitForPauseMs => Learning.Tunables.PredictWaitForPauseMs.Int;   // D155
 
     /// <summary>D97: in a program whose reads are slow (<see cref="Telemetry.ReadCost"/>), a longer pause, and a shorter read.</summary>
-    public const int LightWaitForPauseMs = 300, LightBeforeChars = 120;
+    public static int LightWaitForPauseMs => Learning.Tunables.PredictLightWaitForPauseMs.Int;   // D155
+    public const int LightBeforeChars = 120;
 
     public static int PauseFor(bool light) => light ? LightWaitForPauseMs : WaitForPauseMs;
 

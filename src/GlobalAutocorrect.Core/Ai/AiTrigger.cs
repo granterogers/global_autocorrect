@@ -48,7 +48,7 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
 
     private readonly HashSet<string> _revisited = new(StringComparer.Ordinal);
     private long _revisitGeneration = -1;
-    private const int MaxRevisitsPerSession = 20;
+    private static int MaxRevisitsPerSession => Learning.Tunables.AiMaxRevisits.Int;   // D155
 
     /// <summary>
     /// D49 (the user's idea): once the user has paused, look back over everything typed in this stretch (the typed
@@ -103,6 +103,12 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
         return list;
     }
 
+    /// <summary>D154: something has been typed since the last request (the line isn't checked as it stands).</summary>
+    public bool Unchecked(TypingSession session) => session.Length > 0 && session.LastKeySeq != _lastTriggerSeq;
+
+    /// <summary>D154: a failed read is waiting for its retry.</summary>
+    public bool RetryPending => _retryPending;
+
     /// <summary>4.4.a: true when the user has paused long enough and typed something since the last request.</summary>
     public bool PauseDue(TypingSession session) =>
         session.Length > 0 && session.LastKeySeq != _lastTriggerSeq && clock.NowMs - session.LastKeyAtMs >= options.PauseMs
@@ -116,7 +122,8 @@ public sealed class AiTrigger(EngineOptions options, IClock clock, ILlmClient ll
     // D65: browsers draw a key tens of milliseconds after it arrives, so a read at the sentence end often hasn't caught
     // up. It used to wait for the 700 ms pause trigger (CI timings: a third of browser AI fixes took ~900 ms with an
     // instant model). Now it tries again every 40 ms, for up to 800 ms, while no new key arrives.
-    private const int RetryAfterMs = 40, MaxReadRetries = 20;
+    private static int RetryAfterMs => Learning.Tunables.AiRetryAfterMs.Int;   // D155
+    private static int MaxReadRetries => Learning.Tunables.AiMaxReadRetries.Int;
 
     private void ReadFailed(TypingSession session)
     {

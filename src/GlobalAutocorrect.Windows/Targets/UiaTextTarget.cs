@@ -34,6 +34,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     /// <summary>D81: the program of the last read field.</summary>
     public string AppName => LastSnapshot?.ProcessName ?? "";
 
+    /// <summary>D154: program and the field's class (its kind of editor), never text.</summary>
+    public string FieldKey => LastSnapshot is { } s ? $"{s.ProcessName}|{s.ClassName}" : "";
+
     /// <summary>D92: names shown near the last read field.</summary>
     public IReadOnlyList<string> NamesNearby => LastSnapshot?.Names ?? [];
 
@@ -190,31 +193,31 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
             bool NotSelected()
             {
                 worker.Invoke(r => r.PlaceReturn(0, fixUntouched: true), false);
-                Until(400, () => worker.Invoke(r => r.PlaceReturned(original), false));
+                Until(Core.Learning.Tunables.PlaceSelectWaitMs.Int, () => worker.Invoke(r => r.PlaceReturned(original), false));
                 Refuse("not-selected");
                 return false;
             }
-            if (!Until(400, () => worker.Invoke(r => r.PlaceSelectionIsFix(), false))) return NotSelected();
-            Thread.Sleep(30);   // the page's editor takes the selection from the browser's selectionchange event
+            if (!Until(Core.Learning.Tunables.PlaceSelectWaitMs.Int, () => worker.Invoke(r => r.PlaceSelectionIsFix(), false))) return NotSelected();
+            Thread.Sleep(Core.Learning.Tunables.PlaceSettleMs.Int);   // the page's editor takes the selection from the browser's selectionchange event
             // D151 (Teams, 20 Nov: "release" typed beside the word, not over it): CKEditor takes the browser's selection
             // into its own model a moment later. Typed before then, the fix goes in at its old place. Give it longer, and
             // type only if the selection is still the fix.
             if (RetypeInsteadOfArrows)
             {
-                Thread.Sleep(120);
+                Thread.Sleep(Core.Learning.Tunables.PlaceCkEditorSettleMs.Int);   // D155
                 if (!worker.Invoke(r => r.PlaceSelectionIsFix(), false)) return NotSelected();
             }
             var writer = new SendInputWriter(GlobalAutocorrect.Windows.Input.InjectionTag.Value) { TypeAsUnicode = true };
             if (!writer.ApplyEdit(0, replacement.Length == 0 ? 1 : 0, replacement)) return false;   // a Backspace deletes the selection
-            bool typed = Until(1000, () => worker.Invoke(r => r.PlaceTyped(replacement), false));
+            bool typed = Until(Core.Learning.Tunables.PlaceTypedWaitMs.Int, () => worker.Invoke(r => r.PlaceTyped(replacement), false));
             bool back = false;
             for (int attempt = 0; attempt < 2 && !back; attempt++)
-                back = worker.Invoke(r => r.PlaceReturn(attempt), false) && Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
+                back = worker.Invoke(r => r.PlaceReturn(attempt), false) && Until(Core.Learning.Tunables.PlaceReturnWaitMs.Int, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
             // D137 (Teams, 16 Nov: the fix went in, the caret couldn't be shown back, and the held keys were replayed at the
             // fix): when the user was typing at the very end of the field, Ctrl+End puts the caret there whatever the
             // field reports, before any held key is let go.
             if (!back && TextNorm.Comparable(LastSnapshot?.After ?? "x").Length == 0 && SendInputWriter.Tagged.CtrlEnd())
-                back = Until(500, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
+                back = Until(Core.Learning.Tunables.PlaceReturnWaitMs.Int, () => worker.Invoke(r => r.PlaceReturned(replacement), false));
             timings?.Record("write.placed", Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             if (!typed || !back) diagnose?.Invoke($"place: app={LastSnapshot?.ProcessName ?? "?"} typed={typed} back={back} (D122, no text)");
             _placedReplacement = replacement;   // D151: for the check, in case it went in beside the word
@@ -268,7 +271,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         try
         {
             if (VerifyCore(expectedBefore, expectedAfter, reach)) return true;
-            return placed is not null && !_holdingUntilVerified && RemoveStrayCopy(placed, expectedBefore);
+            return placed is not null && !_holdingUntilVerified && Core.Learning.Tunables.PlaceStrayCopyRepair.On && RemoveStrayCopy(placed, expectedBefore);
         }
         finally
         {

@@ -33,16 +33,19 @@ public sealed class AppStats
     /// <summary>D122: fixes on an earlier line written by putting the caret on them through UI Automation whose check failed.</summary>
     public double PlaceFailures { get; set; }
 
+    /// <summary>D154: times the field was empty just after Enter (a chat box that sends the message). Keyed per field.</summary>
+    public double EnterSends { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
         ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures, LineFailures = LineFailures + o.LineFailures,
-        PlaceFailures = PlaceFailures + o.PlaceFailures,
+        PlaceFailures = PlaceFailures + o.PlaceFailures, EnterSends = EnterSends + o.EnterSends,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by; EnterSends *= by;
     }
 
     internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures + LineFailures + PlaceFailures;
@@ -131,7 +134,7 @@ public sealed class AppHealth
     }
 
     /// <summary>D89: what is left of one arrow-key failure after about two weeks of fading.</summary>
-    public const double RetypeAfter = 0.25;
+    public static double RetypeAfter => Learning.Tunables.HealthRetypeAfter.Value;   // D155
 
     public void Written(string app) => Note(app, s => s.Writes++);
     public void VerifyFailed(string app) => Note(app, s => s.VerifyFailures++);
@@ -167,11 +170,19 @@ public sealed class AppHealth
     }
 
     /// <summary>D137: how many (faded) placed failures it takes, at the least.</summary>
-    public const double PlaceFailuresBeforeUnsafe = 2;
+    public static double PlaceFailuresBeforeUnsafe => Learning.Tunables.HealthPlaceFailuresBeforeUnsafe.Value;   // D155
 
     /// <summary>D137: and they must be more than one in this many fixes written in that program.</summary>
-    public const double PlaceFailureShare = 20;
+    public static double PlaceFailureShare => Learning.Tunables.HealthPlaceFailureShare.Value;   // D155
     public void Stuck(string app) => Note(app, s => s.Stuck++);
+
+    /// <summary>D154: the field (<see cref="Targets.ITextTarget.FieldKey"/>) was empty just after Enter: it sends on Enter.</summary>
+    public void EnterSent(string field) => Note(field, s => s.EnterSends++);
+
+    /// <summary>D154: a field that has sent on Enter twice (fading, like every count) gets its Enter held for a pending fix.</summary>
+    public bool EnterSends(string field) => !string.IsNullOrEmpty(field) && StatsFor(field).EnterSends >= EnterSendsAfter;
+
+    public static double EnterSendsAfter => Learning.Tunables.EnterSendsAfter.Value;   // D155
     public void Undone(string app) => Note(app, s => s.Undos++);
 
     private void Note(string app, Action<AppStats> change)

@@ -43,6 +43,12 @@ public sealed class EngineLoop : IDisposable
         _engine = engine;
     });
 
+    /// <summary>
+    /// D158: the last character of the typed record, for the suggestion after a Backspace (what the field should end
+    /// with now). Read on the engine thread only: from a <see cref="KeyProcessed"/> handler.
+    /// </summary>
+    public char? TypedTail => _engine.Session.Length > 0 ? _engine.Session.Typed[^1] : null;
+
     public void Post(Action<CorrectionEngine> work)
     {
         _posted.Enqueue(work);
@@ -72,10 +78,31 @@ public sealed class EngineLoop : IDisposable
             while (_posted.TryDequeue(out var work)) Guard(() => work(_engine));
             if (_undo.Pending) Guard(() => _undo.Run(_engine.Undo));
             Guard(_engine.Tick);
+            Guard(StepEnterGate);
             // Wake as soon as input arrives, or at the next tick. One pending wait is reused until it completes.
             if (waitInput is null || waitInput.IsCompleted) waitInput = reader.WaitToReadAsync().AsTask();
             WaitHandle.WaitAny([((IAsyncResult)waitInput).AsyncWaitHandle, _wake], _undo.Pending ? 5 : 25);
         }
+    }
+
+    /// <summary>
+    /// D154: Enter is held only in a field that has sent on Enter before; once held, the line is checked straight away,
+    /// and Enter goes as soon as nothing is left on its way (EnterGate's own timer lets it go after 1.5 s regardless).
+    /// </summary>
+    private bool _chatHold;
+
+    private void StepEnterGate()
+    {
+        var e = _engine;
+        bool chat = e.Target is { } t && e.Health?.EnterSends(t.FieldKey) == true;
+        // D156 (stress: "provided.Dear": the instant fix for the line's last word was placed after Enter, across the new
+        // paragraph, and the line break was lost): in any field, Enter waits briefly for the word just finished.
+        bool instant = Core.Learning.Tunables.EnterInstantHoldMs.Int > 0 && (e.InstantFixPending || e.WordAtEndWouldBeFixed());
+        EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is not null && (chat || instant);   // D155: a switch in the brain
+        EnterGate.HoldMs = chat ? EnterGate.MaxHoldMs : Core.Learning.Tunables.EnterInstantHoldMs.Int;
+        if (EnterGate.TakeStarted()) { _chatHold = chat; e.FinishWordForEnter(); if (chat) e.CheckLineNow(); }
+        if (EnterGate.Holding && e.InstantFixPending) EnterGate.KeepHolding();   // D157: never let go mid-fix
+        if (EnterGate.Holding && !(_chatHold ? e.LineFixesPending : e.InstantFixPending)) EnterGate.Release(_chatHold ? "fixes in" : "instant fix in");
     }
 
     /// <summary>One bad event (a hung or odd app, a race) must never take the whole app and its keyboard hook down.</summary>
