@@ -103,6 +103,10 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             || token.Contains("www.", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>D158: the candidate that scored <paramref name="runnerUp"/>, other than <paramref name="best"/>.</summary>
+    private static string? RunnerUpWord(Dictionary<string, double> candidates, string best, double runnerUp) =>
+        candidates.Where(c => c.Key != best && c.Value == runnerUp).Select(c => c.Key).Order(StringComparer.Ordinal).FirstOrDefault();
+
     private Suggestion? CompletePartial(string line, string? app)
     {
         int start = line.Length;
@@ -172,6 +176,20 @@ public sealed class Predictor(NgramModel model, UserHistory history)
             else if (score > runnerUp)
             {
                 runnerUp = score;
+            }
+        }
+
+        // D158 (user: "If this is still an opt" offered nothing): a close call between words that share a longer start
+        // which is a word itself ("options" or "option") offers that shared word: right in both cases so far.
+        if (best is not null && runnerUp > 0 && bestScore < RunnerUpRatio * runnerUp && RunnerUpWord(candidates, best, runnerUp) is { } second)
+        {
+            int n = 0;
+            while (n < best.Length && n < second.Length && best[n] == second[n]) n++;
+            string shared = best[..n];
+            if (shared.Length > lower.Length + 1 && model.CountOf(shared) > 0 && model.CountOf(shared) * 2 >= asTypedCount)
+            {
+                best = shared;
+                runnerUp = 0;
             }
         }
 

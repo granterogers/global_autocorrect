@@ -43,6 +43,12 @@ public sealed class EngineLoop : IDisposable
         _engine = engine;
     });
 
+    /// <summary>
+    /// D158: the last character of the typed record, for the suggestion after a Backspace (what the field should end
+    /// with now). Read on the engine thread only: from a <see cref="KeyProcessed"/> handler.
+    /// </summary>
+    public char? TypedTail => _engine.Session.Length > 0 ? _engine.Session.Typed[^1] : null;
+
     public void Post(Action<CorrectionEngine> work)
     {
         _posted.Enqueue(work);

@@ -188,6 +188,9 @@ public sealed class AppHost : IAsyncDisposable
     public event Action<GlobalAutocorrect.Core.Write.CorrectionNotice>? Corrected;
     public event Action<KeyInput>? KeyProcessed;
 
+    /// <summary>D158: see <see cref="EngineLoop.TypedTail"/>; only from a <see cref="KeyProcessed"/> handler.</summary>
+    public char? TypedTail => _loop?.TypedTail;
+
     public async Task StartAsync()
     {
         _ui = SynchronizationContext.Current;
