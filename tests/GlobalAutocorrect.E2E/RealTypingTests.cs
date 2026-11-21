@@ -237,7 +237,7 @@ public sealed class RealTypingTests
         // D109: CKEditor must be retyped, so fixes on an earlier line are skipped there by design (a miss, never damage).
         // D117: in the chat box Enter sends the message, so a fix that wasn't in before it was sent can't be made (a miss).
         // D130: a misbehaving model's whole answer is often refused (more than half the words changed, 4.5.d), fixes with it.
-        int allowedMisses = editor is "chat" ? score.NeedFix / 2 : Adversary ? score.NeedFix : score.NeedFix / 20;   // D141: with a misbehaving model only damage counts: refusing its answers is the point   // D125: CKEditor (Teams) is placed now, no longer retyped
+        int allowedMisses = Adversary ? score.NeedFix : editor is "chat" ? score.NeedFix / 2 : score.NeedFix / 20;   // D158: a misbehaving model counts only damage, in the chat box too (its check came first)   // D141: with a misbehaving model only damage counts: refusing its answers is the point   // D125: CKEditor (Teams) is placed now, no longer retyped
         Assert.True(desyncs == 0 && score.Damaged.Count == 0 && score.Missed <= allowedMisses,
             $"{editor}: fixed {score.Fixed}/{score.NeedFix}, missed {score.Missed}, damaged {score.Damaged.Count} " +
             $"[{string.Join("; ", score.Damaged)}], missed words [{string.Join("; ", score.MissedWords)}], desyncs {desyncs}, verify failures {verifyFails}; {app.Diagnostics()}");
