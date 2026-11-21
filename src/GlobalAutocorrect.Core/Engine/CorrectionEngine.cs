@@ -332,7 +332,7 @@ public sealed class CorrectionEngine
     {
         if (Paused || Target is null || !_o.InstantEnabled || Session.WordAtEnd() is not { } fw) return false;
         if (Text.LanguageGuess.IsForeign(CurrentParagraph()) || InstantFixFor(fw) is not { } fix) return false;
-        _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, _d.Keys.LatestKeySeq) { WholeWord = true });
+        _gate.Enqueue(new PendingWrite(Layer.Instant, Session.Generation, fw.Start, fw.End, fw.Word, fix, _d.Clock.NowMs, _d.Keys.LatestKeySeq) { WholeWord = true, CapitalIfSentenceStart = fw.Start == 0 && _o.TidySpacing });   // D172
         _gate.TryWrite(Target);
         return true;
     }

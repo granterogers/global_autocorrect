@@ -54,6 +54,17 @@ public sealed class SentenceStartFixTests
     }
 
     [Fact]
+    public void R4_3_D172_ALineOfOneWordFixedForTheHeldEnterGetsTheCapital()
+    {
+        // Stress, chat box: a line "helllo" then Enter; the word is fixed while Enter is held, and came out "hello".
+        var h = new Harness(options: new EngineOptions());
+        foreach (char c in "teh.") { h.Clock.Advance(40); h.Engine.OnInput(h.Ed.TypeChar(c)); }
+        Assert.True(h.Engine.FinishWordForEnter());
+        h.Wait(300);
+        Assert.True("The." == h.Text, $"text=[{h.Text}] drop={h.Engine.LastDropReason}");
+    }
+
+    [Fact]
     public void R4_3_D141_MidSentenceTheCaseIsKept()
     {
         var h = new Harness(options: new EngineOptions());
