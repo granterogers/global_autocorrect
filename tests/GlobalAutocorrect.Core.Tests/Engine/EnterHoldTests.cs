@@ -70,6 +70,17 @@ public sealed class EnterHoldTests
     }
 
     [Fact]
+    public void R4_6_D157_AnInstantFixIsNeverWrittenAcrossALineBreak()
+    {
+        // E2E, CKEditor: the fix couldn't be placed before Enter, landed after it, and the next line came out "HIi".
+        var h = new Harness();
+        foreach (char c in "I saw teh\n") { h.Clock.Advance(40); h.Engine.OnInput(h.Ed.TypeChar(c)); }   // Enter not held
+        h.Wait(300);
+        Assert.Equal("I saw teh\n", h.Text);   // left as typed: a miss, never damage
+        Assert.Equal("instant-across-line", h.Engine.LastDropReason);
+    }
+
+    [Fact]
     public void R4_6_D156_AWordThatNeedsNoFixDoesNotHoldEnter()
     {
         var h = new Harness();

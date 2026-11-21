@@ -95,6 +95,7 @@ public sealed class EngineLoop : IDisposable
         EnterGate.Armed = Core.Learning.Tunables.EnterHold.On && !e.Paused && e.Target is not null && (chat || instant);   // D155: a switch in the brain
         EnterGate.HoldMs = chat ? EnterGate.MaxHoldMs : Core.Learning.Tunables.EnterInstantHoldMs.Int;
         if (EnterGate.TakeStarted()) { _chatHold = chat; e.FinishWordForEnter(); if (chat) e.CheckLineNow(); }
+        if (EnterGate.Holding && e.InstantFixPending) EnterGate.KeepHolding();   // D157: never let go mid-fix
         if (EnterGate.Holding && !(_chatHold ? e.LineFixesPending : e.InstantFixPending)) EnterGate.Release(_chatHold ? "fixes in" : "instant fix in");
     }
 

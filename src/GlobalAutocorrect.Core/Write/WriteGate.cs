@@ -246,6 +246,10 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
             Drop(w, "mention-in-way");
             return false;
         }
+        // D157 (E2E, CKEditor: an instant fix that couldn't be placed before Enter landed after it, across the new
+        // paragraph, and the next line came out "HIi"): an instant fix is for the word just typed. Once a line break
+        // follows it the moment has passed: it is left (a miss, never damage), and the AI may still fix the word.
+        if (w.Layer == Layer.Instant && tail.Contains('\n')) { Drop(w, "instant-across-line"); return false; }
         int caretDistance = TextNorm.Elements(tail);
         int deleteCount = TextNorm.Elements(w.Original);
         // D28: a short tail of spaces and punctuation (usually just the key that finished the word) is deleted and typed

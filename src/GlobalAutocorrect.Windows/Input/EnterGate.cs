@@ -68,6 +68,19 @@ public static class EnterGate
     /// <summary>The engine's side: true once for each hold that began since it last asked.</summary>
     public static bool TakeStarted() => Interlocked.Exchange(ref _started, 0) == 1;
 
+    /// <summary>
+    /// D157: the fix Enter waits for is still being written (a slow field retries its placement): the hold goes on, up
+    /// to <see cref="HardCapMs"/> from the Enter. Called each engine tick, so if the engine stops, the timer still lets go.
+    /// </summary>
+    public static void KeepHolding()
+    {
+        lock (Gate)
+        {
+            if (_state == State.Holding && Environment.TickCount64 - _heldAt < HardCapMs)
+                _timer?.Change(Math.Max(1, _holdMs), System.Threading.Timeout.Infinite);
+        }
+    }
+
     /// <summary>Let the held keys go, Enter first, in the order they came.</summary>
     public static void Release(string why)
     {
