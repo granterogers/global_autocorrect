@@ -47,8 +47,16 @@ public class OverlayWindow : Window
     {
         // Show through WPF (never activates: ShowActivated=false plus WS_EX_NOACTIVATE), so WPF knows it is visible and
         // Hide() really hides it; then position in physical pixels. SWP_SHOWWINDOW behind WPF's back left it un-hideable.
-        if (!IsVisible) Show();
-        SetWindowPos(Handle, HWND_TOPMOST, (int)Math.Round(x), (int)Math.Round(y), Math.Max(1, (int)Math.Ceiling(width)), Math.Max(1, (int)Math.Ceiling(height)), SWP_NOACTIVATE);
+        int px = (int)Math.Round(x), py = (int)Math.Round(y), pw = Math.Max(1, (int)Math.Ceiling(width)), ph = Math.Max(1, (int)Math.Ceiling(height));
+        if (!IsVisible)
+        {
+            // D171 (E2E, twice: a 768×519 overlay "not just after the caret"): shown first and placed after, the window was
+            // briefly on screen at WPF's default size and place. Placed while still hidden (no SWP_SHOWWINDOW), then shown.
+            new WindowInteropHelper(this).EnsureHandle();
+            SetWindowPos(Handle, HWND_TOPMOST, px, py, pw, ph, SWP_NOACTIVATE);
+            Show();
+        }
+        SetWindowPos(Handle, HWND_TOPMOST, px, py, pw, ph, SWP_NOACTIVATE);
     }
 
     /// <summary>DIPs per physical pixel on this window's monitor.</summary>
