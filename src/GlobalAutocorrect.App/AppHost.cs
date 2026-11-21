@@ -278,6 +278,11 @@ public sealed class AppHost : IAsyncDisposable
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") _focus.Trace += Diagnose;   // D71: screen tests only
         if (Environment.GetEnvironmentVariable("GA_E2E") == "1") GlobalAutocorrect.Windows.Input.WriteFence.Trace = Diagnose;   // D115: screen tests only
         GlobalAutocorrect.Windows.Input.EnterGate.Diagnose = Diagnose;   // D154: numbers only
+        // D166: suggestions wait on the model (up to Predict.ModelTimeoutMs) and UI Automation calls block too; with the
+        // pool's default of one thread per core, a burst of them left timers and other work waiting seconds for a thread
+        // (the pool adds about one a second). A floor of 32 threads keeps them answered at once.
+        ThreadPool.GetMinThreads(out int workers, out int io);
+        ThreadPool.SetMinThreads(Math.Max(workers, 32), io);
         _focus.FocusChanged += _ =>
         {
             _loop.Feed(new KeyInput(KeyKind.FocusChange, '\0', _hook.LatestKeySeq, SystemClock.Instance.NowMs));

@@ -94,6 +94,27 @@ public sealed class EnterGateTests : IDisposable
     }
 
     [Fact]
+    public void R4_6_D166_TheHoldKeepsTimeWhenTheThreadPoolIsBusy()
+    {
+        // Stress: suggestions waiting on the model had taken up the thread pool, and keys after a released Enter came out
+        // seconds late. The gate keeps its own clock.
+        var release = new ManualResetEventSlim(false);   // not disposed: the blocked items may still wait on it after the test
+        ThreadPool.GetMinThreads(out int min, out _);
+        for (int i = 0; i < min * 4 + 8; i++) ThreadPool.UnsafeQueueUserWorkItem(_ => { try { release.Wait(3000); } catch (ObjectDisposedException) { } }, null);
+        try
+        {
+            EnterGate.Armed = true;
+            EnterGate.HoldMs = 200;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Key(VK_RETURN, true);
+            for (int i = 0; i < 100 && _sent.Count == 0; i++) Thread.Sleep(10);
+            Assert.Single(_sent);
+            Assert.True(sw.ElapsedMilliseconds < 600, $"{sw.ElapsedMilliseconds} ms");
+        }
+        finally { release.Set(); }
+    }
+
+    [Fact]
     public void R4_6_D156_AnInstantFixHoldIsShort()
     {
         EnterGate.Armed = true;

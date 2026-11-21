@@ -34,6 +34,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D163 (7.1):** the next word comes from the model when it is clearly likeliest: three times as often right as the word list (26% against 9% of places). 1 test.
 - **D164:** unreadable fields are logged with their kind of editor.
 - **D165 (7.1):** suggestions shown and taken are counted per program; the weekly tuner adjusts the suggestion bars and the placement wait from everyone's counts. 1 test.
+- **D166 (4.6):** the Enter hold keeps time on its own clock thread, so busy suggestion requests can't delay it (lost and scrambled lines in the gates). 1 test.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.

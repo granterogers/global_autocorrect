@@ -28,7 +28,41 @@ public static class EnterGate
     private static long _heldAt;
     private static int _started;
     private static volatile bool _armed;
-    private static Timer? _timer;
+    // D166 (stress: keys after a released Enter came out 2–10 s late, in batches of 5, 18 and 22): the gate's timing ran
+    // on the shared thread pool, which suggestion requests waiting on the model had taken up; a 60 ms step waited seconds
+    // for a thread. Its own clock thread now: one deadline, woken when it changes.
+    private static long _dueAt = long.MaxValue;
+    private static readonly AutoResetEvent Wake = new(false);
+    private static Thread? _clock;
+
+    private static void Schedule(int ms)
+    {
+        Volatile.Write(ref _dueAt, Environment.TickCount64 + Math.Max(1, ms));
+        if (_clock is null)
+        {
+            _clock = new Thread(ClockLoop) { IsBackground = true, Name = "EnterGate clock", Priority = ThreadPriority.AboveNormal };
+            _clock.Start();
+        }
+        Wake.Set();
+    }
+
+    private static void Cancel() => Volatile.Write(ref _dueAt, long.MaxValue);
+
+    private static void ClockLoop()
+    {
+        while (true)
+        {
+            long due = Volatile.Read(ref _dueAt);
+            long now = Environment.TickCount64;
+            if (due != long.MaxValue && now >= due)
+            {
+                Interlocked.CompareExchange(ref _dueAt, long.MaxValue, due);
+                try { Timeout(); } catch (Exception) { /* never take the clock down */ }
+                continue;
+            }
+            Wake.WaitOne(due == long.MaxValue ? -1 : (int)Math.Min(int.MaxValue, due - now));
+        }
+    }
 
     /// <summary>Set by the app each tick: the focused field sends on Enter and the app is running.</summary>
     public static bool Armed { get => _armed; set => _armed = value; }
@@ -60,7 +94,7 @@ public static class EnterGate
             _heldAt = Environment.TickCount64;
             Held.Add((vk, scan, flags, down));
             Interlocked.Exchange(ref _started, 1);
-            (_timer ??= new Timer(_ => Timeout())).Change(Math.Max(1, _holdMs), System.Threading.Timeout.Infinite);
+            Schedule(_holdMs);
             return true;
         }
     }
@@ -77,7 +111,7 @@ public static class EnterGate
         lock (Gate)
         {
             if (_state == State.Holding && Environment.TickCount64 - _heldAt < HardCapMs)
-                _timer?.Change(Math.Max(1, _holdMs), System.Threading.Timeout.Infinite);
+                Schedule(_holdMs);
         }
     }
 
@@ -87,7 +121,7 @@ public static class EnterGate
         lock (Gate)
         {
             if (_state != State.Holding) return;
-            _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            Cancel();
             SendHeldLocked(why);
         }
     }
@@ -117,7 +151,7 @@ public static class EnterGate
         {
             if (_state == State.Holding && WriteInProgress() && Environment.TickCount64 - _heldAt < HardCapMs)
             {
-                _timer?.Change(30, System.Threading.Timeout.Infinite);
+                Schedule(30);
                 return;
             }
             if (_state == State.Holding) { SendHeldLocked("timeout"); return; }
@@ -145,7 +179,7 @@ public static class EnterGate
         }
         if (keys.Length == 0) { _state = State.Idle; return; }
         _state = State.Draining;
-        (_timer ??= new Timer(_ => Timeout())).Change(next, System.Threading.Timeout.Infinite);
+        Schedule(next);
         if (!Send(keys.Select(k => KeyHold.ToInput(k.Vk, k.Scan, k.Flags, k.Down, ReplayTag)).ToArray()))
         {
             _state = State.Idle;
@@ -158,6 +192,6 @@ public static class EnterGate
     /// <summary>Tests only.</summary>
     public static void Reset()
     {
-        lock (Gate) { _state = State.Idle; Held.Clear(); _armed = false; _started = 0; _holdMs = 1500; _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite); }
+        lock (Gate) { _state = State.Idle; Held.Clear(); _armed = false; _started = 0; _holdMs = 1500; Cancel(); }
     }
 }
