@@ -40,6 +40,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D169 (4.6.d):** an AI insertion is left if the text before it changed since the model saw it. 1 test.
 - **D170 (4.6):** the 3 s safety release of held keys keeps time on its own thread; v1.46.0 (never published) is superseded by the next version.
 - **D171 (7.6):** an overlay is placed before it is shown, never briefly at a default size and place.
+- **D173 (4.5.a, 4.5.d):** a changed or dropped number refuses only that edit, not the whole correction; pieces that aren't words can be joined into one word ("apprectea d." → "appreciated."). 2 tests.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.

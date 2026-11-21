@@ -57,9 +57,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
     {
         var origTokens = Tokeniser.Tokenise(original);
 
-        // 4.5.d: numbers, URLs and emails must survive untouched, or nothing is applied.
-        if (!ProtectedMultiset(origTokens).SequenceEqual(ProtectedMultiset(Tokeniser.Tokenise(cleaned))))
-            return Reject(edits, RejectReason.ProtectedTokenChanged);
+        // 4.5.d: numbers, URLs and emails are never changed. D173 (user report, "that would be apprectea d.77", never
+        // fixed): the model dropped the stray "77", and one changed number threw away every fix in the paragraph. Each edit
+        // that touches or adds one is refused on its own instead (Judge), and the rest of the correction stands (user's call).
 
         // D19: a word "changes" when its spelling does; case, apostrophe, punctuation and spacing fixes don't count.
         int words = origTokens.Count(t => t.IsWord);
@@ -140,6 +140,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 if (hardProtected || (t.IsProtected && e.Kind != EditKind.Spacing)) return RejectReason.TouchesProtectedToken;
                 if (isPersonalWord(t.Text)) return RejectReason.PersonalDictionary;
             }
+            // D173: nothing above touched a number, URL, email or mention, so one in the replacement is new ("3pm" → "4pm"
+            // arrives as a deletion and an insertion, "at" → "at 7" as an insertion).
+            if (ProtectedMultiset(Tokeniser.Tokenise(e.Replacement)).Any()) return RejectReason.TouchesProtectedToken;
             // D133: a correctly spelled word is never swapped for its other spelling ("adaptor" → "adapter", "colour" → "color").
             if (e.OriginalWords.Count == e.NewWords.Count
                 && e.OriginalWords.Zip(e.NewWords).Any(p => EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second), IsKnown(Trim(p.First)))))   // either way, known to the dictionary or not ("adaptor" isn't)
@@ -284,10 +287,15 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 // would hide "for" becoming "at".
                 if (head + tail > 0 && a.Length > b.Length + 1) continue;
                 int d = Similarity.DamerauLevenshtein(a, b);
-                if (rest.Length != e.OriginalWords.Count && d > 1 && Instant.TypoChannel.TwoSlipLikelihood(a, b) < Instant.TypoChannel.TwoLikelySlips) continue;
                 double norm = Similarity.NormDist(a, b);
                 // The first letter kept, or an extra or swapped first key ("tpargaea" → "paragraphs": the p comes second).
                 bool start = a[0] == b[0] || (a.Length > 1 && a[1] == b[0]);
+                // D173 (user report, "apprectea d." → "appreciated." refused): pieces that are none of them words, joined
+                // into one word. D26 guards splits, where a word swap can hide ("stationfor" → "station at"); a join of
+                // non-words has no wording of the user's to swap, so it takes the ordinary closeness bar, first letter kept.
+                bool joinOfNonWords = rest.Length == 1 && e.OriginalWords.Count > 1 && head + tail == 0
+                                      && norm <= settings.MaxNormalisedDistance && a[0] == b[0];
+                if (rest.Length != e.OriginalWords.Count && d > 1 && !joinOfNonWords && Instant.TypoChannel.TwoSlipLikelihood(a, b) < Instant.TypoChannel.TwoLikelySlips) continue;
                 if (norm <= settings.MaxNormalisedDistance || (norm <= settings.MaxNonWordDistance && start)) return true;
             }
         }

@@ -267,20 +267,19 @@ public sealed class EditRulesTests
     }
 
     [Fact]
-    public void R4_5_d_RejectsWholeCorrectionWhenNumberChanges()
+    public void R4_5_d_D173_AChangedNumberIsRefusedAndTheRestStands()
     {
-        var r = Run("meet teh team at 3pm", "meet the team at 4pm");
-        Assert.Equal(RejectReason.ProtectedTokenChanged, r.WholeRejection);
-        Assert.Empty(r.Accepted);
+        const string a = "meet teh team at 3pm";
+        Assert.Equal("meet the team at 3pm", Apply(a, Run(a, "meet the team at 4pm")));
+        Assert.Equal(a.Replace("teh", "the"), Apply(a, Run(a, "meet the team at 3pm 7")));   // a number added
     }
 
     [Fact]
-    public void R4_5_d_RejectsWholeCorrectionWhenUrlOrEmailChanges()
+    public void R4_5_d_D173_AUrlOrEmailIsNeverChanged()
     {
-        Assert.Equal(RejectReason.ProtectedTokenChanged,
-            Run("see www.exmaple.com teh end", "see www.example.com the end").WholeRejection);
-        Assert.Equal(RejectReason.ProtectedTokenChanged,
-            Run("mail jo@exmaple.com", "mail jo@example.com").WholeRejection);
+        const string a = "see www.exmaple.com teh end";
+        Assert.Equal("see www.exmaple.com the end", Apply(a, Run(a, "see www.example.com the end")));
+        Assert.Empty(Run("mail jo@exmaple.com", "mail jo@example.com").Accepted);
     }
 
     [Fact]
@@ -370,7 +369,7 @@ public sealed class EditRulesTests
     [Fact]
     public void R4_5_d_NeverRespacesNumbers()
     {
-        Assert.Equal(RejectReason.ProtectedTokenChanged, Run("meet at 9am today", "meet at 9 am today").WholeRejection);
+        Assert.Empty(Run("meet at 9am today", "meet at 9 am today").Accepted);
     }
     [Theory]
     [InlineData("going home today", "really going home today")]     // a word added before the first one
