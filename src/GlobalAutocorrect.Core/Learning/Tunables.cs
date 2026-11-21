@@ -68,6 +68,8 @@ public static class Tunables
     // ---- What the app learns per program (D81–D137) ----
     public static readonly Tunable HealthRetypeAfter = Define("Health.RetypeAfter", 0.25, 0.05, 3, "D89/D95/D121: failures (fading) before a program changes how it's written to");
     public static readonly Tunable HealthPlaceFailuresBeforeUnsafe = Define("Health.PlaceFailuresBeforeUnsafe", 2, 1, 20, "D137: placed-fix failures before placing stops in a program");
+    public static readonly Tunable HealthPlaceRefusalsBeforeAvoid = Define("Health.PlaceRefusalsBeforeAvoid", 4, 1, 50, "D162: refused placements (fading) before placing stops in a program");
+    public static readonly Tunable HealthPlaceRefusalShare = Define("Health.PlaceRefusalShare", 5, 1, 100, "D162: and more than one in this many of its fixes");
     public static readonly Tunable HealthPlaceFailureShare = Define("Health.PlaceFailureShare", 20, 2, 200, "D137: and more than one in this many of its fixes");
 
     // ---- Writing and checking (D81, D65, D124) ----
@@ -88,6 +90,7 @@ public static class Tunables
     public static readonly Tunable PredictModelTimeoutMs = Define("Predict.ModelTimeoutMs", 250, 50, 1500, "D159: how long a suggestion waits for the model before using the word list");
     public static readonly Tunable PredictModelContextChars = Define("Predict.ModelContextChars", 300, 50, 1500, "D159: how much text before the caret the model reads");
     public static readonly Tunable PredictModelMinChance = Define("Predict.ModelMinChance", 0.15, 0, 1, "D159: the model's pick needs at least this chance");
+    public static readonly Tunable PredictModelNextMinChance = Define("Predict.ModelNextMinChance", 0.7, 0, 1, "D163: a next word (nothing typed yet) from the model needs this share of its word choices");
     public static readonly Tunable PredictModelLead = Define("Predict.ModelLead", 2, 1, 10, "D159: and this many times the next candidate's");
     public static readonly Tunable PhrasesMinUses = Define("Phrases.MinUses", 3, 2, 20, "D142: uses before a phrase is offered");
     public static readonly Tunable PhrasesMinDays = Define("Phrases.MinDays", 2, 1, 30, "D142: on at least this many days");

@@ -88,6 +88,24 @@ public sealed class PlacedFixTests
     }
 
     [Fact]
+    public void R4_6_d_D162_AProgramThatKeepsRefusingPlacementGetsTheOldWayOfWriting()
+    {
+        // The user's WhatsApp: placed fixes refused ("not-selected") again and again, each one lost.
+        var health = new AppHealth();
+        var h = Make(health);
+        h.Ed.PlaceRefuses = true;
+        for (int i = 0; i < 6 && !health.PlaceUnsafe("msedge"); i++)
+        {
+            h.Type("We went their today and walked along the river path. ");
+            h.Wait(4000);
+        }
+        Assert.True(health.PlaceUnsafe("msedge"));   // learnt: placing doesn't work here
+        h.Type("We went their today and walked along the river path. ");
+        h.Wait(4000);
+        Assert.EndsWith("We went there today and walked along the river path. ", h.Text);   // written the old way, not lost
+    }
+
+    [Fact]
     public void R4_6_d_D144_ARefusedPlacementIsTriedAgain()
     {
         var h = Make(new AppHealth());

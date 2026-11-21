@@ -329,7 +329,7 @@ public sealed class WriteGate(EngineOptions options, IClock clock, IKeyMonitor k
         // D144 (Chrome/Slate on GitHub: "not-selected", and "their" stayed): a refusal is often only the field being slow to
         // show the selection; nothing was typed, so the fix waits for the next tick and is tried again, three times in all.
         if (!sent && placed && target.LastEditRefused && ++w.PlaceRefusals < Learning.Tunables.PlaceRetries.Int) { w.Waiting = "place-refused"; return false; }
-        if (!sent && placed && target.LastEditRefused) { Drop(w, "place-refused"); return false; }   // D122: nothing typed
+        if (!sent && placed && target.LastEditRefused) { Health?.PlaceRefused(target.AppName); Drop(w, "place-refused"); return false; }   // D122: nothing typed; D162: counted
 
         // Compared the way the field reports text (D42): a blank line counts once however the editor shows it.
         string before = TextNorm.Comparable(win.Before);

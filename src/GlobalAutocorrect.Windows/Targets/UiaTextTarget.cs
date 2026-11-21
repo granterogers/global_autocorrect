@@ -48,6 +48,9 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
     public GlobalAutocorrect.Core.Telemetry.ReadCost? Cost { get; init; }
 
     /// <summary>D97: in a program whose reads are slow, the suggestion reads only the last few words.</summary>
+    /// <summary>D164: a field's editor class for the log (which editors can't be read), shortened; never its text.</summary>
+    private static string FieldClass(string? c) => string.IsNullOrWhiteSpace(c) ? "-" : (c.Length > 40 ? c[..40] : c).Replace(' ', '.');
+
     public TextWindow ReadForSuggestion(bool light) =>
         ReadWindow(light ? GlobalAutocorrect.Core.Prediction.FieldCatchUp.LightBeforeChars : 400, light ? 0 : 80);
 
@@ -72,7 +75,7 @@ public sealed class UiaTextTarget(UiaWorker worker, Func<UiaSnapshot, TargetStat
         // D105: why a field is left alone, once per change (program name and a status, never text): in Windows Sandbox
         // the screen tests made no fixes at all, and nothing said why.
         string why = $"{s.ProcessName} {status}";
-        if (why != _lastStatus) { _lastStatus = why; if (status != TargetStatus.Ok) diagnose?.Invoke($"read: app={s.ProcessName} status={status} (D105)"); }
+        if (why != _lastStatus) { _lastStatus = why; if (status != TargetStatus.Ok) diagnose?.Invoke($"read: app={s.ProcessName} status={status} field={FieldClass(s.ClassName)} (D105, D164: the kind of editor, never text)"); }
         if (status != TargetStatus.Ok) return TextWindow.Unavailable(status, id);
         _lastPid = s.ProcessId;
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out uint fg);

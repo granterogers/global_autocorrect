@@ -94,6 +94,44 @@ public sealed class SuggestBenchTests
             if (b is not null) { offered[1]++; if (b.Word.Equals(word, StringComparison.OrdinalIgnoreCase)) right[1]++; }
         }
 
+        // D163/D164: completions at several leads, and next words (nothing typed yet) at several chances.
+        string Sweep(string title, IEnumerable<(string Name, Dictionary<string, double> Tuning)> settings, List<(string Before, string Word)> set, bool includePlain)
+        {
+            var sb = new StringBuilder().AppendLine($"| {title} | offered | right | wrong | right when offered |").AppendLine("|---|---|---|---|---|");
+            var runs = settings.ToList();
+            if (includePlain) runs.Insert(0, ("word list", new Dictionary<string, double> { ["Predict.UseModel"] = 0 }));
+            foreach (var (name, tuning) in runs)
+            {
+                GlobalAutocorrect.Core.Learning.Tunables.Apply(tuning);
+                var pr = new Predictor(ngram, new UserHistory(histPath)) { ModelNext = Next };
+                int off = 0, ok = 0;
+                foreach (var (before, word) in set)
+                {
+                    var sug = pr.Suggest(before);
+                    if (sug is null) continue;
+                    off++;
+                    if (sug.Word.Equals(word, StringComparison.OrdinalIgnoreCase)) ok++;
+                }
+                sb.AppendLine($"| {name} | {off} ({100.0 * off / set.Count:F0}%) | {ok} ({100.0 * ok / set.Count:F0}%) | {off - ok} ({100.0 * (off - ok) / set.Count:F0}%) | {(off > 0 ? 100.0 * ok / off : 0):F0}% |");
+            }
+            GlobalAutocorrect.Core.Learning.Tunables.Apply(null);
+            return sb.ToString();
+        }
+        string leadTable = Sweep("completion, model lead", new[] { 1.5, 2, 3, 5 }.Select(l => ($"lead {l}", new Dictionary<string, double> { ["Predict.ModelLead"] = l })), cases, includePlain: false);
+        var nextCases = new List<(string Before, string Word)>();
+        var rnd2 = new Random(163);
+        foreach (var line in File.ReadLines(Path.Combine(repo, "data", "eval", "tuning.jsonl")))
+        {
+            var words = JsonDocument.Parse(line).RootElement.GetProperty("clean").GetString()!.Split(' ');
+            if (words.Length < 4) continue;
+            int i = rnd2.Next(2, words.Length);
+            string w = new string(words[i].TakeWhile(char.IsLetter).ToArray());
+            if (w.Length < 2 || !char.IsLetter(words[i - 1][^1])) continue;
+            nextCases.Add((string.Join(' ', words[..i]) + " ", w.ToLowerInvariant()));
+            if (nextCases.Count >= 200) break;
+        }
+        string nextTable = Sweep($"next word ({nextCases.Count} places)", new[] { 0.3, 0.5, 0.7 }.Select(c => ($"model, chance ≥ {c}", new Dictionary<string, double> { ["Predict.ModelNextMinChance"] = c })), nextCases, includePlain: true);
+
         // The clean-up's speed alone, and with suggestions asked on the other slot at the same time.
         var cleanAlone = new List<double>(); var cleanBusy = new List<double>();
         for (int i = 0; i < 12; i++) cleanAlone.Add((await client.CleanAsync($"Message {i}: i wnet to the shops and forgot teh milk again.", ct)).LatencyMs);
@@ -121,6 +159,8 @@ public sealed class SuggestBenchTests
                 int r = at.Count(p => p.Right);
                 return $"| {c:F2} | {at.Count} ({100.0 * at.Count / n:F0}%) | {r} ({100.0 * r / n:F0}%) | {at.Count - r} ({100.0 * (at.Count - r) / n:F0}%) | {(at.Count > 0 ? 100.0 * r / at.Count : 0):F0}% |\n";
             })))
+            .AppendLine(leadTable)
+            .AppendLine(nextTable)
             .AppendLine($"Model answer for a suggestion (slot 1): p50 {Pct(nextMs, 0.5):F0} ms, p90 {Pct(nextMs, 0.9):F0} ms, p99 {Pct(nextMs, 0.99):F0} ms, {nextMs.Count} calls")
             .AppendLine($"Clean-up alone: p50 {Pct(cleanAlone, 0.5):F0} ms, p90 {Pct(cleanAlone, 0.9):F0} ms")
             .AppendLine($"Clean-up with suggestions asked meanwhile (D160: skipped while it runs): p50 {Pct(cleanBusy, 0.5):F0} ms, p90 {Pct(cleanBusy, 0.9):F0} ms")

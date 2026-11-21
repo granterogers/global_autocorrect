@@ -91,7 +91,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
 
         if (last == ' ' && line.Length >= 2 && !char.IsWhiteSpace(line[^2]))
         {
-            return PredictNext(line, app);
+            return PredictNext(line, app, textBeforeCaret);
         }
 
         return null;
@@ -273,6 +273,37 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         return bestP >= Learning.Tunables.PredictModelMinChance.Value && bestP >= Learning.Tunables.PredictModelLead.Value * secondP ? best : null;
     }
 
+    /// <summary>
+    /// D163: the model's likeliest next word after <paramref name="before"/> (which ends with a space): its whole-word
+    /// pieces that are words, compared among themselves; null unless one has <see cref="Learning.Tunables.PredictModelNextMinChance"/>
+    /// of them and leads the next by <see cref="Learning.Tunables.PredictModelLead"/>.
+    /// </summary>
+    private string? ModelNextWord(string before)
+    {
+        int keep = Learning.Tunables.PredictModelContextChars.Int;
+        string head = before.TrimEnd(' ', '\t');
+        string prompt = head.Length > keep ? head[^keep..] : head;
+        var next = ModelNext!(prompt);
+        if (next is null || next.Count == 0) return null;
+        var words = new Dictionary<string, double>(StringComparer.Ordinal);
+        double total = 0;
+        foreach (var t in next)
+        {
+            if (!t.Token.StartsWith(' ')) continue;
+            string w = t.Token.TrimStart(' ');
+            if (w.Length == 0 || !char.IsLetter(w[0])) continue;
+            total += t.P;
+            string lower = w.ToLowerInvariant();
+            if (lower.Length >= 2 && lower.All(c => char.IsLetter(c) || c == '\'') && model.CountOf(lower) > 0)
+                words[lower] = words.GetValueOrDefault(lower) + t.P;
+        }
+        if (total <= 0 || words.Count == 0) return null;
+        var ranked = words.OrderByDescending(w => w.Value).ToList();
+        double best = ranked[0].Value / total, second = ranked.Count > 1 ? ranked[1].Value / total : 0;
+        LastModelChance = best;
+        return best >= Learning.Tunables.PredictModelNextMinChance.Value && best >= Learning.Tunables.PredictModelLead.Value * second ? ranked[0].Key : null;
+    }
+
     private static Suggestion Finish(string partial, string lower, string best)
     {
         var rest = best[lower.Length..];
@@ -285,7 +316,7 @@ public sealed class Predictor(NgramModel model, UserHistory history)
         return new Suggestion(allCaps ? rest.ToUpperInvariant() : rest, partial + rest, IsNextWord: false);
     }
 
-    private Suggestion? PredictNext(string line, string? app)
+    private Suggestion? PredictNext(string line, string? app, string? fullBefore = null)
     {
         var body = line[..^1];
         char before = body[^1];
@@ -333,6 +364,12 @@ public sealed class Predictor(NgramModel model, UserHistory history)
 
         var next = model.Next(w1, w2, NextCandidates);
         var mine = history.NextAfter(w1, w2 ?? NgramModel.SentenceStart, app, out bool twoWords);
+
+        // D163 (user: suggestions "based on the context of what I've already typed"): the next word from the model's
+        // reading of the sentence, when it is clearly the likeliest; the user's own phrases for these words (D40) first.
+        if (mine.Count == 0 && fullBefore is not null && ModelNext is not null && Learning.Tunables.PredictUseModel.On
+            && ModelNextWord(fullBefore) is { } said)
+            return new Suggestion(sentenceStart ? char.ToUpperInvariant(said[0]) + said[1..] : said, said, IsNextWord: true);
         if (next.Count == 0 && mine.Count == 0)
         {
             return null;

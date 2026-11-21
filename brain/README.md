@@ -41,6 +41,8 @@ Switches are 1 (on) or 0 (off).
 |---|---|---|---|
 | `Health.RetypeAfter` | 0.25 | 0.05–3 | D89/D95/D121: failures (fading) before a program changes how it's written to |
 | `Health.PlaceFailuresBeforeUnsafe` | 2 | 1–20 | D137: placed-fix failures before placing stops in a program |
+| `Health.PlaceRefusalsBeforeAvoid` | 4 | 1–50 | D162: refused placements (fading) before placing stops in a program |
+| `Health.PlaceRefusalShare` | 5 | 1–100 | D162: and more than one in this many of its fixes |
 | `Health.PlaceFailureShare` | 20 | 2–200 | D137: and more than one in this many of its fixes |
 
 ## Writing and checking (D81, D65, D124)
@@ -67,6 +69,7 @@ Switches are 1 (on) or 0 (off).
 | `Predict.ModelTimeoutMs` | 250 | 50–1500 | D159: how long a suggestion waits for the model before using the word list |
 | `Predict.ModelContextChars` | 300 | 50–1500 | D159: how much text before the caret the model reads |
 | `Predict.ModelMinChance` | 0.15 | 0–1 | D159: the model's pick needs at least this chance |
+| `Predict.ModelNextMinChance` | 0.7 | 0–1 | D163: a next word (nothing typed yet) from the model needs this share of its word choices |
 | `Predict.ModelLead` | 2 | 1–10 | D159: and this many times the next candidate's |
 | `Phrases.MinUses` | 3 | 2–20 | D142: uses before a phrase is offered |
 | `Phrases.MinDays` | 2 | 1–30 | D142: on at least this many days |

@@ -36,16 +36,19 @@ public sealed class AppStats
     /// <summary>D154: times the field was empty just after Enter (a chat box that sends the message). Keyed per field.</summary>
     public double EnterSends { get; set; }
 
+    /// <summary>D162: placed fixes dropped because the field never showed the fix selected (nothing typed).</summary>
+    public double PlaceRefusals { get; set; }
+
     public AppStats Plus(AppStats o) => new()
     {
         Writes = Writes + o.Writes, VerifyFailures = VerifyFailures + o.VerifyFailures, Stuck = Stuck + o.Stuck, Undos = Undos + o.Undos,
         ArrowFailures = ArrowFailures + o.ArrowFailures, RetypeFailures = RetypeFailures + o.RetypeFailures, LineFailures = LineFailures + o.LineFailures,
-        PlaceFailures = PlaceFailures + o.PlaceFailures, EnterSends = EnterSends + o.EnterSends,
+        PlaceFailures = PlaceFailures + o.PlaceFailures, EnterSends = EnterSends + o.EnterSends, PlaceRefusals = PlaceRefusals + o.PlaceRefusals,
     };
 
     internal void Fade(double by)
     {
-        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by; EnterSends *= by;
+        Writes *= by; VerifyFailures *= by; Stuck *= by; Undos *= by; ArrowFailures *= by; RetypeFailures *= by; LineFailures *= by; PlaceFailures *= by; EnterSends *= by; PlaceRefusals *= by;
     }
 
     internal double Events => Writes + VerifyFailures + Stuck + Undos + ArrowFailures + RetypeFailures + LineFailures + PlaceFailures;
@@ -150,6 +153,7 @@ public sealed class AppHealth
     public bool SameLineOnly(string app) => !string.IsNullOrEmpty(app) && StatsFor(app).LineFailures >= RetypeAfter;
 
     public void PlaceFailed(string app) => Note(app, s => s.PlaceFailures++);   // D122
+    public void PlaceRefused(string app) => Note(app, s => s.PlaceRefusals++);   // D162
 
     /// <summary>
     /// D122: putting the caret on a fix through UI Automation has gone wrong in this program: fixes on an earlier line are
@@ -166,7 +170,11 @@ public sealed class AppHealth
     {
         if (string.IsNullOrEmpty(app)) return false;
         var s = StatsFor(app);
-        return s.PlaceFailures >= PlaceFailuresBeforeUnsafe && s.PlaceFailures * PlaceFailureShare > s.Writes;
+        if (s.PlaceFailures >= PlaceFailuresBeforeUnsafe && s.PlaceFailures * PlaceFailureShare > s.Writes) return true;
+        // D162 (the user's WhatsApp: 6 placed fixes refused in a morning, each one lost): a program that keeps refusing to
+        // show the fix selected gets the way of writing it had before placing (D28 retype, D89 learnt retype, arrows).
+        return s.PlaceRefusals >= Learning.Tunables.HealthPlaceRefusalsBeforeAvoid.Value
+               && s.PlaceRefusals * Learning.Tunables.HealthPlaceRefusalShare.Value > s.Writes;
     }
 
     /// <summary>D137: how many (faded) placed failures it takes, at the least.</summary>

@@ -27,6 +27,17 @@ public sealed class ModelRankingTests : IDisposable
     }
 
     [Fact]
+    public void R7_1_D163_TheNextWordComesFromTheModelWhenItIsClear()
+    {
+        string? asked = null;
+        var p = Make(prompt => { asked = prompt; return [new(" help", 0.62), new(" time", 0.12), new(" patience", 0.05)]; });
+        Assert.Equal("help", p.Suggest("Thank you so much for your ")?.Word);
+        Assert.Equal("Thank you so much for your", asked);   // up to the caret, its space left to the model's pieces
+        var unsure = Make(_ => [new(" help", 0.3), new(" time", 0.25)]);
+        Assert.NotEqual("help", unsure.Suggest("Thank you so much for your ")?.Word);   // not clear: the word list decides
+    }
+
+    [Fact]
     public void R7_1_D159_NoClearPickOrNoModelFallsBackToTheWordList()
     {
         var flat = Make(_ => [new(" option", 0.2), new(" open", 0.19)]);
