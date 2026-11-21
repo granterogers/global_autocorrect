@@ -19,12 +19,11 @@ public static class EnterGate
     /// <summary>The longest Enter is ever held.</summary>
     public static int MaxHoldMs => Core.Learning.Tunables.EnterMaxHoldMs.Int;   // D155
 
-    private enum State { Idle, Holding, Replaying }
+    private enum State { Idle, Holding, Draining }
 
     private static readonly Lock Gate = new();
     private static readonly List<(uint Vk, uint Scan, uint Flags, bool Down)> Held = [];
     private static State _state;
-    private static int _replayLeft;
     private static nint _window;
     private static long _heldAt;
     private static int _started;
@@ -80,17 +79,15 @@ public static class EnterGate
         }
     }
 
-    /// <summary>Hook thread: one of the replayed keys has come round. New keys stay held until the last one has.</summary>
-    public static void Replayed()
-    {
-        lock (Gate)
-        {
-            if (_state != State.Replaying || --_replayLeft > 0) return;
-            if (Held.Count == 0) { _state = State.Idle; return; }
-            // Keys typed while the replay was on its way: after it, in order (sent from a pool thread, not the hook).
-            ThreadPool.QueueUserWorkItem(_ => { lock (Gate) if (_state == State.Replaying && _replayLeft == 0) SendHeldLocked("after"); });
-        }
-    }
+    /// <summary>
+    /// D156 (stress: "Dear Mr" came out "D EMArr": a replayed key was never seen coming back, the gate waited for it, and
+    /// the keys held meanwhile were let go seconds late, among later ones). After a release, keys still wait behind it for
+    /// <see cref="DrainMs"/>, then go too, and so on until none came: ordered by time, never by counting what came back.
+    /// </summary>
+    public const int DrainMs = 40;
+
+    /// <summary>Hook thread: one of the replayed keys has come round (counted by the hook; nothing waits for it).</summary>
+    public static void Replayed() { }
 
     /// <summary>
     /// D154 (stress, chat: the timer let Enter and 27 keys go while a fix was being placed, and they typed over the
@@ -111,8 +108,8 @@ public static class EnterGate
                 return;
             }
             if (_state == State.Holding) { SendHeldLocked("timeout"); return; }
-            // The replay never came round (the hook was removed): stop holding new keys, send what is left.
-            if (_state == State.Replaying) { _replayLeft = 0; if (Held.Count > 0) SendHeldLocked("stuck"); else _state = State.Idle; }
+            // Draining: keys that came after the release go now, behind it; none came: done.
+            if (_state == State.Draining) { if (Held.Count > 0) SendHeldLocked("after"); else _state = State.Idle; }
         }
     }
 
@@ -127,9 +124,8 @@ public static class EnterGate
             return;
         }
         if (keys.Length == 0) { _state = State.Idle; return; }
-        _state = State.Replaying;
-        _replayLeft = keys.Length;
-        (_timer ??= new Timer(_ => Timeout())).Change(1000, System.Threading.Timeout.Infinite);
+        _state = State.Draining;
+        (_timer ??= new Timer(_ => Timeout())).Change(DrainMs, System.Threading.Timeout.Infinite);
         if (!Send(keys.Select(k => KeyHold.ToInput(k.Vk, k.Scan, k.Flags, k.Down, ReplayTag)).ToArray()))
         {
             _state = State.Idle;
@@ -142,6 +138,6 @@ public static class EnterGate
     /// <summary>Tests only.</summary>
     public static void Reset()
     {
-        lock (Gate) { _state = State.Idle; Held.Clear(); _replayLeft = 0; _armed = false; _started = 0; _holdMs = 1500; _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite); }
+        lock (Gate) { _state = State.Idle; Held.Clear(); _armed = false; _started = 0; _holdMs = 1500; _timer?.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite); }
     }
 }

@@ -40,13 +40,13 @@ public sealed class EnterGateTests : IDisposable
         var sent = Assert.Single(_sent);
         Assert.Equal([(ushort)VK_RETURN, (ushort)VK_RETURN, (ushort)'H'], sent.Select(i => i.U.ki.wVk));
         Assert.All(sent, i => Assert.Equal(EnterGate.ReplayTag, i.U.ki.dwExtraInfo));
-        // Until the replay has come round, new keys still wait behind it.
+        // Just after the release, new keys still wait behind it, and go a moment later, in order (D156).
         Assert.True(Key('I', true));
-        for (int i = 0; i < 3; i++) EnterGate.Replayed();
         for (int i = 0; i < 100 && _sent.Count < 2; i++) Thread.Sleep(10);
         Assert.Equal((ushort)'I', Assert.Single(_sent[1]).U.ki.wVk);
-        EnterGate.Replayed();
-        Assert.False(EnterGate.Holding);
+        for (int i = 0; i < 100 && EnterGate.Holding; i++) Thread.Sleep(10);
+        Assert.False(EnterGate.Holding);   // nothing more came: done, without waiting to see the replay come back
+        Assert.False(Key('J', true));
     }
 
     [Theory]
