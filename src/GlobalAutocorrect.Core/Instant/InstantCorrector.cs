@@ -48,6 +48,11 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         // the dictionary only has those with a capital I.
         if (SplitsIntoTwoWords(lower) || SplitsIntoTwoWords(word)) return null;
 
+        // D172 (stress: "wasnt" became "want", "weve" "were", "im" "in", "shes" "she"): a word that is a contraction with its
+        // apostrophe left out is that contraction, whatever a letter dropped would give. "dont" is a word here, so
+        // this only reaches the ones that are not.
+        if (WithApostrophe(lower) is { } contraction) return MatchCase(word, contraction);
+
         var candidates = suggester.Lookup(lower, 10);
         if (candidates.Count == 0 || candidates[0].Word == lower) return null;
 
@@ -65,6 +70,22 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         // AI, which sees the sentence, decides those about a second later.
         if (pick.Length < lower.Length && pick.Length <= Learning.Tunables.InstantShortPickMaxLength.Int) return null;   // D155
         return MatchCase(word, pick);
+    }
+
+    /// <summary>D172: the one word made by adding an apostrophe ("wasnt" → "wasn't", "im" → "I'm"), or null.</summary>
+    private string? WithApostrophe(string lower)
+    {
+        if (lower.Length < 2 || lower.Length > 8) return null;
+        string? found = null;
+        for (int i = 1; i < lower.Length; i++)
+        {
+            string c = lower[..i] + "'" + lower[i..];
+            if (lower[0] == 'i' && i == 1 && speller.IsValid("I" + c[1..])) c = "I" + c[1..];   // the dictionary has "I'm", not "i'm"
+            else if (!speller.IsValid(c)) continue;
+            if (found is not null) return null;   // two readings: the AI decides
+            found = c;
+        }
+        return found;
     }
 
     private string? PickDistance1(string typed, SpellSuggestion[] d1)
