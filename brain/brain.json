@@ -1,15 +1,15 @@
 {
   "format": 1,
-  "updated": "2026-11-22T11:49:14Z",
+  "updated": "2026-11-22T19:48:40Z",
   "apps": {
     "chatgpt": {
-      "writes": 11.2,
-      "verifyFailures": 1,
-      "stuck": 2.7,
+      "writes": 10,
+      "verifyFailures": 0.9,
+      "stuck": 2.4,
       "undos": 0,
-      "arrowFailures": 0.21,
+      "arrowFailures": 0.19,
       "retypeFailures": 0,
-      "lineFailures": 0.31,
+      "lineFailures": 0.28,
       "placeFailures": 0,
       "enterSends": 0,
       "placeRefusals": 0,
@@ -19,13 +19,13 @@
       "nextTaken": 0
     },
     "claude": {
-      "writes": 254.8,
-      "verifyFailures": 13.2,
-      "stuck": 1,
-      "undos": 3.5,
-      "arrowFailures": 4.16,
-      "retypeFailures": 4.46,
-      "lineFailures": 2.09,
+      "writes": 271.6,
+      "verifyFailures": 11.9,
+      "stuck": 0.9,
+      "undos": 3.1,
+      "arrowFailures": 3.75,
+      "retypeFailures": 4.01,
+      "lineFailures": 1.88,
       "placeFailures": 0,
       "enterSends": 0,
       "placeRefusals": 0,
@@ -35,14 +35,14 @@
       "nextTaken": 0
     },
     "msedge": {
-      "writes": 174.7,
-      "verifyFailures": 17.3,
+      "writes": 165.3,
+      "verifyFailures": 15.6,
       "stuck": 0.2,
-      "undos": 2.3,
-      "arrowFailures": 4.15,
-      "retypeFailures": 3.77,
-      "lineFailures": 3.78,
-      "placeFailures": 4.33,
+      "undos": 2.1,
+      "arrowFailures": 3.74,
+      "retypeFailures": 3.39,
+      "lineFailures": 3.4,
+      "placeFailures": 3.9,
       "enterSends": 0,
       "placeRefusals": 0,
       "suggestShown": 0,
@@ -51,14 +51,14 @@
       "nextTaken": 0
     },
     "msedgewebview2": {
-      "writes": 84.1,
-      "verifyFailures": 3.6,
-      "stuck": 19.8,
+      "writes": 75.7,
+      "verifyFailures": 3.2,
+      "stuck": 17.8,
       "undos": 0,
       "arrowFailures": 0,
       "retypeFailures": 0,
       "lineFailures": 0,
-      "placeFailures": 1.49,
+      "placeFailures": 1.34,
       "enterSends": 0,
       "placeRefusals": 0,
       "suggestShown": 0,
@@ -67,12 +67,12 @@
       "nextTaken": 0
     },
     "notepad": {
-      "writes": 12.7,
-      "verifyFailures": 1,
+      "writes": 11.5,
+      "verifyFailures": 0.9,
       "stuck": 0,
-      "undos": 1,
-      "arrowFailures": 0.41,
-      "retypeFailures": 0.41,
+      "undos": 0.9,
+      "arrowFailures": 0.37,
+      "retypeFailures": 0.37,
       "lineFailures": 0,
       "placeFailures": 0,
       "enterSends": 0,
@@ -83,13 +83,13 @@
       "nextTaken": 0
     },
     "searchhost": {
-      "writes": 1,
-      "verifyFailures": 1,
+      "writes": 0.9,
+      "verifyFailures": 0.9,
       "stuck": 0,
       "undos": 0,
-      "arrowFailures": 1,
+      "arrowFailures": 0.9,
       "retypeFailures": 0,
-      "lineFailures": 1,
+      "lineFailures": 0.9,
       "placeFailures": 0,
       "enterSends": 0,
       "placeRefusals": 0,
@@ -99,14 +99,14 @@
       "nextTaken": 0
     },
     "whatsapp.root": {
-      "writes": 93.7,
-      "verifyFailures": 3.9,
+      "writes": 94.2,
+      "verifyFailures": 4.4,
       "stuck": 0,
-      "undos": 2.8,
-      "arrowFailures": 1.38,
-      "retypeFailures": 0.94,
+      "undos": 2.5,
+      "arrowFailures": 1.25,
+      "retypeFailures": 0.85,
       "lineFailures": 0,
-      "placeFailures": 0.59,
+      "placeFailures": 1.43,
       "enterSends": 0,
       "placeRefusals": 0,
       "suggestShown": 0,
@@ -128,13 +128,13 @@
   "pcs": {
     "6b0e9443ffcf": {
       "chatgpt": {
-        "writes": 11.2,
-        "verifyFailures": 1,
-        "stuck": 2.7,
+        "writes": 10,
+        "verifyFailures": 0.9,
+        "stuck": 2.4,
         "undos": 0,
-        "arrowFailures": 0.21,
+        "arrowFailures": 0.19,
         "retypeFailures": 0,
-        "lineFailures": 0.31,
+        "lineFailures": 0.28,
         "placeFailures": 0,
         "enterSends": 0,
         "placeRefusals": 0,
@@ -144,13 +144,13 @@
         "nextTaken": 0
       },
       "claude": {
-        "writes": 254.8,
-        "verifyFailures": 13.2,
-        "stuck": 1,
-        "undos": 3.5,
-        "arrowFailures": 4.16,
-        "retypeFailures": 4.46,
-        "lineFailures": 2.09,
+        "writes": 271.6,
+        "verifyFailures": 11.9,
+        "stuck": 0.9,
+        "undos": 3.1,
+        "arrowFailures": 3.75,
+        "retypeFailures": 4.01,
+        "lineFailures": 1.88,
         "placeFailures": 0,
         "enterSends": 0,
         "placeRefusals": 0,
@@ -160,14 +160,14 @@
         "nextTaken": 0
       },
       "msedge": {
-        "writes": 174.7,
-        "verifyFailures": 17.3,
+        "writes": 165.3,
+        "verifyFailures": 15.6,
         "stuck": 0.2,
-        "undos": 2.3,
-        "arrowFailures": 4.15,
-        "retypeFailures": 3.77,
-        "lineFailures": 3.78,
-        "placeFailures": 4.33,
+        "undos": 2.1,
+        "arrowFailures": 3.74,
+        "retypeFailures": 3.39,
+        "lineFailures": 3.4,
+        "placeFailures": 3.9,
         "enterSends": 0,
         "placeRefusals": 0,
         "suggestShown": 0,
@@ -176,14 +176,14 @@
         "nextTaken": 0
       },
       "msedgewebview2": {
-        "writes": 84.1,
-        "verifyFailures": 3.6,
-        "stuck": 19.8,
+        "writes": 75.7,
+        "verifyFailures": 3.2,
+        "stuck": 17.8,
         "undos": 0,
         "arrowFailures": 0,
         "retypeFailures": 0,
         "lineFailures": 0,
-        "placeFailures": 1.49,
+        "placeFailures": 1.34,
         "enterSends": 0,
         "placeRefusals": 0,
         "suggestShown": 0,
@@ -192,12 +192,12 @@
         "nextTaken": 0
       },
       "notepad": {
-        "writes": 12.7,
-        "verifyFailures": 1,
+        "writes": 11.5,
+        "verifyFailures": 0.9,
         "stuck": 0,
-        "undos": 1,
-        "arrowFailures": 0.41,
-        "retypeFailures": 0.41,
+        "undos": 0.9,
+        "arrowFailures": 0.37,
+        "retypeFailures": 0.37,
         "lineFailures": 0,
         "placeFailures": 0,
         "enterSends": 0,
@@ -208,13 +208,13 @@
         "nextTaken": 0
       },
       "searchhost": {
-        "writes": 1,
-        "verifyFailures": 1,
+        "writes": 0.9,
+        "verifyFailures": 0.9,
         "stuck": 0,
         "undos": 0,
-        "arrowFailures": 1,
+        "arrowFailures": 0.9,
         "retypeFailures": 0,
-        "lineFailures": 1,
+        "lineFailures": 0.9,
         "placeFailures": 0,
         "enterSends": 0,
         "placeRefusals": 0,
@@ -224,14 +224,14 @@
         "nextTaken": 0
       },
       "whatsapp.root": {
-        "writes": 93.7,
-        "verifyFailures": 3.9,
+        "writes": 94.2,
+        "verifyFailures": 4.4,
         "stuck": 0,
-        "undos": 2.8,
-        "arrowFailures": 1.38,
-        "retypeFailures": 0.94,
+        "undos": 2.5,
+        "arrowFailures": 1.25,
+        "retypeFailures": 0.85,
         "lineFailures": 0,
-        "placeFailures": 0.59,
+        "placeFailures": 1.43,
         "enterSends": 0,
         "placeRefusals": 0,
         "suggestShown": 0,
@@ -242,7 +242,7 @@
     }
   },
   "prompt": {
-    "system": "You fix typing mistakes in short messages written in British English.\nFix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example \"in the main hall\" or \"for the interview\".\nKeep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).\nIf the text has no mistakes, return it unchanged.\nReply with the corrected text only: no quotes, no notes.",
+    "system": "You fix typing mistakes in short messages written in British English.\nFix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example \u0022in the main hall\u0022 or \u0022for the interview\u0022.\nKeep: the writer\u0027s own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).\nIf the text has no mistakes, return it unchanged.\nReply with the corrected text only: no quotes, no notes.",
     "examples": [
       {
         "role": "user",
@@ -258,15 +258,15 @@
       },
       {
         "role": "assistant",
-        "content": "I'm going to be late, the train was cancelled"
+        "content": "I\u0027m going to be late, the train was cancelled"
       },
       {
         "role": "user",
-        "content": "Lovely to see you yesterday, let's do it again soon."
+        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
       },
       {
         "role": "assistant",
-        "content": "Lovely to see you yesterday, let's do it again soon."
+        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
       },
       {
         "role": "user",
@@ -282,7 +282,7 @@
       },
       {
         "role": "assistant",
-        "content": "Can you leave the report on my desk, it's for the meeting at 3"
+        "content": "Can you leave the report on my desk, it\u0027s for the meeting at 3"
       },
       {
         "role": "user",
@@ -314,7 +314,7 @@
       },
       {
         "role": "assistant",
-        "content": "There's a leak in the bathroom ceiling again, can you ring the plumber"
+        "content": "There\u0027s a leak in the bathroom ceiling again, can you ring the plumber"
       },
       {
         "role": "user",
