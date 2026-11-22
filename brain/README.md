@@ -4,7 +4,7 @@
 
 **To change a value:** add or edit it under `"tuning"` (the names below), bump `"updated"` (UTC ISO 8601), run `pwsh ./check.ps1 fast` (it checks every name is known and every value is in range), commit, and plain `git push`. A push that only touches `brain/` makes no new version and no release. A value outside its range is held to the range; a value left out goes back to its default.
 
-**Before pushing:** a change to `Rules.*` or the `prompt` must pass `pwsh ./scripts/brain-eval.ps1` (D111). Timings and switches change how fixes are typed: push them to the `brain-candidate` branch instead of main, and the Brain gate workflow runs the stress and real-use tests on them before merging to main (D138).
+**Before pushing:** a change to how text is corrected (`Rules.*`, `Instant.*`, `Tidy.*`, `Lang.*`, the `words` lists or the `prompt`) must pass `pwsh ./scripts/brain-eval.ps1` (D111, D175). Timings and switches change how fixes are typed: push them to the `brain-candidate` branch instead of main, and the Brain gate workflow runs the stress and real-use tests on them before merging to main (D138).
 
 Switches are 1 (on) or 0 (off).
 
@@ -85,6 +85,29 @@ Switches are 1 (on) or 0 (off).
 | `Lang.ShortLineWords` | 5 | 0–20 | D145: a line this short with one foreign word and no English one reads as foreign |
 | `Lang.ForeignRatio` | 1.5 | 1–5 | D116: foreign words needed per English word |
 
+## Rule switches (D175): 1 = on, 0 = off; the safety rules (numbers, links, line breaks, objects) have none
+
+| Name | Default | Range | What it does |
+|---|---|---|---|
+| `Rules.WholeRejectOnProtected` | 0 | 0–1 | 4.5.d as written: a changed number, URL or email refuses the whole correction (D173 turned it off: only that edit is refused) |
+| `Rules.JoinNonWords` | 1 | 0–1 | D173: pieces that aren't words may be joined into one word ("apprectea d." → "appreciated.") |
+| `Rules.NoSplitOfValidWord` | 1 | 0–1 | D37: a space never splits a real word ("inorganic" → "in organic") |
+| `Rules.UnitAfterNumber` | 1 | 0–1 | D133: a short known word after a number is a unit, never changed ("10 mins") |
+| `Rules.NoSpellingVariant` | 1 | 0–1 | D133: a correctly spelled word is never swapped for its other spelling ("colour" → "color") |
+| `Rules.NoRepeatedWord` | 1 | 0–1 | D148: an edit never makes the same word twice in a row ("by by") |
+| `Rules.NoDoubledPunctuation` | 1 | 0–1 | D136: a mark is never added beside the same mark (",,") |
+| `Rules.OneWordLine` | 1 | 0–1 | D110: on a line of one word, fixing it is not a rewrite ("Thakms,") |
+| `Instant.Contractions` | 1 | 0–1 | D172: a contraction typed without its apostrophe becomes that contraction ("wasnt" → "wasn't") |
+| `Instant.HeldShift` | 1 | 0–1 | D96: Shift held into the second letter is fixed ("THe" → "The") |
+| `Instant.Names` | 1 | 0–1 | D92: a slip of a name shown near the field becomes that name |
+| `Tidy.SpaceBeforePunctuation` | 1 | 0–1 | D55: "steps ." → "steps." |
+| `Tidy.MissingSpaceAfter` | 1 | 0–1 | D55: "end.Next" → "end. Next" |
+| `Tidy.GluedNumber` | 1 | 0–1 | D82: a word and a number typed together are spaced |
+| `Tidy.DoubleSpace` | 1 | 0–1 | D55: two spaces between words become one |
+| `Tidy.CapitalI` | 1 | 0–1 | D55: a lower-case "i" becomes "I" |
+| `Tidy.TwoCapitals` | 1 | 0–1 | D96: two capitals at a word's start ("HEllo") are fixed |
+| `Tidy.SentenceStart` | 1 | 0–1 | D55: a sentence's first word gets its capital |
+
 ## Updates (D131, D174)
 
 | Name | Default | Range | What it does |
@@ -119,6 +142,23 @@ Switches are 1 (on) or 0 (off).
 | `Rules.AcceptLikelyKeyboardSlips` | 0–1 |
 | `Rules.LenientWithNonWords` | 0–1 |
 | `Rules.AddQuestionMarks` | 0–1 |
+
+## Word lists (D175: check with brain-eval first)
+
+Under `"words"`, by list name: `{ "add": [...], "remove": [...] }`. Added entries join the built-in ones; `remove` takes a built-in one out (for a pair list, by its typed side). Entries are 1–64 characters; a pair is `typed=meant`. A list left out is the built-in one. Example: `"words": { "Instant.Fixes": { "add": ["recieve=receive"] } }`.
+
+| Name | Kind | Built in | What it is for |
+|---|---|---|---|
+| `Words.Known` | words | 79 | D133: words the en_GB dictionary doesn't list (short forms, units, chat words): never typos, for every layer |
+| `Words.NeverChange` | words, exact case | 0 | D175: words no layer ever changes, as typed (names, product words) |
+| `Instant.Fixes` | pairs | 0 | D175: typed=meant pairs the instant layer fixes the moment the word ends (only words the dictionary doesn't know) |
+| `Instant.Leave` | words | 0 | D175: typed words the instant layer leaves to the AI, which sees the sentence (a guess between very different words) |
+| `Words.Function` | words | 38 | 4.5.b: short function words the AI may add or drop |
+| `Words.SpellingPairs` | pairs, exact case | 10 | D133: UK=US spelling endings; a correctly spelled word is never swapped for its other spelling |
+| `Words.SpellingPairsKnownOnly` | pairs, exact case | 3 | D133: UK=US pairs that also look like typo fixes ("untill"), only for a word the dictionary knows |
+| `Sentence.Abbreviations` | words | 26 | 4.4.a: words whose full stop doesn't end a sentence (for the AI's context) |
+| `Tidy.Abbreviations` | words | 34 | D55: words after which the next word doesn't get a sentence capital |
+| `Lang.English` | words | 88 | D116: common English words that make a sentence English (other languages get no fixes) |
 
 ## Other sections
 

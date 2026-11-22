@@ -3,11 +3,8 @@ namespace GlobalAutocorrect.Core.Text;
 /// <summary>Finds sentence boundaries within one paragraph (4.4.a, 4.4.b).</summary>
 public static class SentenceSplitter
 {
-    private static readonly HashSet<string> Abbreviations = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "mr", "mrs", "ms", "dr", "st", "prof", "etc", "approx", "vs", "eg", "ie", "no", "dept", "est", "jan", "feb",
-        "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
-    };
+    /// <summary>D175: the brain's "Sentence.Abbreviations".</summary>
+    private static Learning.WordList Abbreviations => Learning.WordLists.SentenceAbbreviations;
 
     /// <summary>[Start, End) of each sentence; End is after its closing punctuation, or the text end for an unfinished one.</summary>
     public static IReadOnlyList<(int Start, int End)> Split(string text)

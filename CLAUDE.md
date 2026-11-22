@@ -35,17 +35,21 @@ Core tests only: `dotnet test tests/GlobalAutocorrect.Core.Tests`
 
   The user gives feedback and expects to find it fixed in the running app without doing anything. If a step fails, say
   so: don't push failing code, and leave the previous install running.
-- **Prefer the brain over a rebuild (D102).** If a fix can be made in `brain/brain.json` (a `tuning` value: every
-  name is listed in `brain/README.md`, from `Tunables`, `Brain.Knobs` and `Brain.RuleKnobs`; a per-program `write` rule of
-  "retype" or "arrows"), make it there: bump `updated` (UTC ISO 8601), run
-  `pwsh ./check.ps1 fast` (it checks the file loads and every entry is known), commit and plain `git push`. The hook
-  doesn't tag pushes that only touch paths in `.versionignore`, so no release or deploy is needed. Every running copy
-  downloads the brain within 15 minutes. Code changes still follow the four steps above.
-  The brain also holds the correction rules' thresholds (`Rules.*` in `tuning`, `Brain.RuleKnobs`) and the AI `prompt`
-  (D111). A change to either must pass `pwsh ./scripts/brain-eval.ps1` first (scores it against origin/main's brain on
-  the tuning set, never the holdout; it closes and restarts the installed app, after 2 minutes idle). Don't push one
-  that fails. If a fix needs a new kind of
-  value, add it to the brain in code once (a release), then tune it from the brain afterwards.
+- **The brain first, always (D102, D175).** The user's aim: the app improves without new builds. Before any code change,
+  ask whether the fix can be made in `brain/brain.json`; most correction fixes can. It holds (every name in
+  `brain/README.md`): `tuning` values (`Tunables`, `Brain.Knobs`, `Brain.RuleKnobs`), including an on/off switch for each
+  correction rule (`Rules.*`, `Instant.*`, `Tidy.*`); `words`, changes to the word lists the layers use (`WordLists`:
+  `Instant.Fixes` typed=meant pairs, `Instant.Leave`, `Words.Known`, `Words.NeverChange`, `Words.Function`, spelling
+  pairs, abbreviations, `Lang.English`); the AI `prompt`; per-program `write` rules ("retype" or "arrows").
+  To change it: edit, bump `updated` (UTC ISO 8601), run `pwsh ./check.ps1 fast` (it checks the file loads and nothing
+  in it is ignored), commit and plain `git push`. Pushes that only touch `.versionignore` paths make no version, release
+  or deploy; every running copy downloads the brain within 15 minutes. A change to how text is corrected (rules,
+  switches, word lists, prompt) must first pass `pwsh ./scripts/brain-eval.ps1` (scores it against origin/main's brain
+  on the tuning set, never the holdout; it closes and restarts the installed app after 2 minutes idle). Don't push one
+  that fails. Typing timings go through the `brain-candidate` branch and the Brain gate (D138).
+  Code is for what the brain can't express: a bug in reading or typing into other apps, or a new kind of value or list.
+  A new kind is added in code once (a release, with the four steps above), then tuned from the brain afterwards.
+  After adding a `Tunable` or `WordList`, run `python scripts/brain-readme.py` to list it in `brain/README.md` (a test checks).
 - **New code brings its numbers into the brain (D155).** A timing, retry count, threshold or on/off switch that is a
   judgement, not a fact, is a `Tunable` (`src/GlobalAutocorrect.Core/Learning/Tunables.cs`: default, range, the decision
   it came from), read where it's used, and listed in `brain/README.md` (a test checks). Then it can be changed later

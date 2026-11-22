@@ -48,6 +48,12 @@ public sealed record BrainFile
     /// </summary>
     public BrainPrompt? Prompt { get; init; }
 
+    /// <summary>
+    /// D175: changes to the word lists the correction layers use (<see cref="WordLists"/>), by list name: entries added and
+    /// taken out. A change goes out only after scripts/brain-eval.ps1 shows it scores at least as well (like the prompt).
+    /// </summary>
+    public Dictionary<string, BrainWords> Words { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
     [JsonIgnore]
     public DateTimeOffset UpdatedAt =>
         DateTimeOffset.TryParse(Updated, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d) ? d : DateTimeOffset.MinValue;
@@ -151,7 +157,8 @@ public static class Brain
             Apps = Collect(b.Apps, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase),
             Mistakes = Collect(b.Mistakes, m => m.Key.Length == 16 && m.Key.All(char.IsAsciiHexDigitLower), StringComparer.Ordinal),
             Tuning = Collect(b.Tuning, t => TryRange(t.Key, out _, out _) && double.IsFinite(t.Value), StringComparer.OrdinalIgnoreCase),
-            Prompt = PromptOk(b.Prompt) ? b.Prompt : null,   // D111: an unusable prompt is left out, the rest kept
+            Prompt = PromptOk(b.Prompt) ? b.Prompt : null,
+            Words = Collect(b.Words, w => WordLists.ChangeOk(w.Key, w.Value), StringComparer.OrdinalIgnoreCase),   // D175   // D111: an unusable prompt is left out, the rest kept
             Write = Collect(b.Write, w => w.Key.Length is > 0 and <= 64 && w.Value is not null && WriteModes.Contains(w.Value), StringComparer.OrdinalIgnoreCase),
             Pcs = Collect(b.Pcs, p => IsPcId(p.Key) && p.Value is not null, StringComparer.Ordinal)
                 .ToDictionary(p => p.Key, p => Collect(p.Value, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase), StringComparer.Ordinal),

@@ -103,6 +103,26 @@ public static class Tunables
     public static readonly Tunable LangShortLineWords = Define("Lang.ShortLineWords", 5, 0, 20, "D145: a line this short with one foreign word and no English one reads as foreign");
     public static readonly Tunable LangForeignRatio = Define("Lang.ForeignRatio", 1.5, 1, 5, "D116: foreign words needed per English word");
 
+    // ---- Rule switches (D175): 1 = on, 0 = off; the safety rules (numbers, links, line breaks, objects) have none ----
+    public static readonly Tunable RuleWholeRejectOnProtected = Define("Rules.WholeRejectOnProtected", 0, 0, 1, "4.5.d as written: a changed number, URL or email refuses the whole correction (D173 turned it off: only that edit is refused)");
+    public static readonly Tunable RuleJoinNonWords = Define("Rules.JoinNonWords", 1, 0, 1, "D173: pieces that aren't words may be joined into one word (\"apprectea d.\" → \"appreciated.\")");
+    public static readonly Tunable RuleNoSplitOfValidWord = Define("Rules.NoSplitOfValidWord", 1, 0, 1, "D37: a space never splits a real word (\"inorganic\" → \"in organic\")");
+    public static readonly Tunable RuleUnitAfterNumber = Define("Rules.UnitAfterNumber", 1, 0, 1, "D133: a short known word after a number is a unit, never changed (\"10 mins\")");
+    public static readonly Tunable RuleNoSpellingVariant = Define("Rules.NoSpellingVariant", 1, 0, 1, "D133: a correctly spelled word is never swapped for its other spelling (\"colour\" → \"color\")");
+    public static readonly Tunable RuleNoRepeatedWord = Define("Rules.NoRepeatedWord", 1, 0, 1, "D148: an edit never makes the same word twice in a row (\"by by\")");
+    public static readonly Tunable RuleNoDoubledPunctuation = Define("Rules.NoDoubledPunctuation", 1, 0, 1, "D136: a mark is never added beside the same mark (\",,\")");
+    public static readonly Tunable RuleOneWordLine = Define("Rules.OneWordLine", 1, 0, 1, "D110: on a line of one word, fixing it is not a rewrite (\"Thakms,\")");
+    public static readonly Tunable InstantContractions = Define("Instant.Contractions", 1, 0, 1, "D172: a contraction typed without its apostrophe becomes that contraction (\"wasnt\" → \"wasn't\")");
+    public static readonly Tunable InstantHeldShift = Define("Instant.HeldShift", 1, 0, 1, "D96: Shift held into the second letter is fixed (\"THe\" → \"The\")");
+    public static readonly Tunable InstantNames = Define("Instant.Names", 1, 0, 1, "D92: a slip of a name shown near the field becomes that name");
+    public static readonly Tunable TidySpaceBeforePunctuation = Define("Tidy.SpaceBeforePunctuation", 1, 0, 1, "D55: \"steps .\" → \"steps.\"");
+    public static readonly Tunable TidyMissingSpaceAfter = Define("Tidy.MissingSpaceAfter", 1, 0, 1, "D55: \"end.Next\" → \"end. Next\"");
+    public static readonly Tunable TidyGluedNumber = Define("Tidy.GluedNumber", 1, 0, 1, "D82: a word and a number typed together are spaced");
+    public static readonly Tunable TidyDoubleSpace = Define("Tidy.DoubleSpace", 1, 0, 1, "D55: two spaces between words become one");
+    public static readonly Tunable TidyCapitalI = Define("Tidy.CapitalI", 1, 0, 1, "D55: a lower-case \"i\" becomes \"I\"");
+    public static readonly Tunable TidyTwoCapitals = Define("Tidy.TwoCapitals", 1, 0, 1, "D96: two capitals at a word's start (\"HEllo\") are fixed");
+    public static readonly Tunable TidySentenceStart = Define("Tidy.SentenceStart", 1, 0, 1, "D55: a sentence's first word gets its capital");
+
     // ---- Updates (D131, D174) ----
     public static readonly Tunable UpdateIdleMinutes = Define("Update.IdleMinutes", 10, 2, 60, "D131/D174: a found update installs by itself after this long without keyboard or mouse (or at once when the PC is locked)");
 

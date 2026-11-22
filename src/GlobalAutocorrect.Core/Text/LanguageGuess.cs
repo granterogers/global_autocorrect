@@ -10,15 +10,8 @@ namespace GlobalAutocorrect.Core.Text;
 /// </summary>
 public static class LanguageGuess
 {
-    private static readonly HashSet<string> English = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "a", "the", "and", "to", "of", "in", "is", "it", "you", "that", "for", "on", "with", "this", "are", "be", "was", "have",
-        "i", "we", "not", "but", "at", "your", "my", "can", "will", "do", "so", "if", "as", "all", "just", "from", "they",
-        "or", "an", "our", "what", "there", "would", "about", "know", "please", "thanks", "hi", "hello", "dear", "regards",
-        "could", "should", "been", "had", "has", "were", "which", "when", "how", "any", "some", "them", "their", "these",
-        "those", "into", "than", "then", "also", "very", "here", "today", "tomorrow", "let", "get", "got", "it's", "i'm",
-        "don't", "can't", "we're", "you're", "that's", "there's", "i'll", "we'll", "thank", "best", "kind",
-    };
+    /// <summary>D175: the brain's "Lang.English".</summary>
+    private static Learning.WordList English => Learning.WordLists.English;
 
     // Each language's most common words that are NOT English words too.
     private static readonly Dictionary<string, HashSet<string>> Others = new()
@@ -47,7 +40,7 @@ public static class LanguageGuess
     };
 
     private static HashSet<string> Set(params string[] words) =>
-        new(words.Where(w => !English.Contains(w) && w is not ("a" or "no" or "me" or "come" or "son" or "pan" or "con" or "can" or "die")),
+        new(words.Where(w => !Learning.WordLists.English.Defaults.Contains(w, StringComparer.OrdinalIgnoreCase) && w is not ("a" or "no" or "me" or "come" or "son" or "pan" or "con" or "can" or "die")),
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Letters and marks English text never needs.</summary>

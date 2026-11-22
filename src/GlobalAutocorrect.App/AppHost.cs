@@ -337,6 +337,7 @@ public sealed class AppHost : IAsyncDisposable
         Mistakes.UseShipped(b.Mistakes.Keys);
         _tuning = b.Tuning;
         Tunables.Apply(b.Tuning);   // D155: read where they're used, so they take effect at once
+        WordLists.Apply(b.Words);   // D175: the word lists, the same way
         _brainPrompt = b.Prompt?.ToTemplate();   // D111
     }
 

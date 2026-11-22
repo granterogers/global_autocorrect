@@ -7,26 +7,14 @@ namespace GlobalAutocorrect.Core.Text;
 /// </summary>
 public static class EverydayWords
 {
-    private static readonly HashSet<string> Words = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "min", "mins", "hr", "hrs", "sec", "secs", "wk", "wks", "yr", "yrs", "mo", "mos", "approx", "appt", "appts", "dept",
-        "mgr", "qty", "pcs", "pc", "kg", "km", "ml", "mb", "gb", "tb", "kb", "mph", "kph", "pls", "plz", "thx", "ty", "np",
-        "btw", "fyi", "asap", "eta", "tbh", "imo", "imho", "idk", "wfh", "ooo", "lol", "lmao", "omg", "tbc", "tbd", "brb",
-        "msg", "msgs", "txt", "pic", "pics", "convo", "info", "admin", "ok", "okay", "hmm", "hmmm", "haha", "hahaha", "xx",
-        "xxx", "xo", "gonna", "wanna", "gotta", "dunno", "kinda", "sorta", "ya", "yep", "nope", "yeah", "cos", "cuz",
-    };
+    /// <summary>D175: the brain's "Words.Known" list (defaults in <see cref="Learning.WordLists"/>).</summary>
+    public static bool Contains(string word) => Learning.WordLists.Known.Contains(word);
 
-    public static bool Contains(string word) => Words.Contains(word);
+    /// <summary>D175: UK ↔ US spelling pairs, the UK side first: the brain's "Words.SpellingPairs".</summary>
+    private static IEnumerable<(string Typed, string Meant)> Pairs => Learning.WordLists.SpellingPairs.Pairs;
 
-    /// <summary>UK ↔ US spelling pairs, the UK side first.</summary>
-    private static readonly (string Uk, string Us)[] Pairs =
-    [
-        ("our", "or"), ("ise", "ize"), ("isa", "iza"), ("yse", "yze"), ("tre", "ter"), ("ogue", "og"), ("ence", "ense"),
-        ("or", "er"), ("grey", "gray"), ("tyre", "tire"),
-    ];
-
-    /// <summary>Pairs that also look like typo fixes ("untill" → "until"): only for a word the dictionary knows ("travelled").</summary>
-    private static readonly (string Uk, string Us)[] KnownOnlyPairs = [("ll", "l"), ("mme", "m"), ("que", "ck")];
+    /// <summary>Pairs that also look like typo fixes ("untill" → "until"): only for a word the dictionary knows ("travelled"). "Words.SpellingPairsKnownOnly".</summary>
+    private static IEnumerable<(string Typed, string Meant)> KnownOnlyPairs => Learning.WordLists.SpellingPairsKnownOnly.Pairs;
 
     /// <summary>True when <paramref name="b"/> is <paramref name="a"/> spelled the other way (UK/US, either direction).</summary>
     public static bool SpellingVariant(string a, string b, bool aIsAWord = true)

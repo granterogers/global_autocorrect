@@ -20,11 +20,7 @@ public sealed class TidyRules(ISpellChecker speller)
     private static readonly Regex LowerWord = new(@"^\p{Ll}[\p{Ll}'’]*[.,;:!?]?$", RegexOptions.CultureInvariant);
 
     /// <summary>Words that end with a full stop without ending the sentence.</summary>
-    private static readonly HashSet<string> Abbreviations = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "mr", "mrs", "ms", "dr", "st", "no", "vs", "etc", "approx", "fig", "cf", "al", "inc", "ltd", "co", "dept", "est",
-        "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "mon", "tue", "wed", "thu", "fri",
-    };
+    private static Learning.WordList Abbreviations => Learning.WordLists.TidyAbbreviations;   // D175: a brain list
 
     /// <param name="typed">The typed text, ending with the whitespace character just typed.</param>
     public TidyFix? Find(string typed)
@@ -36,13 +32,14 @@ public sealed class TidyRules(ISpellChecker speller)
         if (start == end) return null;
         string chunk = typed[start..end];
 
-        return SpaceBeforePunctuation(typed, start, chunk)
-            ?? MissingSpaceAfter(start, chunk)
-            ?? GluedNumber(start, chunk)   // D82
-            ?? DoubleSpace(typed, start, chunk)
-            ?? CapitalI(typed, start, chunk)
-            ?? TwoCapitals(typed, start, chunk)
-            ?? SentenceStart(typed, start, chunk);
+        // D175: each rule can be switched off from the brain.
+        return (Learning.Tunables.TidySpaceBeforePunctuation.On ? SpaceBeforePunctuation(typed, start, chunk) : null)
+            ?? (Learning.Tunables.TidyMissingSpaceAfter.On ? MissingSpaceAfter(start, chunk) : null)
+            ?? (Learning.Tunables.TidyGluedNumber.On ? GluedNumber(start, chunk) : null)   // D82
+            ?? (Learning.Tunables.TidyDoubleSpace.On ? DoubleSpace(typed, start, chunk) : null)
+            ?? (Learning.Tunables.TidyCapitalI.On ? CapitalI(typed, start, chunk) : null)
+            ?? (Learning.Tunables.TidyTwoCapitals.On ? TwoCapitals(typed, start, chunk) : null)
+            ?? (Learning.Tunables.TidySentenceStart.On ? SentenceStart(typed, start, chunk) : null);
     }
 
     private static readonly System.Text.RegularExpressions.Regex TwoInitialCapitals = new(@"^(\p{Lu})(\p{Lu})(\p{Ll}+)[.,;:!?]?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);

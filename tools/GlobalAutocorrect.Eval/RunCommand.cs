@@ -54,6 +54,10 @@ internal static class RunCommand
         string brainPath = o.GetValueOrDefault("brain", Path.Combine(repo, "brain", "brain.json"));
         var brain = brainPath == "none" ? null : GlobalAutocorrect.Core.Learning.Brain.Read(brainPath);
         if (brainPath != "none" && brain is null) { Console.Error.WriteLine($"the brain {brainPath} is missing or unusable"); return 2; }
+        // D175: the brain's values read where they're used (D155) and its word lists, as the app applies them; before this
+        // the scoring only saw its thresholds and prompt.
+        GlobalAutocorrect.Core.Learning.Tunables.Apply(brain?.Tuning);
+        GlobalAutocorrect.Core.Learning.WordLists.Apply(brain?.Words);
         var prompt = o.ContainsKey("prompt") ? PromptTemplate.LoadOrDefault(o["prompt"]) : brain?.Prompt?.ToTemplate() ?? PromptTemplate.Default;
         // D132: --timeout seconds per request (the real-use run on GitHub has no GPU, so the first request takes minutes).
         using var client = new LlamaServerClient(host.BaseAddress!, prompt, timeout: o.TryGetValue("timeout", out var ts) ? TimeSpan.FromSeconds(int.Parse(ts)) : null, apiKey: host.ApiKey);

@@ -26,13 +26,17 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         if (previousWord is not null && speller.IsValid(previousWord + word)) return null;   // D27: leave the space to the AI
         // 4.3.c, in order: valid, personal, capitalised mid-sentence, digits, URL/email/code-like.
         if (word.Length < 2) return null;
+        if (Learning.WordLists.NeverChange.Contains(word)) return null;   // D175
         if (speller.IsValid(word)) return null;
         if (isPersonalWord(word)) return null;
+        // D175: the brain's own fixes and the words it leaves to the AI, for words the dictionary doesn't know.
+        if (Learning.WordLists.InstantLeave.Contains(word)) return null;
+        if (Learning.WordLists.InstantFixes.TryGet(word, out var listed)) return MatchCase(word, listed);
         // D96: "THe", "WHen", "LOndon": Shift held into the second letter. Not a word as typed, a word with one capital.
         // ("IT" is a word, so it was returned above: the AI decides it from the context.)
-        if (word.Length >= 3 && Capitals.HeldShift(word) is { } meant
+        if (Learning.Tunables.InstantHeldShift.On && word.Length >= 3 && Capitals.HeldShift(word) is { } meant
             && (speller.IsValid(meant) || speller.IsValid(meant.ToLowerInvariant()))) return meant;
-        if (names is { Count: > 0 })
+        if (names is { Count: > 0 } && Learning.Tunables.InstantNames.On)
         {
             if (names.Contains(word, StringComparer.OrdinalIgnoreCase)) return null;   // a name on screen is not a typo
             if (NameFix.For(word, names, speller.IsValid) is { } name) return name;     // D92, before "capitalised: leave it"
@@ -51,7 +55,7 @@ public sealed class InstantCorrector(ISpellChecker speller, ISuggester suggester
         // D172 (stress: "wasnt" became "want", "weve" "were", "im" "in", "shes" "she"): a word that is a contraction with its
         // apostrophe left out is that contraction, whatever a letter dropped would give. "dont" is a word here, so
         // this only reaches the ones that are not.
-        if (WithApostrophe(lower) is { } contraction) return MatchCase(word, contraction);
+        if (Learning.Tunables.InstantContractions.On && WithApostrophe(lower) is { } contraction) return MatchCase(word, contraction);
 
         var candidates = suggester.Lookup(lower, 10);
         if (candidates.Count == 0 || candidates[0].Word == lower) return null;

@@ -37,7 +37,11 @@ public sealed record RuleResult(IReadOnlyList<EditVerdict> Verdicts, RejectReaso
 /// </summary>
 public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, Func<string, bool> isPersonalWord)
 {
-    private readonly HashSet<string> _functionWords = new(settings.FunctionWords, StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string>? _customFunctionWords = ReferenceEquals(settings.FunctionWords, EditRuleSettings.DefaultFunctionWords)
+        ? null : new(settings.FunctionWords, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>4.5.b: a small word the AI may add or drop. D175: the brain's "Words.Function" unless the settings name their own.</summary>
+    private bool IsFunctionWord(string w) => _customFunctionWords?.Contains(w) ?? Learning.WordLists.Function.Contains(w);
 
     public EditRuleSettings Settings => settings;
 
@@ -57,6 +61,9 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
     {
         var origTokens = Tokeniser.Tokenise(original);
 
+        // D175: the rule as 4.5.d wrote it, from the brain (off since D173).
+        if (Learning.Tunables.RuleWholeRejectOnProtected.On && !ProtectedMultiset(origTokens).SequenceEqual(ProtectedMultiset(Tokeniser.Tokenise(cleaned))))
+            return Reject(edits, RejectReason.ProtectedTokenChanged);
         // 4.5.d: numbers, URLs and emails are never changed. D173 (user report, "that would be apprectea d.77", never
         // fixed): the model dropped the stray "77", and one changed number threw away every fix in the paragraph. Each edit
         // that touches or adds one is refused on its own instead (Judge), and the rest of the correction stands (user's call).
@@ -70,7 +77,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         // D110, user report (Intercom: "Thakms," alone on the last line, never fixed): on a line of one word, fixing it is not a rewrite.
         // A one-word line was always "more than half changed", so a capitalised sign-off ("Thakms,", "Regadrs,") could not
         // be fixed at all (a lower-case non-word was let through by D36). The single word still faces every other rule.
-        if (words <= 1 ? changed > 1 : changed > settings.MaxChangedWordRatio * words)
+        if (words <= 1 && Learning.Tunables.RuleOneWordLine.On ? changed > 1 : changed > settings.MaxChangedWordRatio * words)
             return Reject(edits, RejectReason.TooManyChanges);
 
         var verdicts = edits.Select(e => Judge(original, origTokens, e, edits)).ToArray();
@@ -116,7 +123,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
             if (!settings.AddQuestionMarks && ToneMarks(e.Replacement) > ToneMarks(original[e.Start..e.End])) return RejectReason.AddsQuestionMark;
             // D136 (stress run, a model that repeats a word: "Georgia, Georgia," arrived as the word and a lone ","): a mark
             // inserted right beside the same mark the user typed is never a fix, it makes ",,".
-            if (e.Start == e.End && e.Replacement.Length > 0 && e.Replacement.All(c => char.IsPunctuation(c))
+            if (Learning.Tunables.RuleNoDoubledPunctuation.On && e.Start == e.End && e.Replacement.Length > 0 && e.Replacement.All(c => char.IsPunctuation(c))
                 && ((e.Start > 0 && original[e.Start - 1] == e.Replacement[0]) || (e.Start < original.Length && original[e.Start] == e.Replacement[^1])))
                 return RejectReason.DoublesPunctuation;
             // D93: an embedded object (U+FFFC: Intercom's @mention, an image, a link) is not stray punctuation. The model
@@ -131,7 +138,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 if (t.IsWord && t.End <= e.SpanStart) previousWord = t;
                 if (!t.IsWord || t.End <= e.SpanStart || t.Start >= e.SpanEnd) continue;
                 // D133: a short word right after a number is a unit or short form ("10 mins", "5 hrs", "2 pcs"), not a typo.
-                if (previousWord is { } p && (p.Flags & TokenFlags.Number) != 0 && t.Text.Count(char.IsLetter) <= 5 && t.Start >= e.SpanStart && IsKnown(t.Text))   // a typo after a number ("9 Mya") is still fixed
+                if (Learning.Tunables.RuleUnitAfterNumber.On && previousWord is { } p && (p.Flags & TokenFlags.Number) != 0 && t.Text.Count(char.IsLetter) <= 5 && t.Start >= e.SpanStart && IsKnown(t.Text))   // a typo after a number ("9 Mya") is still fixed
                     return RejectReason.AfterNumber;
                 previousWord = t;
                 // Run-together words like "nextFriday" look code-like; re-spacing them changes no characters, so it's allowed.
@@ -139,22 +146,23 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 bool hardProtected = (t.Flags & (TokenFlags.Number | TokenFlags.Url | TokenFlags.Email | TokenFlags.Mention)) != 0;   // D90
                 if (hardProtected || (t.IsProtected && e.Kind != EditKind.Spacing)) return RejectReason.TouchesProtectedToken;
                 if (isPersonalWord(t.Text)) return RejectReason.PersonalDictionary;
+                if (Learning.WordLists.NeverChange.Contains(Trim(t.Text))) return RejectReason.PersonalDictionary;   // D175: the brain's never-change words
             }
             // D173: nothing above touched a number, URL, email or mention, so one in the replacement is new ("3pm" → "4pm"
             // arrives as a deletion and an insertion, "at" → "at 7" as an insertion).
             if (ProtectedMultiset(Tokeniser.Tokenise(e.Replacement)).Any()) return RejectReason.TouchesProtectedToken;
             // D133: a correctly spelled word is never swapped for its other spelling ("adaptor" → "adapter", "colour" → "color").
-            if (e.OriginalWords.Count == e.NewWords.Count
+            if (Learning.Tunables.RuleNoSpellingVariant.On && e.OriginalWords.Count == e.NewWords.Count
                 && e.OriginalWords.Zip(e.NewWords).Any(p => EverydayWords.SpellingVariant(Trim(p.First), Trim(p.Second), IsKnown(Trim(p.First)))))   // either way, known to the dictionary or not ("adaptor" isn't)
                 return RejectReason.SpellingVariant;
             // D148 (stress run, a model that repeats a word: "by th" → "by by the"): an edit never makes the same word twice
             // in a row where the user hadn't typed it twice.
-            if (MakesRepeat(origTokens, e)) return RejectReason.RepeatsAWord;
+            if (Learning.Tunables.RuleNoRepeatedWord.On && MakesRepeat(origTokens, e)) return RejectReason.RepeatsAWord;
             switch (e.Kind)
             {
                 // D37: a space never splits a real word: "inorganic" → "in organic" keeps every letter but changes the
                 // meaning (user report). Splitting a run-together non-word ("onyour") is still a fix.
-                case EditKind.Spacing when e.NewWords.Count > e.OriginalWords.Count && e.OriginalWords.All(IsKnown) && !SplitIsClearlyMeant(e):
+                case EditKind.Spacing when Learning.Tunables.RuleNoSplitOfValidWord.On && e.NewWords.Count > e.OriginalWords.Count && e.OriginalWords.All(IsKnown) && !SplitIsClearlyMeant(e):
                     return RejectReason.SplitsAValidWord;
                 case EditKind.Spacing or EditKind.Punctuation or EditKind.Apostrophe:
                     return RejectReason.None;   // 4.5.a
@@ -162,7 +170,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                     return CapitalisationOk(original, e, all) ? RejectReason.None : RejectReason.StyleCapitalisation;
                 case EditKind.Insertion or EditKind.Deletion:
                     var w = e.Kind == EditKind.Insertion ? e.NewWords : e.OriginalWords;
-                    return w.All(_functionWords.Contains) ? RejectReason.None : RejectReason.NotAFunctionWord;   // 4.5.b
+                    return w.All(IsFunctionWord) ? RejectReason.None : RejectReason.NotAFunctionWord;   // 4.5.b
                 case EditKind.Substitution:
                     return JudgeSubstitution(e);
                 default:
@@ -232,10 +240,10 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         // added article plus a lost capital, which the capitalisation rule judges, not a typo (found on the tuning set).
         bool IsFix(IEnumerable<string> words) => !string.Equals(string.Join(' ', e.OriginalWords), string.Join(' ', words), StringComparison.OrdinalIgnoreCase);
         var tail = e.NewWords.Skip(e.OriginalWords.Count).ToArray();
-        if (tail.All(_functionWords.Contains) && IsFix(e.NewWords.Take(e.OriginalWords.Count)) && JudgeSubstitutionAlone(e with { NewWords = e.NewWords.Take(e.OriginalWords.Count).ToArray() }) == RejectReason.None)
+        if (tail.All(IsFunctionWord) && IsFix(e.NewWords.Take(e.OriginalWords.Count)) && JudgeSubstitutionAlone(e with { NewWords = e.NewWords.Take(e.OriginalWords.Count).ToArray() }) == RejectReason.None)
             return RejectReason.None;
         var head = e.NewWords.Take(extra).ToArray();
-        if (head.All(_functionWords.Contains) && IsFix(e.NewWords.Skip(extra)) && JudgeSubstitutionAlone(e with { NewWords = e.NewWords.Skip(extra).ToArray() }) == RejectReason.None)
+        if (head.All(IsFunctionWord) && IsFix(e.NewWords.Skip(extra)) && JudgeSubstitutionAlone(e with { NewWords = e.NewWords.Skip(extra).ToArray() }) == RejectReason.None)
             return RejectReason.None;
         return reason;
     }
@@ -265,21 +273,21 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
         if (!e.NewWords.All(w => IsKnown(w) || char.IsUpper(w[0]))) return false;
         string a = string.Concat(e.OriginalWords.Select(Similarity.Key));
         if (a.Length == 1)
-            return e.NewWords.Count == 1 && _functionWords.Contains(e.NewWords[0]) && Similarity.Key(e.NewWords[0]).Contains(a[0]);
+            return e.NewWords.Count == 1 && IsFunctionWord(e.NewWords[0]) && Similarity.Key(e.NewWords[0]).Contains(a[0]);
         var nw = e.NewWords;
         // D48: a run-together non-word split with a small word dropped inside it ("aboutkitchen" → "about the kitchen",
         // "surelast" → "sure the last"): the other words' letters must match what was typed almost exactly.
-        if (nw.Count >= 2 && nw.Any(_functionWords.Contains))
+        if (nw.Count >= 2 && nw.Any(IsFunctionWord))
         {
-            string content = string.Concat(nw.Where(w => !_functionWords.Contains(w)).Select(Similarity.Key));
+            string content = string.Concat(nw.Where(w => !IsFunctionWord(w)).Select(Similarity.Key));
             if (content.Length >= 3 && Similarity.DamerauLevenshtein(a, content) <= 1) return true;
         }
         for (int head = 0; head < nw.Count; head++)
         {
-            if (head > 0 && !_functionWords.Contains(nw[head - 1])) break;
+            if (head > 0 && !IsFunctionWord(nw[head - 1])) break;
             for (int tail = 0; head + tail < nw.Count; tail++)
             {
-                if (tail > 0 && !_functionWords.Contains(nw[nw.Count - tail])) break;
+                if (tail > 0 && !IsFunctionWord(nw[nw.Count - tail])) break;
                 var rest = nw.Skip(head).Take(nw.Count - head - tail).ToArray();
                 string b = string.Concat(rest.Select(Similarity.Key));
                 if (b.Length == 0) continue;
@@ -293,7 +301,7 @@ public sealed class EditRules(EditRuleSettings settings, ISpellChecker speller, 
                 // D173 (user report, "apprectea d." → "appreciated." refused): pieces that are none of them words, joined
                 // into one word. D26 guards splits, where a word swap can hide ("stationfor" → "station at"); a join of
                 // non-words has no wording of the user's to swap, so it takes the ordinary closeness bar, first letter kept.
-                bool joinOfNonWords = rest.Length == 1 && e.OriginalWords.Count > 1 && head + tail == 0
+                bool joinOfNonWords = Learning.Tunables.RuleJoinNonWords.On && rest.Length == 1 && e.OriginalWords.Count > 1 && head + tail == 0
                                       && norm <= settings.MaxNormalisedDistance && a[0] == b[0];
                 if (rest.Length != e.OriginalWords.Count && d > 1 && !joinOfNonWords && Instant.TypoChannel.TwoSlipLikelihood(a, b) < Instant.TypoChannel.TwoLikelySlips) continue;
                 if (norm <= settings.MaxNormalisedDistance || (norm <= settings.MaxNonWordDistance && start)) return true;

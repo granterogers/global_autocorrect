@@ -9,6 +9,7 @@ namespace GlobalAutocorrect.Core.Tests.Engine;
 /// D173, user report ("that would be apprectea d.77", never fixed, though the model wrote "appreciated."): a stray number
 /// no longer throws away the whole correction, and non-word pieces may be joined into one word.
 /// </summary>
+[Collection("Tunables")]
 public sealed class StrayNumberAndJoinTests
 {
     private static readonly EditRules Rules = new(new EditRuleSettings(),
