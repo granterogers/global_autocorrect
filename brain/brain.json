@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "updated": "2026-11-21T20:06:27Z",
+  "updated": "2026-11-22T11:49:14Z",
   "apps": {
     "chatgpt": {
       "writes": 11.2,
@@ -119,7 +119,7 @@
   "tuning": {
     "WriteGapMs": 150,
     "Rules.MaxNormalisedDistance": 0.5,
-    "Rules.MaxChangedWordRatio": 0.5,
+    "Rules.MaxChangedWordRatio": 0.4,
     "Rules.MaxNonWordDistance": 0.65,
     "Rules.AcceptLikelyKeyboardSlips": 1,
     "Rules.LenientWithNonWords": 1
@@ -242,7 +242,7 @@
     }
   },
   "prompt": {
-    "system": "You fix typing mistakes in short messages written in British English.\nFix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example \u0022in the main hall\u0022 or \u0022for the interview\u0022.\nKeep: the writer\u0027s own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).\nIf the text has no mistakes, return it unchanged.\nReply with the corrected text only: no quotes, no notes.",
+    "system": "You fix typing mistakes in short messages written in British English.\nFix: misspelt words; wrong, doubled, missing or swapped letters; words wrongly joined or split; missing or extra spaces; grammar slips; missing apostrophes; capital letters; punctuation. Work out the intended word from the surrounding words. Fast typists often drop a small word (the, a, to, is): put it back where any native writer would clearly use it, for example \"in the main hall\" or \"for the interview\".\nKeep: the writer's own words, tone, slang and sentence structure. Do not rephrase, do not swap in synonyms, do not add or remove content, and do not change numbers, names, links or email addresses. Keep numbers, times, dates and prices exactly as typed: 2.30 stays 2.30 and 7.30pm stays 7.30pm. Use British spelling (colour, organise, travelling).\nIf the text has no mistakes, return it unchanged.\nReply with the corrected text only: no quotes, no notes.",
     "examples": [
       {
         "role": "user",
@@ -258,15 +258,15 @@
       },
       {
         "role": "assistant",
-        "content": "I\u0027m going to be late, the train was cancelled"
+        "content": "I'm going to be late, the train was cancelled"
       },
       {
         "role": "user",
-        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
+        "content": "Lovely to see you yesterday, let's do it again soon."
       },
       {
         "role": "assistant",
-        "content": "Lovely to see you yesterday, let\u0027s do it again soon."
+        "content": "Lovely to see you yesterday, let's do it again soon."
       },
       {
         "role": "user",
@@ -282,7 +282,7 @@
       },
       {
         "role": "assistant",
-        "content": "Can you leave the report on my desk, it\u0027s for the meeting at 3"
+        "content": "Can you leave the report on my desk, it's for the meeting at 3"
       },
       {
         "role": "user",
@@ -314,7 +314,7 @@
       },
       {
         "role": "assistant",
-        "content": "There\u0027s a leak in the bathroom ceiling again, can you ring the plumber"
+        "content": "There's a leak in the bathroom ceiling again, can you ring the plumber"
       },
       {
         "role": "user",
