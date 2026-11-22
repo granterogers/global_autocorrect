@@ -103,6 +103,9 @@ public static class Tunables
     public static readonly Tunable LangShortLineWords = Define("Lang.ShortLineWords", 5, 0, 20, "D145: a line this short with one foreign word and no English one reads as foreign");
     public static readonly Tunable LangForeignRatio = Define("Lang.ForeignRatio", 1.5, 1, 5, "D116: foreign words needed per English word");
 
+    // ---- Updates (D131, D174) ----
+    public static readonly Tunable UpdateIdleMinutes = Define("Update.IdleMinutes", 10, 2, 60, "D131/D174: a found update installs by itself after this long without keyboard or mouse (or at once when the PC is locked)");
+
     /// <summary>Every value, by name.</summary>
     public static IReadOnlyCollection<Tunable> All => ByName.Values;
 

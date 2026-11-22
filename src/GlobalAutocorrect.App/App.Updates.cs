@@ -39,8 +39,15 @@ public partial class App
             IdleFor,                         // D131
             UpdateInstaller.RunQuietly);
         _updates.Start();
+        // D174: locking the PC (Win+L, or the screen locking itself) means nobody is typing: install a found update then.
+        Microsoft.Win32.SessionSwitchEventHandler onLock = (_, e) =>
+        {
+            if (e.Reason == Microsoft.Win32.SessionSwitchReason.SessionLock) _ = Task.Run(_updates.InstallOnLockAsync);
+        };
+        Microsoft.Win32.SystemEvents.SessionSwitch += onLock;
         Exit += (_, _) =>
         {
+            Microsoft.Win32.SystemEvents.SessionSwitch -= onLock;
             _updates.Dispose();
             _updateHttp.Dispose();
         };

@@ -131,6 +131,34 @@ public class UpdateTests
     }
 
     [Fact]
+    public async Task R13_3_D174_AnUpdateThatInstallsItselfIsNotAnnouncedAndInstallsWhenThePcIsLocked()
+    {
+        using var s = new FakeServices();
+        var notices = new List<string>();
+        var quiet = new List<string>();
+        using var m = new UpdateMonitor(s,
+            _ => Task.FromResult<AvailableUpdate?>(Rc2),
+            (_, _) => Task.FromResult("C:\\temp\\update"),
+            _ => { }, notices.Add, null, () => TimeSpan.FromSeconds(5), quiet.Add);
+
+        await m.InstallOnLockAsync();                 // nothing found yet
+        Assert.Empty(quiet);
+        await m.CheckAsync();
+        Assert.Empty(notices);                        // never asks: it installs itself
+        await m.InstallIfIdleAsync();                 // the user is typing: not now
+        Assert.Empty(quiet);
+        await m.InstallOnLockAsync();                 // locked: now, without waiting for idle
+        Assert.Equal(["C:\\temp\\update"], quiet);
+
+        // Switched off: announced for the user to install, and locking doesn't install it.
+        s.Update(s.Settings with { InstallUpdatesWhenIdle = false });
+        await m.CheckAsync();
+        Assert.Single(notices);
+        await m.InstallOnLockAsync();
+        Assert.Single(quiet);
+    }
+
+    [Fact]
     public async Task R13_3_TheTrayAnnouncesEachNewVersionOnce_D58()
     {
         using var s = new FakeServices();

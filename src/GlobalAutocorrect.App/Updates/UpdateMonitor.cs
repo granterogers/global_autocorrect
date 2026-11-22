@@ -8,8 +8,9 @@ namespace GlobalAutocorrect.App.Updates;
 
 /// <summary>
 /// D58: checks GitHub for a newer release at start-up and then once a day, in the background, while "Check for updates"
-/// is on. A newer version is shown on the About page and announced in the tray once per version. Nothing is installed
-/// until the user clicks "Install update".
+/// is on. A newer version is shown on the About page. D174: it installs itself in the background (after a short spell
+/// without input, or as soon as the PC is locked); only when it can't (InstallUpdatesWhenIdle off in settings.json) is it
+/// announced in the tray, once per version, for the user to install from About.
 /// </summary>
 /// <param name="check">Asks for a newer release; null for none or a failed check (never throws).</param>
 /// <param name="download">Downloads and checks an update; returns the folder holding install.ps1.</param>
@@ -34,9 +35,12 @@ public sealed class UpdateMonitor(
     /// <summary>
     /// D131, user request "make things run as automatically as possible … ensure it doesn't interfere with my operation of
     /// the computer": a found update is installed by itself once nobody has touched the keyboard or mouse for this long,
-    /// with no window. The app closes and starts again in a few seconds, while nobody is typing.
+    /// with no window. The app closes and starts again in a few seconds, while nobody is typing. D174: a brain value.
     /// </summary>
-    public static TimeSpan IdleBeforeInstall { get; } = TimeSpan.FromMinutes(10);
+    public static TimeSpan IdleBeforeInstall => TimeSpan.FromMinutes(GlobalAutocorrect.Core.Learning.Tunables.UpdateIdleMinutes.Value);
+
+    /// <summary>D174: a found update installs by itself (the setting is on and there is a way to tell the PC is idle).</summary>
+    private bool InstallsItself => idleFor is not null && settings.Settings.InstallUpdatesWhenIdle && settings.Settings.CheckForUpdates;
 
     private Timer? _idleTimer;
 
@@ -50,7 +54,7 @@ public sealed class UpdateMonitor(
     public bool Installing => _installing;
     public event Action? Changed;
 
-    /// <summary>First check shortly after start-up (not to compete with loading), then once a day.</summary>
+    /// <summary>First check shortly after start-up (not to compete with loading), then every hour.</summary>
     public void Start()
     {
         _timer = new Timer(_ => _ = CheckAsync(), null, FirstCheckAfter, CheckEvery);
@@ -62,11 +66,25 @@ public sealed class UpdateMonitor(
     {
         try
         {
-            if (_available is null || _installing || idleFor is null || !settings.Settings.InstallUpdatesWhenIdle || !settings.Settings.CheckForUpdates) return;
-            if (idleFor() < IdleBeforeInstall) return;
+            if (_available is null || _installing || !InstallsItself) return;
+            if (idleFor!() < IdleBeforeInstall) return;
             await InstallAsync(quietly: true).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OutOfMemoryException) { }   // never crash the app from the background
+    }
+
+    /// <summary>
+    /// D174, user request ("it should be automatically updating in the background always whenever it finds a more recent
+    /// version"): the PC was just locked, so nobody is typing; a found update installs now, without waiting for idle.
+    /// </summary>
+    public async Task InstallOnLockAsync()
+    {
+        try
+        {
+            if (_available is null || _installing || !InstallsItself) return;
+            await InstallAsync(quietly: true).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OutOfMemoryException) { }
     }
 
     public void CheckNow() => _ = Task.Run(CheckAsync);
@@ -82,6 +100,8 @@ public sealed class UpdateMonitor(
             _available = found;
             Changed?.Invoke();
             string v = found.Version.ToString();
+            // D174: an update that installs itself is not announced: the tray asking the user to install it read as a question.
+            if (InstallsItself) return;
             (onUi ?? (a => a()))(() =>
             {
                 if (settings.Settings.UpdateNotifiedVersion == v) return;

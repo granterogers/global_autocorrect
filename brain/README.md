@@ -85,6 +85,12 @@ Switches are 1 (on) or 0 (off).
 | `Lang.ShortLineWords` | 5 | 0–20 | D145: a line this short with one foreign word and no English one reads as foreign |
 | `Lang.ForeignRatio` | 1.5 | 1–5 | D116: foreign words needed per English word |
 
+## Updates (D131, D174)
+
+| Name | Default | Range | What it does |
+|---|---|---|---|
+| `Update.IdleMinutes` | 10 | 2–60 | D131/D174: a found update installs by itself after this long without keyboard or mouse (or at once when the PC is locked) |
+
 ## Engine timings (a new engine is built when one changes)
 
 | Name | Default | Range |

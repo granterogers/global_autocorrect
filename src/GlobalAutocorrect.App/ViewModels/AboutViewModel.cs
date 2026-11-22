@@ -136,7 +136,7 @@ public sealed partial class AboutViewModel : ObservableObject
         HasUpdate = u is not null;
         Installing = _updates?.Installing == true;
         UpdateTitle = u is null ? "" : $"Update available: v{u.Version}";
-        UpdateCaption = u is null ? "" : $"Downloads {Size(u.Zip.Size)}, checks it against the checksum published with it, then closes and restarts Global Autocorrect with the new version.";
+        UpdateCaption = u is null ? "" : $"Installs itself when you step away or lock the PC, or now: downloads {Size(u.Zip.Size)}, checks it against the checksum published with it, then closes and restarts Global Autocorrect with the new version.";
         if (u is null) UpdateMessage = "";
     }
 
