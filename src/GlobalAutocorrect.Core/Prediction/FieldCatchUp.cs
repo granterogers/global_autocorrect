@@ -26,8 +26,18 @@ public static class FieldCatchUp
 
     public static int PauseFor(bool light) => light ? LightWaitForPauseMs : WaitForPauseMs;
 
+    /// <summary>
+    /// D176 (E2E, three editors: "no suggestion appeared", every key logged as still "typing", the last one too): the
+    /// wait for the pause is a timer, which can end a little before the Stopwatch says the time is up (the Windows timer
+    /// ticks every 15.6 ms), and the elapsed time was cut to whole milliseconds; 249 of 250 ms read as "still typing" and
+    /// nothing was suggested for the last key. The time check allows one timer tick; a later key is still caught by its
+    /// sequence number.
+    /// </summary>
+    public const int TimerSlackMs = 16;
+
     /// <summary>D94: a pause long enough to predict in: nothing typed since the key, <paramref name="sinceKeyMs"/> ago.</summary>
-    public static bool Paused(long keySeq, long latestSeq, long sinceKeyMs, bool light = false) => keySeq == latestSeq && sinceKeyMs >= PauseFor(light);
+    public static bool Paused(long keySeq, long latestSeq, long sinceKeyMs, bool light = false) =>
+        keySeq == latestSeq && sinceKeyMs + TimerSlackMs >= PauseFor(light);
 
     /// <summary>True when the text before the caret ends with the character just typed.</summary>
     public static bool ShowsKey(string before, char key)

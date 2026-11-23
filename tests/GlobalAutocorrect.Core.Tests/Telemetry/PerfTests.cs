@@ -16,6 +16,15 @@ public sealed class PerfTests
         Assert.Equal(reads, FieldCatchUp.Paused(seq, latest, sinceMs));
 
     [Fact]
+    public void R7_1_D176_AWaitThatEndsJustBeforeItsTimeStillCountsAsThePause()
+    {
+        // The pause timer ended a moment early and the time was cut to whole ms: the last key got no suggestion (E2E).
+        Assert.True(FieldCatchUp.Paused(7, 7, FieldCatchUp.PauseFor(false) - 1));
+        Assert.True(FieldCatchUp.Paused(7, 7, FieldCatchUp.PauseFor(true) - 1, light: true));
+        Assert.False(FieldCatchUp.Paused(7, 8, FieldCatchUp.PauseFor(false) + 100));   // a later key still predicts instead
+    }
+
+    [Fact]
     public void R8_6_D94_ThePerformanceLineHoldsNumbersOnlyAndSaysWhatWasSlow()
     {
         var t = new Timings();
