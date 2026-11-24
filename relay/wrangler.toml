@@ -1,10 +1,6 @@
 # D179: the relay for shared learning, a Cloudflare Worker (free plan). Set up and deployed by relay/deploy.ps1, which
-# fills in the storage id below the first time.
+# adds its storage (the [[kv_namespaces]] entry, LEARNING) the first time.
 name = "ga-learning"
 main = "worker.mjs"
 compatibility_date = "2026-11-01"
 workers_dev = true
-
-[[kv_namespaces]]
-binding = "LEARNING"
-id = ""

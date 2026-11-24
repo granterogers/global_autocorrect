@@ -20,42 +20,51 @@ param(
     [switch]$NoPush         # write the brain but leave committing and pushing to you
 )
 $ErrorActionPreference = 'Stop'
+$env:WRANGLER_SEND_METRICS = 'false'   # Wrangler's usage reports to Cloudflare: off
 $wrangler = 'wrangler@4.158.0'
 $repo = Split-Path $PSScriptRoot -Parent
 $toml = Join-Path $PSScriptRoot 'wrangler.toml'
-function Npx { & npx --yes $wrangler @args }
+# Not named Npx: PowerShell names ignore case, so it would call itself instead of npx.
+# npx.cmd, not npx: that is npm's PowerShell wrapper (npx.ps1), which loses the arguments when called from a function.
+function Invoke-Wrangler { & npx.cmd --yes $wrangler @args }
+# A secret goes in on standard input, never on the command line (and a function doesn't pass its pipeline on by itself).
+function Set-RelaySecret([string]$Name, [string]$Value) { $Value | & npx.cmd --yes $wrangler secret put $Name | Out-Null }
 
 Push-Location $PSScriptRoot
 try {
     # 1. Cloudflare sign-in.
-    $who = (Npx whoami 2>&1 | Out-String)
-    if ($who -match 'not authenticated|You are not logged in') {
+    $who = (Invoke-Wrangler whoami 2>&1 | Out-String)
+    if ($who -notmatch 'associated with the email|Account ID') {
         Write-Host 'Opening Cloudflare in your browser: sign in (or make a free account), then allow Wrangler.'
-        Npx login
+        Invoke-Wrangler login
         if ($LASTEXITCODE -ne 0) { throw 'Cloudflare sign-in did not finish.' }
     }
 
     # 2. Storage.
+    # Wrangler refuses a config whose storage entry has no id, so the entry is only added once the storage exists.
     $text = Get-Content $toml -Raw
-    if ($text -match 'id = ""') {
-        $out = (Npx kv namespace create LEARNING 2>&1 | Out-String)
+    if ($text -notmatch 'kv_namespaces') {
+        $out = (Invoke-Wrangler kv namespace create LEARNING 2>&1 | Out-String)
         if ($out -notmatch '([0-9a-f]{32})') { throw "Couldn't make the relay's storage:`n$out" }
-        $text = $text -replace 'id = ""', "id = `"$($Matches[1])`""
+        $text = $text.TrimEnd() + "`n`n[[kv_namespaces]]`nbinding = `"LEARNING`"`nid = `"$($Matches[1])`"`n"
         Set-Content $toml $text -NoNewline
         Write-Host "  storage: $($Matches[1])"
     }
 
-    # 3. Deploy.
-    $out = (Npx deploy 2>&1 | Out-String)
-    if ($LASTEXITCODE -ne 0 -or $out -notmatch '(https://[a-z0-9.-]+\.workers\.dev)') { throw "Deploy failed:`n$out" }
+    # 3. Deploy. Shown as it happens the first time: a new account is asked to pick its workers.dev name. Then once more,
+    # quietly (nothing to ask by then), to read the relay's address from what it prints.
+    Invoke-Wrangler deploy
+    if ($LASTEXITCODE -ne 0) { throw 'Deploy failed; see the messages above.' }
+    $out = (Invoke-Wrangler deploy 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $out -notmatch '(https://[a-z0-9.-]+\.workers\.dev)') { throw "Couldn't read the relay's address:`n$out" }
     $url = "$($Matches[1])/v1/learning"
     Write-Host "  relay: $url"
 
     # 4. Secrets, only when the relay doesn't have them yet (or asked).
-    $have = (Npx secret list 2>&1 | Out-String)
+    $have = (Invoke-Wrangler secret list 2>&1 | Out-String)
     if ($NewTokens -or $have -notmatch 'READ_TOKEN') {
         $token = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLowerInvariant()
-        $token | Npx secret put READ_TOKEN | Out-Null
+        Set-RelaySecret READ_TOKEN $token
         if ($LASTEXITCODE -ne 0) { throw 'Setting the relay read token failed.' }
         $token | gh secret set COMMUNITY_READ_TOKEN --repo granterogers/global_autocorrect
         if ($LASTEXITCODE -ne 0) { throw 'Setting the GitHub secret failed (is gh signed in?).' }
@@ -63,7 +72,8 @@ try {
         Write-Host '  read token: set on the relay and in GitHub'
     }
     if ($NewTokens -or $have -notmatch 'SALT') {
-        [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) | Npx secret put SALT | Out-Null
+        Set-RelaySecret SALT ([Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)))
+        if ($LASTEXITCODE -ne 0) { throw 'Setting the relay salt failed.' }
         Write-Host '  salt: set on the relay'
     }
 }
