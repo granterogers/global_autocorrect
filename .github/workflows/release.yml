@@ -126,7 +126,7 @@ jobs:
           Build: $(Get-Content artifacts/package/GlobalAutocorrect/build.txt)
 
           **Already installed?** It installs itself once you're away from the keyboard for 10 minutes or lock the PC, or now from Settings › About.
-          **New install:** unzip, then run ``pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1``. The first install downloads the model and llama.cpp (about 5.5 GB, each file checked against its fingerprint). See README "Install".
+          **New install:** in Windows PowerShell, run ``powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/granterogers/global_autocorrect/main/get.ps1 | iex"`` (D178). Or unzip, then run ``pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1``. The first install downloads the model and llama.cpp (about 5.5 GB, each file checked against its fingerprint). See README "Install".
           "@
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {

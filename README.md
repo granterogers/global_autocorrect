@@ -221,16 +221,29 @@ This isn't a weekend script that types into your apps and hopes for the best.
 
 ## Install
 
-**You need:** Windows 11, an NVIDIA graphics card (built and measured on an 8 GB RTX PRO 2000; without one it falls back to a smaller model on the CPU), and PowerShell 7.
+**You need:** Windows 11, an NVIDIA graphics card (built and measured on an 8 GB RTX PRO 2000; without one it falls back to a smaller model on the CPU) and about 8 GB of free space.
+
+**One command.** Open **Windows PowerShell** from the Start menu, paste this and press Enter:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/granterogers/global_autocorrect/main/get.ps1 | iex"
+```
+
+It checks your PC can run the app, installs PowerShell 7 if it's missing (with `winget`), downloads the latest release, checks it against the checksum published with it and runs its installer. You can read exactly what it does first: [`get.ps1`](get.ps1).
+
+<details>
+<summary>Or install by hand</summary>
 
 1. Download `GlobalAutocorrect-<version>.zip` from the **[latest release](https://github.com/granterogers/global_autocorrect/releases/latest)** and unzip it.
-2. From the unzipped folder, run:
+2. From the unzipped folder, run (needs PowerShell 7):
 
 ```
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-It downloads the model and llama.cpp the first time (about 5.5 GB, each file checked against its published fingerprint), installs the app to `%LOCALAPPDATA%\Programs\GlobalAutocorrect` and starts it. It starts with Windows (you can turn that off in Settings) and lives in the system tray. Your settings, dictionary and history in `%APPDATA%\GlobalAutocorrect` are never touched by an install or update.
+</details>
+
+Either way, the installer downloads the model and llama.cpp the first time (about 5.5 GB, each file checked against its published fingerprint), installs the app to `%LOCALAPPDATA%\Programs\GlobalAutocorrect` and starts it. It starts with Windows (you can turn that off in Settings) and lives in the system tray. Your settings, dictionary and history in `%APPDATA%\GlobalAutocorrect` are never touched by an install or update.
 
 To check it's using the GPU:
 

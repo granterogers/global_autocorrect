@@ -24,6 +24,22 @@ jobs:
       slot: ${{ matrix.slot }}
       chaos: true   # D126: real-use habits, a different rhythm in every slot
 
+  # D178: the one-command installer, in the PowerShell that comes with Windows (5.1), up to the checksum check: the
+  # latest release is found, downloaded and matches SHA256SUMS.txt. Nothing is installed.
+  one-command-install:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: get.ps1 dry run (Windows PowerShell 5.1)
+        shell: powershell
+        env:
+          GA_GET_DRYRUN: '1'
+          GA_GET_TOKEN: ${{ github.token }}
+        run: |
+          $out = Get-Content -Raw .\get.ps1 | Invoke-Expression *>&1 | Out-String
+          $out
+          if ($out -notmatch 'checksum: matches the release' -or $out -match 'Not installed') { throw 'the one-command installer failed' }
+
   pass-rate:
     needs: e2e
     if: always()

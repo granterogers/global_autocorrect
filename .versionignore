@@ -13,3 +13,5 @@ README.md
 docs/
 scripts/readme-images.py
 .versionignore
+# D178: the one-command installer is served from main and only fetches the latest release; it isn't in the zip.
+get.ps1
