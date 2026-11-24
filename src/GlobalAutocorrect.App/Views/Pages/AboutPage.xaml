@@ -128,6 +128,20 @@
             <ui:ToggleSwitch IsChecked="{Binding CheckForUpdates, Mode=TwoWay}" AutomationProperties.Name="Check for updates" />
         </ui:CardControl>
 
+        <!-- Share what it learns (D179) -->
+        <ui:CardControl Margin="0,0,0,8" Background="{DynamicResource SurfaceCardBrush}" BorderBrush="{DynamicResource BorderSoftBrush}" CornerRadius="8" Icon="{ui:SymbolIcon People24}">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource RowTitle}" Text="Share what it learns" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="Helps fix problems for everyone. Once a day it sends counts of how fixes went in each program, and one-way codes of changes you undid. Never your words. Each lesson is tested and approved first." />
+                    <ui:HyperlinkButton Margin="-12,2,0,0" Icon="{ui:SymbolIcon DocumentSearch24}" Content="See exactly what is sent"
+                                        Command="{Binding ShowSharedCommand}" />
+                    <TextBlock Style="{StaticResource RowCaption}" Text="{Binding ShareStatus}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch IsChecked="{Binding ShareLearning, Mode=TwoWay}" IsEnabled="{Binding ShareAvailable}" AutomationProperties.Name="Share what it learns" />
+        </ui:CardControl>
+
         <!-- Credits -->
         <Border Style="{StaticResource CardBorder}" Padding="20,14">
             <StackPanel>

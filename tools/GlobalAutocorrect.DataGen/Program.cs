@@ -11,11 +11,13 @@ internal static class Program
           GlobalAutocorrect.DataGen userstyle --tuning <tuning.jsonl> --out <userstyle.jsonl> --seed <int> --per-kind <int>
           GlobalAutocorrect.DataGen learning --local <apphealth.json> --pc <id> --dir <data/learning> --out <brain/brain.json>
           GlobalAutocorrect.DataGen brain-defaults --out <brain/brain.json>
+          GlobalAutocorrect.DataGen brain-share --url <https://.../v1/learning> --out <brain/brain.json>
+          GlobalAutocorrect.DataGen community --in <shared.json> --dir <data/learning> --out <brain/brain.json> --summary <summary.md>
         """;
 
     private static int Main(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq" or "ngram" or "userstyle" or "learning" or "brain-defaults"))
+        if (args.Length == 0 || args[0] is not ("noise" or "split" or "freq" or "ngram" or "userstyle" or "learning" or "brain-defaults" or "community" or "brain-share"))
         {
             Console.Error.WriteLine(Usage);
             return 2;
@@ -56,6 +58,16 @@ internal static class Program
             {
                 if (!Has(opts, "local", "pc", "dir", "out")) return Fail();
                 Learning.Publish(opts["local"], opts["pc"], opts["dir"], opts["out"]);
+            }
+            else if (args[0] == "brain-share")
+            {
+                if (!Has(opts, "url", "out")) return Fail();
+                Learning.WriteShare(opts["url"], opts["out"]);   // D179
+            }
+            else if (args[0] == "community")
+            {
+                if (!Has(opts, "in", "dir", "out", "summary")) return Fail();
+                Learning.Community(opts["in"], opts["dir"], opts["out"], opts["summary"]);   // D179
             }
             else if (args[0] == "freq")
             {

@@ -208,7 +208,9 @@ flowchart TD
 - **No cloud.** The AI runs on your own graphics card through a local server that only listens on your own PC (127.0.0.1) and needs a key only the app knows.
 - **No text is ever logged or saved.** Only counts are kept, such as "corrections today".
 - **Suggestions learn from you, on your PC only.** It counts the words you use and short runs of two or three words so your own phrases come up next time, per app (what you write in Teams is preferred in Teams). Never whole sentences, numbers, email addresses, or anything typed in a password box or an excluded app. They stay in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them. Phrases you repeat are stored encrypted for your Windows account only, and you can forget them all from the Prediction page.
-- **The app only ever downloads.** The model, once, when you install; new versions from GitHub; and the latest brain file. Nothing about you or your typing is sent. Sharing what an install has learnt (counts of how fixes went in each program, never words) is a separate script you would run yourself, `scripts/publish-learning.ps1`.
+- **The app only downloads, unless you choose to share.** It downloads the model once when you install, new versions from GitHub and the latest brain file. Nothing about you or your typing is sent.
+- **Sharing is your choice, and you can read it first.** Switch on **Share what it learns** (Settings › About) and once a day it sends counts of how fixes went in each program, and one-way codes of changes you undid. Never words, names or anything about your PC. **See exactly what is sent** opens the very file it sends. It's off until you switch it on.
+- **Nothing shared reaches anyone's PC unchecked.** Shares go to a small relay that can't change anything. Once a week they are folded into a candidate brain, which must pass the same stress runs and real-model test as a release, and then wait for approval from the person who runs the project. A change only counts once three different installs have undone it, so no single install can stop a fix for everybody.
 
 ## Built to be trusted
 

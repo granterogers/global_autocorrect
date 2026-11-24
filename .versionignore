@@ -15,3 +15,5 @@ scripts/readme-images.py
 .versionignore
 # D178: the one-command installer is served from main and only fetches the latest release; it isn't in the zip.
 get.ps1
+# D179: the shared-learning relay runs on Cloudflare, not in the app; deploying it needs no release.
+relay/

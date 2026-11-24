@@ -71,7 +71,8 @@ for name, why, entries, flags in lists:
 out.append("\n## Other sections\n")
 out.append("- `write`: per program, `\"retype\"` or `\"arrows\"` (D102): how fixes are typed there.")
 out.append("- `prompt`: the AI's instructions and examples (D111: check with brain-eval first).")
-out.append("- `apps`, `mistakes`, `pcs`: counts learnt on PCs (D103, D138), written by `scripts/publish-learning.ps1`. Not edited by hand.")
+out.append("- `apps`, `mistakes`, `pcs`: counts learnt on PCs (D103, D138), written by `scripts/publish-learning.ps1`, and from installs that share (D179, `pcs` entries starting `c-`), written by the Community learning job after the owner approves. Not edited by hand.")
+out.append("- `share`: `{ \"url\": \"https://.../v1/learning\" }`, where installs whose owner switched on \"Share what it learns\" send it (D179). Written by `relay/deploy.ps1`; without it nothing is ever sent.")
 
 open('brain/README.md', 'w', encoding='utf-8', newline='\n').write('\n'.join(out) + '\n')
 print(sum(len(r) for _, r in sections), 'tunables,', len(knobs), 'engine knobs,', len(rules), 'rule knobs,', len(lists), 'word lists')

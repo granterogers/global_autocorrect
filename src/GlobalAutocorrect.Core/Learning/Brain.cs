@@ -54,9 +54,22 @@ public sealed record BrainFile
     /// </summary>
     public Dictionary<string, BrainWords> Words { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// D179: where an install whose owner switched on "Share what it learns" sends it (the relay in <c>relay/</c>). Absent
+    /// or not an https address: sharing isn't available, whatever the switch says.
+    /// </summary>
+    public BrainShare? Share { get; init; }
+
     [JsonIgnore]
     public DateTimeOffset UpdatedAt =>
         DateTimeOffset.TryParse(Updated, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d) ? d : DateTimeOffset.MinValue;
+}
+
+/// <summary>D179: the relay's address, as the brain holds it.</summary>
+public sealed record BrainShare(string Url)
+{
+    /// <summary>An absolute https address, or null.</summary>
+    public Uri? Address => Uri.TryCreate(Url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps ? u : null;
 }
 
 /// <summary>D111: a prompt as the brain holds it.</summary>
@@ -162,6 +175,7 @@ public static class Brain
             Write = Collect(b.Write, w => w.Key.Length is > 0 and <= 64 && w.Value is not null && WriteModes.Contains(w.Value), StringComparer.OrdinalIgnoreCase),
             Pcs = Collect(b.Pcs, p => IsPcId(p.Key) && p.Value is not null, StringComparer.Ordinal)
                 .ToDictionary(p => p.Key, p => Collect(p.Value, a => a.Key.Length is > 0 and <= 64 && Sane(a.Value), StringComparer.OrdinalIgnoreCase), StringComparer.Ordinal),
+            Share = b.Share?.Address is not null ? b.Share : null,   // D179
         };
     }
 
@@ -176,7 +190,8 @@ public static class Brain
     public static IReadOnlyDictionary<string, AppStats> LearntElsewhere(BrainFile b, string? myPcId, DateOnly today)
     {
         if (b.Pcs.Count == 0) return b.Apps;
-        var others = b.Pcs.Where(p => p.Key != myPcId).Select(p => (IReadOnlyDictionary<string, AppStats>)p.Value);
+        // D179: an install that shares from the app is in the brain as "c-" and its id.
+        var others = b.Pcs.Where(p => p.Key != myPcId && p.Key != ShareLearning.CommunityPrefix + myPcId).Select(p => (IReadOnlyDictionary<string, AppStats>)p.Value);
         return AppHealth.Combine(others, today).Apps;
     }
 

@@ -19,9 +19,10 @@ public partial class SettingsWindow : FluentWindow
     private readonly DispatcherTimer _timer;
 
     /// <param name="updates">D58: the update check; null when it isn't running.</param>
-    public SettingsWindow(ISettingsService settings, IStatusSource status, SettingsEnvironment? environment = null, IUpdateService? updates = null)
+    public SettingsWindow(ISettingsService settings, IStatusSource status, SettingsEnvironment? environment = null, IUpdateService? updates = null,
+        IShareService? share = null)
     {
-        _viewModels = new SettingsViewModels(settings, status, environment ?? SettingsEnvironment.Default(), updates);
+        _viewModels = new SettingsViewModels(settings, status, environment ?? SettingsEnvironment.Default(), updates, share);
 
         InitializeComponent();
         RootNavigation.SetPageProviderService(new PageProvider(_viewModels));
@@ -32,6 +33,7 @@ public partial class SettingsWindow : FluentWindow
         status.StateChanged += OnStateChanged;
         settings.Changed += OnStateChanged;
         if (updates is not null) updates.Changed += OnStateChanged;   // D58
+        if (share is not null) share.Changed += OnStateChanged;       // D179
 
         Loaded += (_, _) =>
         {
@@ -44,6 +46,7 @@ public partial class SettingsWindow : FluentWindow
             status.StateChanged -= OnStateChanged;
             settings.Changed -= OnStateChanged;
             if (updates is not null) updates.Changed -= OnStateChanged;
+            if (share is not null) share.Changed -= OnStateChanged;
             _viewModels.Dispose();
         };
     }

@@ -62,6 +62,7 @@ public sealed partial class AboutViewModel : ObservableObject
     private readonly string _noticePath;
     private readonly Action<string> _openFile;
     private readonly IUpdateService? _updates;
+    private readonly IShareService? _share;
     private bool _loading;
 
     [ObservableProperty] private bool _startWithWindows;
@@ -73,16 +74,21 @@ public sealed partial class AboutViewModel : ObservableObject
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))] private bool _installing;
     [ObservableProperty] private string _startupMessage = "";
     [ObservableProperty] private string _noticeMessage = "";
+    [ObservableProperty] private bool _shareLearning;
+    [ObservableProperty] private bool _shareAvailable;
+    [ObservableProperty] private string _shareStatus = "";
 
     /// <param name="metricsPath">metrics.json next to the exe; missing is fine.</param>
     /// <param name="noticePath">NOTICE.md with the credits for SCOWL and the Leipzig corpus.</param>
     /// <param name="openFile">Opens a file in the user's default app. Null uses the shell.</param>
     /// <param name="updates">D58: the update check; null when it isn't running (no update is ever shown).</param>
+    /// <param name="share">D179: "Share what it learns"; null when it isn't running (the switch can't be turned on).</param>
     public AboutViewModel(ISettingsService settings, string metricsPath, string noticePath, StartupRegistration startup, Action<string>? openFile = null,
-        IUpdateService? updates = null)
+        IUpdateService? updates = null, IShareService? share = null)
     {
         _settings = settings;
         _updates = updates;
+        _share = share;
         _startup = startup;
         _noticePath = noticePath;
         _openFile = openFile ?? OpenWithShell;
@@ -117,6 +123,14 @@ public sealed partial class AboutViewModel : ObservableObject
         RefreshUpdate();
     }
 
+    partial void OnShareLearningChanged(bool value)
+    {
+        if (_loading) return;
+        _settings.Update(_settings.Settings with { ShareLearning = value });
+        if (value) _share?.SendSoon();
+        RefreshShare();
+    }
+
     public void Refresh()
     {
         _loading = true;
@@ -124,9 +138,35 @@ public sealed partial class AboutViewModel : ObservableObject
         {
             StartWithWindows = _settings.Settings.StartWithWindows;
             CheckForUpdates = _settings.Settings.CheckForUpdates;
+            ShareLearning = _settings.Settings.ShareLearning;
         }
         finally { _loading = false; }
         RefreshUpdate();
+        RefreshShare();
+    }
+
+    /// <summary>D179: what sharing is doing, in plain words.</summary>
+    private void RefreshShare()
+    {
+        ShareAvailable = _share?.Available == true || ShareLearning;   // always possible to switch it back off
+        if (_share is null || !_share.Available) ShareStatus = "Not open yet: nothing is sent.";
+        else if (!ShareLearning) ShareStatus = "Off: nothing is sent.";
+        else if (_share.Problem is { } p) ShareStatus = p;
+        else if (_share.LastSent is { } s)
+            ShareStatus = $"Last sent {s.At.ToLocalTime().ToString("d MMMM", CultureInfo.GetCultureInfo("en-GB"))}: {s.What}.";
+        else ShareStatus = "On. The first send is in a few minutes.";
+    }
+
+    /// <summary>D179: opens exactly what would be sent now, so nobody has to take the description on trust.</summary>
+    [RelayCommand]
+    private void ShowShared()
+    {
+        if (_share is null) { ShareStatus = "Sharing isn't running in this copy."; return; }
+        try { _openFile(_share.WritePreview()); }
+        catch (Exception e) when (e is Win32Exception or InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            ShareStatus = "Couldn't open the file.";
+        }
     }
 
     /// <summary>D58: "Update available: vX" only while the switch is on and a newer release was found.</summary>

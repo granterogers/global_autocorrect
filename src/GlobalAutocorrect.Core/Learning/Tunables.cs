@@ -126,6 +126,10 @@ public static class Tunables
     // ---- Updates (D131, D174) ----
     public static readonly Tunable UpdateIdleMinutes = Define("Update.IdleMinutes", 10, 2, 60, "D131/D174: a found update installs by itself after this long without keyboard or mouse (or at once when the PC is locked)");
 
+    // ---- Sharing what an install learnt (D179) ----
+    public static readonly Tunable ShareEveryHours = Define("Share.EveryHours", 24, 6, 168, "D179: with sharing switched on, what this install learnt is sent at most this often");
+    public static readonly Tunable ShareFirstAfterMinutes = Define("Share.FirstAfterMinutes", 15, 1, 240, "D179: the first send waits this long after the app starts, so it never competes with start-up");
+
     /// <summary>Every value, by name.</summary>
     public static IReadOnlyCollection<Tunable> All => ByName.Values;
 

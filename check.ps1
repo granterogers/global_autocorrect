@@ -40,6 +40,10 @@ function Invoke-Fast {
     Invoke-Step 'test (App)' {
         dotnet test --project tests/GlobalAutocorrect.App.Tests --no-build
     }
+    # D179: the shared-learning relay (Node's own test runner, no packages). Skipped where Node isn't installed.
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        Invoke-Step 'test (relay)' { node --test relay/ }
+    }
 }
 
 function Invoke-Model {
