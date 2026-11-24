@@ -130,6 +130,10 @@ public sealed class ShareLearningTests
         Assert.Equal("https://ga-learning.example.workers.dev/v1/learning", With("https://ga-learning.example.workers.dev/v1/learning")!.Share!.Url);
         Assert.Null(With("http://ga-learning.example.workers.dev/v1/learning")!.Share);
         Assert.Null(With("not an address")!.Share);
+
+        // What DataGen writes holds the address once: "url" only, nothing worked out from it.
+        using var written = JsonDocument.Parse(Brain.ToJson(With("https://ga-learning.example.workers.dev/v1/learning")!));
+        Assert.Equal(["url"], written.RootElement.GetProperty("share").EnumerateObject().Select(p => p.Name));
     }
 
     [Fact]

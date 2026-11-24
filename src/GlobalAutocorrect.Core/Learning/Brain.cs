@@ -68,7 +68,9 @@ public sealed record BrainFile
 /// <summary>D179: the relay's address, as the brain holds it.</summary>
 public sealed record BrainShare(string Url)
 {
-    /// <summary>An absolute https address, or null.</summary>
+    /// <summary>An absolute https address, or null. Worked out from <see cref="Url"/>, so never written into the brain
+    /// (it was, as a second copy of the address, until v1.51.0).</summary>
+    [JsonIgnore]
     public Uri? Address => Uri.TryCreate(Url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps ? u : null;
 }
 
