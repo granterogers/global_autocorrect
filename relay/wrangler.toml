@@ -4,3 +4,7 @@ name = "ga-learning"
 main = "worker.mjs"
 compatibility_date = "2026-11-01"
 workers_dev = true
+
+[[kv_namespaces]]
+binding = "LEARNING"
+id = "f5914895cd714ff1a3d43d8cfbce3492"

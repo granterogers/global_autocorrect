@@ -26,9 +26,13 @@ $repo = Split-Path $PSScriptRoot -Parent
 $toml = Join-Path $PSScriptRoot 'wrangler.toml'
 # Not named Npx: PowerShell names ignore case, so it would call itself instead of npx.
 # npx.cmd, not npx: that is npm's PowerShell wrapper (npx.ps1), which loses the arguments when called from a function.
-function Invoke-Wrangler { & npx.cmd --yes $wrangler @args }
+# --config on every call: run through npx, Wrangler doesn't find relay/wrangler.toml by itself, and a deploy without it
+# looks for a static site instead ("Could not detect a directory containing static files").
+function Invoke-Wrangler { & npx.cmd --yes $wrangler @args --config $toml }
 # A secret goes in on standard input, never on the command line (and a function doesn't pass its pipeline on by itself).
-function Set-RelaySecret([string]$Name, [string]$Value) { $Value | & npx.cmd --yes $wrangler secret put $Name | Out-Null }
+function Set-RelaySecret([string]$Name, [string]$Value) { $Value | & npx.cmd --yes $wrangler secret put $Name --config $toml | Out-Null }
+# The storage entry itself, not the word in the file's opening comment.
+function Test-Storage { (Get-Content $toml -Raw) -match '(?m)^\[\[kv_namespaces\]\]' }
 
 Push-Location $PSScriptRoot
 try {
@@ -42,13 +46,17 @@ try {
 
     # 2. Storage.
     # Wrangler refuses a config whose storage entry has no id, so the entry is only added once the storage exists.
-    $text = Get-Content $toml -Raw
-    if ($text -notmatch 'kv_namespaces') {
-        $out = (Invoke-Wrangler kv namespace create LEARNING 2>&1 | Out-String)
+    # --update-config: Wrangler writes the entry in itself rather than asking (a question nobody would see, as its
+    # output is captured here); if it didn't, the entry is added from the id it printed.
+    if (-not (Test-Storage)) {
+        $out = (Invoke-Wrangler kv namespace create LEARNING --binding LEARNING --update-config 2>&1 | Out-String)
         if ($out -notmatch '([0-9a-f]{32})') { throw "Couldn't make the relay's storage:`n$out" }
-        $text = $text.TrimEnd() + "`n`n[[kv_namespaces]]`nbinding = `"LEARNING`"`nid = `"$($Matches[1])`"`n"
-        Set-Content $toml $text -NoNewline
-        Write-Host "  storage: $($Matches[1])"
+        $id = $Matches[1]
+        if (-not (Test-Storage)) {
+            $text = (Get-Content $toml -Raw).TrimEnd() + "`n`n[[kv_namespaces]]`nbinding = `"LEARNING`"`nid = `"$id`"`n"
+            Set-Content $toml $text -NoNewline
+        }
+        Write-Host "  storage: $id"
     }
 
     # 3. Deploy. Shown as it happens the first time: a new account is asked to pick its workers.dev name. Then once more,
