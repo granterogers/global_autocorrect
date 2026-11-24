@@ -10,7 +10,7 @@ Fixes your slips the moment you make them, tidies each sentence when you pause, 
 In Outlook, Teams, Word, your browser and almost anything else you type in. Nothing you type ever leaves your PC.
 
 [![Latest release](https://img.shields.io/github/v/release/granterogers/global_autocorrect?style=for-the-badge&color=1F6FEB&label=release)](https://github.com/granterogers/global_autocorrect/releases/latest)
-![Windows 11](https://img.shields.io/badge/Windows-11-0B1220?style=for-the-badge&logo=windows11&logoColor=white)
+![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?style=for-the-badge)
 ![100% on device](https://img.shields.io/badge/your%20text-never%20leaves%20the%20PC-134FB0?style=for-the-badge)
 ![NVIDIA GPU](https://img.shields.io/badge/runs%20on-NVIDIA%20GPU-76B900?style=for-the-badge&logo=nvidia&logoColor=white)
 
@@ -132,18 +132,17 @@ It never touches password boxes, programs running as administrator, terminals, c
 ## How it works
 
 ```mermaid
-flowchart LR
-    K([You type in any app]) --> I["Instant layer<br/>dictionary fixes as each word ends"]
-    I --> T["Tidy rules<br/>spacing and capitals"]
+flowchart TD
+    K([You type in any app]) --> I["Instant fixes as each word ends<br/>teh → the"]
+    K --> G["A faint suggestion after the caret"]
+    I --> T["Spacing and capitals tidied"]
     T --> P{"You pause"}
-    P --> A["Local AI model<br/>llama.cpp on your GPU"]
-    A --> S["Safety rules<br/>refuse any change to meaning,<br/>numbers or names"]
+    P --> A["The local AI reads the sentence<br/>llama.cpp on your own GPU"]
+    A --> S["Safety rules refuse any change<br/>to meaning, numbers or names"]
     S --> W([Typed back as ordinary key presses])
-    K --> G["Suggestion<br/>faint text after the caret"]
     G -->|Tab| W
-    B[("Brain file<br/>rules, word lists, timings")] -. every 15 minutes .-> I
+    B[("Brain file: rules, word lists, timings<br/>downloaded every 15 minutes")] -.-> I
     B -.-> S
-    B -.-> A
 ```
 
 - **It reads what you type through Windows' own accessibility interface** (UI Automation), the same one screen readers use, so it works in almost every app without plug-ins.
@@ -158,14 +157,14 @@ flowchart LR
 <td width="50%">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
-  <img src="docs/images/home-light.png" alt="Home: on, model loaded, using the GPU, typical clean-up time, corrections today">
+  <img width="100%" src="docs/images/home-light.png" alt="Home: on, model loaded, using the GPU, typical clean-up time, corrections today">
 </picture>
 <p align="center"><b>Home.</b> Everything at a glance, including today's corrections.</p>
 </td>
 <td width="50%">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/clean-up-dark.png">
-  <img src="docs/images/clean-up-light.png" alt="Clean-up settings: how long to wait, how bold, whole paragraph, look back">
+  <img width="100%" src="docs/images/clean-up-light.png" alt="Clean-up settings: how long to wait, how bold, whole paragraph, look back">
 </picture>
 <p align="center"><b>Clean-up.</b> Choose how bold it is and when it steps in.</p>
 </td>
@@ -174,14 +173,14 @@ flowchart LR
 <td>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/prediction-dark.png">
-  <img src="docs/images/prediction-light.png" alt="Prediction settings: suggest the next word, always guess, learn phrases I repeat">
+  <img width="100%" src="docs/images/prediction-light.png" alt="Prediction settings: suggest the next word, always guess, learn phrases I repeat">
 </picture>
 <p align="center"><b>Prediction.</b> Tab suggestions that learn your phrases.</p>
 </td>
 <td>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/apps-dark.png">
-  <img src="docs/images/apps-light.png" alt="Apps it leaves alone: terminals, code editors, password managers and remote desktops">
+  <img width="100%" src="docs/images/apps-light.png" alt="Apps it leaves alone: terminals, code editors, password managers and remote desktops">
 </picture>
 <p align="center"><b>Apps.</b> The programs it never types into.</p>
 </td>
@@ -190,14 +189,14 @@ flowchart LR
 <td>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/dictionary-dark.png">
-  <img src="docs/images/dictionary-light.png" alt="Your dictionary: words it never corrects">
+  <img width="100%" src="docs/images/dictionary-light.png" alt="Your dictionary: words it never corrects">
 </picture>
 <p align="center"><b>Dictionary.</b> Names and words it should never change.</p>
 </td>
 <td>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/firstrun-1-dark.png">
-  <img src="docs/images/firstrun-1-light.png" alt="First run: what it does, in three short points">
+  <img width="100%" src="docs/images/firstrun-1-light.png" alt="First run: what it does, in three short points">
 </picture>
 <p align="center"><b>First run.</b> Three steps and you're typing.</p>
 </td>
