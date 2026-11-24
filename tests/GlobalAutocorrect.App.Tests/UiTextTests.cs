@@ -23,7 +23,7 @@ public sealed class UiTextTests
         "Outlook", "Notepad", "WPF", "PCs", "PC", "zip", "dotnet", "en", "GB", "ise", "n", "gram", "grams", "GGUF",
         "Q5", "K", "M", "msedge", "devenv", "conhost", "KeePass", "KeePassXC", "AnyDesk", "TeamViewer", "Bitwarden",
         "Dashlane", "mstsc", "msrdc", "vmconnect", "CUDA", "cudart", "verify", "holdout", "tokenise", "unzip", "keylogger",
-        "Math", "yyyy", "MMMM", "dd",
+        "Math", "yyyy", "MMMM", "dd", "CKEditor",
     };
 
     private static string Repo()
@@ -115,6 +115,10 @@ public sealed class UiTextTests
         if (cov >= 0) md = md[..cov] + (next >= 0 ? md[next..] : "");
         md = Regex.Replace(md, "```.*?```", " ", RegexOptions.Singleline);
         md = Regex.Replace(md, "`[^`]*`", " ");
+        // The GitHub page's markup: HTML tags (pictures, tables) and the addresses of links, images and badges.
+        md = Regex.Replace(md, "<[^>]+>", " ");
+        md = Regex.Replace(md, @"\]\([^)]*\)", "] ");
+        md = Regex.Replace(md, @"&[a-z]+;", " ");
         var bad = Misspelt([("README.md", md)]);
         Assert.True(bad.Count == 0, "Misspelt or non-British words:\n" + string.Join('\n', bad.Distinct()));
     }

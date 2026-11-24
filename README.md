@@ -1,23 +1,251 @@
+<div align="center">
+
+<img src="docs/images/logo.png" width="104" alt="Global Autocorrect logo">
+
 # Global Autocorrect
 
-**Version 1.** Confirmed on the user's PC and released as v1.0.0 (13.3, D86). Every change after that is released as the next version (v1.1.0, v1.2.0 and so on), and the app offers it under Settings › About.
+### Typo-free typing in every Windows app, from a private AI on your own GPU.
 
-Global Autocorrect tidies up what you type, as you type, in almost any Windows app. It runs entirely on your laptop, using your NVIDIA GPU. No text ever leaves the machine.
+Fixes your slips the moment you make them, tidies each sentence when you pause, and finishes your words with one press of **Tab**.<br>
+In Outlook, Teams, Word, your browser and almost anything else you type in. Nothing you type ever leaves your PC.
 
-- **Obvious slips are fixed the moment you finish a word.** `teh` becomes `the`, and `bookk` becomes `book`.
-- **Spacing is tidied as you type.** `steps .` becomes `steps.`, two spaces between words become one, `end.Next` becomes `end. Next`, `i` becomes `I`, and a sentence after a full stop starts with a capital. Names with dots (`.NET`, `index.html`), emoticons, ellipses, abbreviations, indentation and code are left alone.
-- **When you pause, it looks back over what you've typed recently** for anything still obviously misspelt, and has another go at that sentence. (Settings › Clean-up › "Look back when you pause".)
-- **Everything else is fixed by a small AI model that reads the surrounding sentence.** That includes run-together or split words, missing apostrophes and capitals, punctuation and grammar slips. It runs when you finish a sentence or pause for a moment.
-- **It fixes mistakes, not your style.** It never swaps your words for synonyms, rephrases you, or changes British spellings to American ones.
-- **A faint suggestion after the caret finishes your word or predicts the next one.** Press **Tab** to take it, or just keep typing to ignore it.
+[![Latest release](https://img.shields.io/github/v/release/granterogers/global_autocorrect?style=for-the-badge&color=1F6FEB&label=release)](https://github.com/granterogers/global_autocorrect/releases/latest)
+![Windows 11](https://img.shields.io/badge/Windows-11-0B1220?style=for-the-badge&logo=windows11&logoColor=white)
+![100% on device](https://img.shields.io/badge/your%20text-never%20leaves%20the%20PC-134FB0?style=for-the-badge)
+![NVIDIA GPU](https://img.shields.io/badge/runs%20on-NVIDIA%20GPU-76B900?style=for-the-badge&logo=nvidia&logoColor=white)
 
-## What it doesn't do
+<br>
 
-- It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
-- It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Turn off "Fix the whole paragraph" on the Clean-up page, or set "How bold" to **Cautious**, to correct only what you type yourself.
-- It keeps no history or list of corrections. Only counts are kept, such as "corrections today".
-- **It learns how you write, for suggestions.** It counts the words you use and short runs of two or three words ("how are you", "are you doing"), so your own phrases are suggested next time. It also notes which app you typed them in, so what you write in Teams is preferred in Teams and what you write in Outlook in Outlook (web apps count as their browser). Never whole sentences, numbers, email addresses, or anything typed in a password field or an excluded app. They stay on this PC in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them.
-- English (UK) only, on a UK keyboard layout.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-dark.svg">
+  <img src="docs/images/demo-light.svg" width="860" alt="Typing with slips: thnaks and teh are fixed as each word ends, the AI tidies the sentence on a pause, and Tab finishes a suggested word">
+</picture>
+
+**[Install](#install)** &nbsp;·&nbsp; **[Why it matters](#why-it-matters)** &nbsp;·&nbsp; **[Features](#features)** &nbsp;·&nbsp; **[How it works](#how-it-works)** &nbsp;·&nbsp; **[Screenshots](#screenshots)** &nbsp;·&nbsp; **[Privacy](#privacy-by-construction)** &nbsp;·&nbsp; **[Accuracy](#measured-accuracy-and-speed)**
+
+</div>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="20%"><h2>0 bytes</h2>of your typing sent anywhere. The AI runs on your own graphics card.</td>
+<td align="center" width="20%"><h2>177 ms</h2>for a typical AI clean-up of a sentence. Spelling slips are fixed instantly.</td>
+<td align="center" width="20%"><h2>92.9%</h2>of mistakes fixed on 200 messages it never saw during tuning.</td>
+<td align="center" width="20%"><h2>1 in 1,300</h2>correct words wrongly changed. It would rather leave a slip than touch what you meant.</td>
+<td align="center" width="20%"><h2>Any app</h2>Word, Notepad, Edge, web editors and forms, Teams and more, with no plug-ins.</td>
+</tr>
+</table>
+
+## Why it matters
+
+Every typo has a hidden cost. You notice it, stop, reach for Backspace, retype, find your place and pick up the thought you were in the middle of. That's three to five seconds each time, and the interruption costs more than the seconds: it breaks your flow. The rest slip through and land in front of customers, colleagues and your manager.
+
+Global Autocorrect takes that whole loop away. You keep your eyes on your thoughts, not on your typing.
+
+| | Without it | With Global Autocorrect |
+|---|---|---|
+| A typo like `teh` or `thnaks` | Stop, Backspace, retype, carry on | Fixed the instant you press space |
+| A sentence typed fast: `Ill send it over by friday .` | Re-read it, fix three things by hand | Tidied in about a fifth of a second when you pause: `I'll send it over by Friday.` |
+| Words you type every day | Every letter, every time | Type the first few letters and press **Tab** |
+| Phrases you repeat (`Let me know if you have any questions`) | Typed out in full, again | Learnt after you've typed them a few times; **Tab** finishes them |
+| Different spell checkers in every app | Some apps check, most don't | The same help everywhere you type |
+| Your text and AI | Pasted into a website, sent to someone's servers | Never leaves the PC |
+
+> **Back of the envelope.** Say it tidies up 60 slips in your working day (the Home page counts yours) and each would have taken 4 seconds to fix by hand. That's **4 minutes a day, or about 15 hours a year**, before counting the words **Tab** types for you, the re-reading you no longer do, or the typos that would otherwise have gone out in an email. Across a team of 50, that's around **750 hours a year** given back.
+
+## Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### ⚡ Instant fixes
+Obvious slips are fixed the moment you finish a word: `teh` becomes `the`, `bookk` becomes `book`. No AI needed, no waiting.
+
+</td>
+<td width="50%" valign="top">
+
+### 🧠 A real AI that reads the sentence
+When you pause, a small language model running on your GPU reads the whole sentence and fixes what a dictionary can't: run-together and split words, missing apostrophes and capitals, punctuation and grammar slips.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ⇥ Tab to finish your words
+A faint suggestion appears after the caret, from everyday UK English and the words and phrases **you** use most, per app. Press **Tab** to take it, or just keep typing.
+
+</td>
+<td valign="top">
+
+### ✍️ It fixes mistakes, not your style
+It never swaps your words for synonyms, rephrases you or changes British spellings to American ones. Strict safety rules throw out any AI change that alters a number, a name or your meaning.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🧹 Tidy spacing and capitals
+`steps .` becomes `steps.`, double spaces become one, `end.Next` becomes `end. Next`, `i` becomes `I`, and a new sentence starts with a capital. Names with dots (`.NET`, `index.html`), emoticons, abbreviations and code are left alone.
+
+</td>
+<td valign="top">
+
+### 🔁 Looks back when you pause
+When you stop for a moment it checks what you typed recently for anything still obviously misspelt, and has another go at that sentence.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 📈 Gets better without updates
+The correction rules, word lists, timings and AI instructions live in a small "brain" file that every copy downloads within 15 minutes. Most improvements reach you without a new version at all.
+
+</td>
+<td valign="top">
+
+### 🔄 Updates itself, quietly
+When a new version is out it installs itself while you're away from the keyboard, or the moment you lock your PC. Every download is checked against its published checksum first.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ↩️ One shortcut to undo
+Didn't want that change? **Ctrl+Alt+Z** puts it back from anywhere in the field and remembers the word, so it's never changed again. Your own **Ctrl+Z** is left exactly as it was.
+
+</td>
+<td valign="top">
+
+### 🛡️ Knows where to stay out
+It never touches password boxes, programs running as administrator, terminals, code editors, password managers, remote desktops, games or Excel cells. The list is yours to edit.
+
+</td>
+</tr>
+</table>
+
+## How it works
+
+```mermaid
+flowchart LR
+    K([You type in any app]) --> I["Instant layer<br/>dictionary fixes as each word ends"]
+    I --> T["Tidy rules<br/>spacing and capitals"]
+    T --> P{"You pause"}
+    P --> A["Local AI model<br/>llama.cpp on your GPU"]
+    A --> S["Safety rules<br/>refuse any change to meaning,<br/>numbers or names"]
+    S --> W([Typed back as ordinary key presses])
+    K --> G["Suggestion<br/>faint text after the caret"]
+    G -->|Tab| W
+    B[("Brain file<br/>rules, word lists, timings")] -. every 15 minutes .-> I
+    B -.-> S
+    B -.-> A
+```
+
+- **It reads what you type through Windows' own accessibility interface** (UI Automation), the same one screen readers use, so it works in almost every app without plug-ins.
+- **It writes corrections back as ordinary key presses**, exactly as a keyboard would, so every app accepts them and its own undo still works.
+- **Your typing is never held up.** Instant fixes happen as each word ends; the AI works in the background and its fix is only typed in if you haven't moved on.
+- **The AI is Gemma 4 E4B, running locally in llama.cpp** on an NVIDIA graphics card. It loads when you start typing and frees its memory after 15 idle minutes.
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+  <img src="docs/images/home-light.png" alt="Home: on, model loaded, using the GPU, typical clean-up time, corrections today">
+</picture>
+<p align="center"><b>Home.</b> Everything at a glance, including today's corrections.</p>
+</td>
+<td width="50%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/clean-up-dark.png">
+  <img src="docs/images/clean-up-light.png" alt="Clean-up settings: how long to wait, how bold, whole paragraph, look back">
+</picture>
+<p align="center"><b>Clean-up.</b> Choose how bold it is and when it steps in.</p>
+</td>
+</tr>
+<tr>
+<td>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/prediction-dark.png">
+  <img src="docs/images/prediction-light.png" alt="Prediction settings: suggest the next word, always guess, learn phrases I repeat">
+</picture>
+<p align="center"><b>Prediction.</b> Tab suggestions that learn your phrases.</p>
+</td>
+<td>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/apps-dark.png">
+  <img src="docs/images/apps-light.png" alt="Apps it leaves alone: terminals, code editors, password managers and remote desktops">
+</picture>
+<p align="center"><b>Apps.</b> The programs it never types into.</p>
+</td>
+</tr>
+<tr>
+<td>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/dictionary-dark.png">
+  <img src="docs/images/dictionary-light.png" alt="Your dictionary: words it never corrects">
+</picture>
+<p align="center"><b>Dictionary.</b> Names and words it should never change.</p>
+</td>
+<td>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/firstrun-1-dark.png">
+  <img src="docs/images/firstrun-1-light.png" alt="First run: what it does, in three short points">
+</picture>
+<p align="center"><b>First run.</b> Three steps and you're typing.</p>
+</td>
+</tr>
+</table>
+
+## Privacy by construction
+
+- **No cloud.** The AI runs on your own graphics card through a local server that only listens on your own PC (127.0.0.1) and needs a key only the app knows.
+- **No text is ever logged or saved.** Only counts are kept, such as "corrections today".
+- **Suggestions learn from you, on your PC only.** It counts the words you use and short runs of two or three words so your own phrases come up next time, per app (what you write in Teams is preferred in Teams). Never whole sentences, numbers, email addresses, or anything typed in a password box or an excluded app. They stay in `%APPDATA%\GlobalAutocorrect\history.txt`; delete that file to forget them. Phrases you repeat are stored encrypted for your Windows account only, and you can forget them all from the Prediction page.
+- **The app only ever downloads.** The model, once, when you install; new versions from GitHub; and the latest brain file. Nothing about you or your typing is sent. Sharing what an install has learnt (counts of how fixes went in each program, never words) is a separate script you would run yourself, `scripts/publish-learning.ps1`.
+
+## Built to be trusted
+
+This isn't a weekend script that types into your apps and hopes for the best.
+
+- **Every release passes three gates** before it's published: end-to-end tests that type into real editors (Notepad, Word-style rich text, Edge, ProseMirror, Lexical, CKEditor, Slate), a stress set of heavily mangled multi-sentence messages, and a real-use run on real messages through the real model that fails on a single "stupid" mistake: a changed name, a wrong capital, a repeated word or an added question mark.
+- **Around 600 automated tests**, including layout checks of every window at five display scales, light and dark.
+- **Every judgement call is written down**: more than 170 recorded decisions in `DECISIONS.md`, each with the evidence behind it.
+- **Accuracy is scored on a held-out set** that was never used for tuning, and the numbers below are what it scored, misses included.
+
+## Install
+
+**You need:** Windows 11, an NVIDIA graphics card (built and measured on an 8 GB RTX PRO 2000; without one it falls back to a smaller model on the CPU), and PowerShell 7.
+
+1. Download `GlobalAutocorrect-<version>.zip` from the **[latest release](https://github.com/granterogers/global_autocorrect/releases/latest)** and unzip it.
+2. From the unzipped folder, run:
+
+```
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+It downloads the model and llama.cpp the first time (about 5.5 GB, each file checked against its published fingerprint), installs the app to `%LOCALAPPDATA%\Programs\GlobalAutocorrect` and starts it. It starts with Windows (you can turn that off in Settings) and lives in the system tray. Your settings, dictionary and history in `%APPDATA%\GlobalAutocorrect` are never touched by an install or update.
+
+To check it's using the GPU:
+
+```
+pwsh "$env:LOCALAPPDATA\Programs\GlobalAutocorrect\scripts\verify.ps1"
+```
+
+Every check prints OK, or explains the fix in plain language.
+
+### Updates
+
+Once an hour it asks GitHub whether a newer version has been released. When there is one, it downloads it, checks it against the checksum published with the release (and refuses if that doesn't match or is missing), and installs it **by itself after 10 minutes away from the keyboard, or as soon as you lock your PC**, so it never interrupts your typing. The app closes, is replaced and starts again in a few seconds. You can also install straight away from **Settings › About**, and turn off **Check for updates** there to stop the checks.
+
+Separately, every running copy downloads the latest brain file within 15 minutes. That's how most correction improvements arrive: no new version, no restart.
 
 ## Shortcuts
 
@@ -29,28 +257,12 @@ Global Autocorrect tidies up what you type, as you type, in almost any Windows a
 
 Undoing a correction also adds that word to your personal dictionary, so it won't be corrected again. **Ctrl+Z is left alone:** it always does whatever your app normally does.
 
-## Install
+## What it doesn't do
 
-Download `GlobalAutocorrect-<version>.zip` from the project's Releases page on GitHub (`https://github.com/granterogers/global_autocorrect/releases`) and unzip it, or build it yourself (`dist\GlobalAutocorrect` in the project folder). Then one command, from the unzipped folder:
-
-```
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-It downloads the model and llama.cpp the first time (about 5.5 GB, each file checked against its published fingerprint), installs the app to `%LOCALAPPDATA%\Programs\GlobalAutocorrect` and starts it. Run it again to update: it closes the running copy cleanly, replaces it and starts the new one. Your settings, dictionary and history in `%APPDATA%\GlobalAutocorrect` are never touched.
-
-To check it's using the GPU:
-
-```
-pwsh "$env:LOCALAPPDATA\Programs\GlobalAutocorrect\scripts\verify.ps1"
-```
-
-Every check prints OK, or explains the fix in plain language.
-It starts with Windows (you can turn that off in Settings) and lives in the system tray.
-
-### Updates
-
-When the app starts, and once a day after that, it asks GitHub whether a newer version has been released (nothing about you or your typing is sent). If there is one, the tray says so once and **Settings › About** shows "Update available" with an **Install update** button. Nothing is installed until you click it. It then downloads the new zip, checks it against the checksum published with the release (and refuses if that doesn't match or is missing), and runs its installer, which closes the app, replaces it and starts the new version. While you're on a release candidate you're offered newer release candidates too; on a release (1.0.0 and later), only releases. Turn off **Check for updates** on the About page to stop the checks.
+- It never touches password fields, windows running as administrator, or the apps on its excluded list: terminals, code editors, password managers, remote desktop, games and Excel cells. You can edit that list.
+- It corrects the whole paragraph you're typing in, including text you pasted or dictated into it. Paragraphs you aren't typing in are left alone. Turn off "Fix the whole paragraph" on the Clean-up page, or set "How bold" to **Cautious**, to correct only what you type yourself.
+- It keeps no history or list of corrections. Only counts are kept.
+- English (UK) only, on a UK keyboard layout.
 
 ## Windows Defender
 
@@ -64,7 +276,7 @@ A program that watches the keyboard and types for you can look like a keylogger 
 
 ## Measured accuracy and speed
 
-Measured on 200 test messages that were never used for tuning. These are everyday UK English messages with realistic typing slips added, plus hand-mangled ones. The whole pipeline was scored: instant fixes, the AI and the safety rules together. Measured 30 October 2026 with Gemma 4 E4B on the RTX PRO 2000, after a second round of tuning on the separate tuning set (the same 200 test messages were also scored once before that round, at 92.3%). The full report is `eval-report.md` in this folder.
+Measured on 200 test messages that were never used for tuning. These are everyday UK English messages with realistic typing slips added, plus hand-mangled ones. The whole pipeline was scored: instant fixes, the AI and the safety rules together. Measured 30 October 2026 with Gemma 4 E4B on the RTX PRO 2000, after a second round of tuning on the separate tuning set (the same 200 test messages were also scored once before that round, at 92.3%). The full report is `eval-report.md` in the release zip, and every scored run is kept in `docs/metrics`.
 
 | | Result | Target |
 |---|---|---|
@@ -95,7 +307,7 @@ It prefers leaving a mistake to changing something you meant. That's why wrong c
 | Intercom, Claude.ai, ChatGPT in Edge | Not automated: they need your signed-in accounts. Their message boxes are rich web editors like the ones above | ⚠️ Please try: a typo, a "their/there" sentence, Ctrl+Alt+Z after a fix, Tab on a suggestion |
 | Outlook (classic) | Spike B could not put the cursor in the message body automatically | ⚠️ Not verified. Its message body is the same editor as Word, which passes |
 
-Note: the end-to-end results for this release are in `e2e-results.txt` in this folder.
+Since then the end-to-end gate has grown to cover CKEditor and Slate editors as well, and every release must pass it.
 
 ## Known limits
 
@@ -113,8 +325,10 @@ Note: the end-to-end results for this release are in `e2e-results.txt` in this f
 - **UK English and a UK keyboard layout only.**
 
 ## Requirement coverage
-
 Every requirement in the brief, with the tests that prove it or the recorded check (2.11, 11.2). Generated by `scripts/coverage.ps1`; "Recorded check" items are verified by a script, a review or a measured run, as described.
+
+<details>
+<summary><b>Show all requirements and their proof</b></summary>
 
 | ID | Status | Proof |
 |---|---|---|
@@ -342,6 +556,22 @@ Every requirement in the brief, with the tests that prove it or the recorded che
 | 14.8 | Out of scope (14) | Out of scope |
 | 14.9 | Tested | 12 test(s), e.g. `R4_4_d_ACapitalAfterASentenceEndTheReplyAddsIsASentenceStart_D31` |
 
+</details>
+
 ## For developers
 
-See `CLAUDE.md` for build and test commands, `PLAN.md` for the design, `DECISIONS.md` for every judgement call, and `PROGRESS.md` for status.
+| | |
+|---|---|
+| Language and UI | C# on .NET 10, WPF with WPF-UI (Fluent design, Mica, light and dark) |
+| AI | `llama-server` from llama.cpp on 127.0.0.1, Gemma 4 E4B (5-bit), thinking off, lookup decoding |
+| Reading and writing text | UI Automation to read; `SendInput` key presses to write, every one tagged so it's never mistaken for yours |
+| Spelling | Hunspell en_GB-ise and SymSpell, with a UK word-frequency list |
+| Self-improvement | `brain/brain.json`: tuning, rule switches, word lists, the AI prompt and per-program write rules, downloaded by every copy |
+
+```
+pwsh ./check.ps1 fast    # build + core tests, under 30 s
+pwsh ./check.ps1 e2e     # desktop and browser end-to-end tests
+pwsh ./scripts/deploy.ps1
+```
+
+See `CLAUDE.md` for build and test commands, `PLAN.md` for the design, `DECISIONS.md` for every judgement call, `PROGRESS.md` for status and `brain/README.md` for everything the brain can change. The pictures on this page are built by `scripts/readme-images.py` from the app's own screenshot tool.

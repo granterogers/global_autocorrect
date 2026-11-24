@@ -7,3 +7,9 @@ tests/
 .github/
 DECISIONS.md
 PROGRESS.md
+# D177: the GitHub page (README, its pictures and the script that draws them) needs no release; the next release's
+# zip carries the README as it is then.
+README.md
+docs/
+scripts/readme-images.py
+.versionignore

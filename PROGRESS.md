@@ -44,6 +44,7 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **D174 (13.3):** updates install themselves without asking: after 10 minutes without input, or as soon as the PC is locked. 1 test.
 - **D175 (D102):** the brain holds the correction word lists (the instant layer's own fixes, words to leave, known words, never-change words, function words, spelling pairs, abbreviations, English words) and an on/off switch for every correction rule, so language fixes need no release. 6 tests.
 - **D176 (7.1):** a suggestion is no longer skipped at random because the pause timer ended a moment early. 1 test.
+- **D177 (13.2, 9.1):** the GitHub page: README rewritten as the front page (animated demo, stats, efficiency, features, diagram, light and dark screenshots), pictures built by `scripts/readme-images.py`; page-only pushes make no version.
 - **D145 (1.9):** a long English line with typos is no longer taken for French because one word ("pas") is French. 1 test.
 - **D144 (4.6.d):** a refused placement is tried again (3 times) before the fix is dropped (Chrome/Slate slow to show the selection). 1 test.
 - **D143 (4.6.e):** in browsers a fix right behind the caret is placed, never retyped with Backspaces ("tye" → "tythe" on a heavy page); refused placements fall back to the retype. 1 test.
