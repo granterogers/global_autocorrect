@@ -230,3 +230,4 @@ Newest first. Each entry: date, milestone, requirement IDs completed, checks, ne
 - **Spike B targets available:** Notepad 11.2607, Word, Outlook (classic and new), Edge, Chrome.
 - **Next task:** T0.1 scaffold (implementer), then M1 data, then Spike A and Spike B.
 - **D172:** instant layer: a contraction typed without its apostrophe is that contraction, not a word with a letter dropped (4.3, 4.3.d). Stress issue #2's "llief" → "life" damage not reproduced; open.
+- **D180:** brain: `Instant.Fixes` gets `oe=or` (stress issue #2 damage "oe" became "for"). Pushed to brain-candidate for the Brain gate (4.5.e).
