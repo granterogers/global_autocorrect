@@ -35,6 +35,5 @@ public partial class App
 
         ShowFirstRunIfNeeded();   // T9.4
         StartUpdateChecks();      // D58
-        StartSharing();           // D179
     }
 }

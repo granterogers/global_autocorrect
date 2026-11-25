@@ -57,7 +57,6 @@ public class PageLoadTests
         });
 
         Assert.Contains("Check for updates", names);
-        Assert.Contains("Share what it learns", names);   // D179
         Assert.Contains("Install update", names);
         Assert.True(shown);
     }

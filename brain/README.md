@@ -114,13 +114,6 @@ Switches are 1 (on) or 0 (off).
 |---|---|---|---|
 | `Update.IdleMinutes` | 10 | 2–60 | D131/D174: a found update installs by itself after this long without keyboard or mouse (or at once when the PC is locked) |
 
-## Sharing what an install learnt (D179)
-
-| Name | Default | Range | What it does |
-|---|---|---|---|
-| `Share.EveryHours` | 24 | 6–168 | D179: with sharing switched on, what this install learnt is sent at most this often |
-| `Share.FirstAfterMinutes` | 15 | 1–240 | D179: the first send waits this long after the app starts, so it never competes with start-up |
-
 ## Engine timings (a new engine is built when one changes)
 
 | Name | Default | Range |
@@ -171,5 +164,4 @@ Under `"words"`, by list name: `{ "add": [...], "remove": [...] }`. Added entrie
 
 - `write`: per program, `"retype"` or `"arrows"` (D102): how fixes are typed there.
 - `prompt`: the AI's instructions and examples (D111: check with brain-eval first).
-- `apps`, `mistakes`, `pcs`: counts learnt on PCs (D103, D138), written by `scripts/publish-learning.ps1`, and from installs that share (D179, `pcs` entries starting `c-`), written by the Community learning job after the owner approves. Not edited by hand.
-- `share`: `{ "url": "https://.../v1/learning" }`, where installs whose owner switched on "Share what it learns" send it (D179). Written by `relay/deploy.ps1`; without it nothing is ever sent.
+- `apps`, `mistakes`, `pcs`: counts learnt on PCs (D103, D138), written by `scripts/publish-learning.ps1`. Not edited by hand.

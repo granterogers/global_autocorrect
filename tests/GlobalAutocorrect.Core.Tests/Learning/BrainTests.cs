@@ -40,7 +40,6 @@ public sealed class BrainTests : IDisposable
         Assert.Equal(Count("apps"), b.Apps.Count);
         Assert.Equal(Count("pcs"), b.Pcs.Count);
         Assert.Equal(Count("words"), b.Words.Count);   // D175: a misspelt list name or a bad entry would do nothing
-        Assert.Equal(raw.RootElement.TryGetProperty("share", out _), b.Share is not null);   // D179: a relay that isn't https would do nothing
         foreach (var (name, value) in b.Tuning)
         {
             Assert.True(Brain.TryRange(name, out double min, out double max), name);

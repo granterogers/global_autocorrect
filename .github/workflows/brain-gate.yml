@@ -4,9 +4,6 @@
 # (chaos typing, varied messages, the right and the misbehaving model) and the real-model test with that brain built
 # into the app, and only if both pass merges it into main, from where every running copy downloads it. If not, the
 # lesson is held back and an issue labelled "brain" says why.
-# D179: lessons shared by other people's installs come on community-candidate (community-learning.yml starts this run
-# there). After the same tests they also wait for the owner's approval: the "community-approval" environment, whose
-# required reviewer GitHub notifies. The run's summary says what the lesson would change.
 name: Brain gate
 
 on:
@@ -20,7 +17,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: brain-gate-${{ github.ref_name }}   # D179: per branch, so a shared lesson waiting for approval isn't cancelled by this PC's next one
+  group: brain-gate
   cancel-in-progress: true
 
 jobs:
@@ -41,42 +38,24 @@ jobs:
   real-use:
     uses: ./.github/workflows/real-use.yml
 
-  # D179: what a shared lesson would change, on the run's page, for whoever approves it.
-  describe:
-    if: github.ref_name == 'community-candidate'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: community-candidate
-      - name: What this lesson changes
-        run: git log -1 --format=%B >> "$GITHUB_STEP_SUMMARY"
-
   promote:
     needs: [stress, real-use]
-    if: github.ref_name != 'community-candidate'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: brain-candidate
           fetch-depth: 0
       - name: Merge the lesson into main
-        run: bash .github/scripts/promote-brain.sh
-
-  # D179: the same, once the owner approves (GitHub waits here and notifies them).
-  promote-approved:
-    needs: [stress, real-use, describe]
-    if: github.ref_name == 'community-candidate'
-    environment: community-approval
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: community-candidate
-          fetch-depth: 0
-      - name: Merge the approved lesson into main
-        run: bash .github/scripts/promote-brain.sh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch -q origin main
+          # Only brain/ and data/learning/ may change: anything else is not a lesson.
+          if git diff --name-only origin/main...HEAD | grep -v -E '^(brain/|data/learning/)'; then echo "not a brain-only change"; exit 1; fi
+          git rebase origin/main
+          git push origin HEAD:main
+          echo "Lesson $(git rev-parse --short HEAD) passed the stress runs and the real-model test: merged into main." >> "$GITHUB_STEP_SUMMARY"
 
   held:
     needs: [stress, real-use]

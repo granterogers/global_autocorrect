@@ -315,9 +315,6 @@ public sealed class AppHost : IAsyncDisposable
             : _brainPrompt ?? PromptTemplate.Default;
     private readonly HttpClient _brainHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
 
-    /// <summary>D179: where "Share what it learns" sends to, from the brain in use; null while the brain names nowhere.</summary>
-    public BrainShare? ShareTarget => _brain?.Current.Share;
-
     /// <summary>When the brain in use was last changed (shown on the About page).</summary>
     public DateTimeOffset? BrainUpdated => _brain?.Current.UpdatedAt is { } d && d != DateTimeOffset.MinValue ? d : null;
 
