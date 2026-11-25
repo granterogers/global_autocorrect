@@ -2,9 +2,11 @@ namespace GlobalAutocorrect.Core.Health;
 
 /// <summary>
 /// D153: how long since the last keyboard or mouse input, from Windows' 32-bit millisecond tick counts
-/// (GetLastInputInfo's dwTime and Environment.TickCount). An unsigned difference read input stamped a hair after the clock
+/// (GetLastInputInfo's dwTime and kernel32 GetTickCount). An unsigned difference read input stamped a hair after the clock
 /// reading as about 49 days idle: v1.43.0 was installed (closing the running app) while the user was typing. The
 /// app's quiet updater (D131), deploy.ps1 and brain-eval.ps1 all worked it out that way.
+/// D182: "now" must be GetTickCount, never Environment.TickCount: that one doesn't count time asleep, so after a laptop
+/// had slept 2.85 days every input read as days in the future and nothing ever saw the PC idle (NativeMethods.IdleFor).
 /// </summary>
 public static class IdleTime
 {

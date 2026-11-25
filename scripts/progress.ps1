@@ -15,7 +15,8 @@ Add-Type -Namespace GaProgress -Name Idle -MemberDefinition @'
 [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public struct LII { public uint cbSize; public uint dwTime; }
 [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LII p);
-public static int IdleSeconds() { var i = new LII(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)((uint)System.Environment.TickCount - i.dwTime)); return d < 0 ? 0 : d / 1000; }   // D153
+[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint GetTickCount();   // D182: the input clock (counts sleep); Environment.TickCount does not
+public static int IdleSeconds() { var i = new LII(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)(GetTickCount() - i.dwTime)); return d < 0 ? 0 : d / 1000; }   // D153, D182
 '@
 function Esc([string] $s) { [System.Net.WebUtility]::HtmlEncode($s) }
 

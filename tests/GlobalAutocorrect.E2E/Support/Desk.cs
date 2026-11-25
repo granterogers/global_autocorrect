@@ -48,9 +48,7 @@ public static class Desk
         var sw = Stopwatch.StartNew();
         while (sw.Elapsed < (wait ?? TimeSpan.FromMinutes(10)))
         {
-            var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
-            GetLastInputInfo(ref info);
-            if (GlobalAutocorrect.Core.Health.IdleTime.Since(info.dwTime, unchecked((uint)Environment.TickCount)) >= need) return;   // D153
+            if (IdleFor() >= need) return;   // D153, D182
             Thread.Sleep(2000);
         }
         _userBusy = true;

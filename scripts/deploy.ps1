@@ -23,7 +23,8 @@ Add-Type -Namespace GaDeploy -Name Input -MemberDefinition @'
 [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
 [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
-public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)((uint)System.Environment.TickCount - i.dwTime)); return d < 0 ? 0u : (uint)d; }   // D153: signed, never ~49 days
+[System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint GetTickCount();   // D182: the input clock (counts sleep); Environment.TickCount does not
+public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)(GetTickCount() - i.dwTime)); return d < 0 ? 0u : (uint)d; }   // D153: signed, never ~49 days; D182: same clock as dwTime
 '@
 $waited = [Diagnostics.Stopwatch]::StartNew()
 $said = $false

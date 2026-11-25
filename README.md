@@ -229,7 +229,7 @@ This isn't a weekend script that types into your apps and hopes for the best.
 powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/granterogers/global_autocorrect/main/get.ps1 | iex"
 ```
 
-It checks your PC can run the app, installs PowerShell 7 if it's missing (with `winget`), downloads the latest release, checks it against the checksum published with it and runs its installer. You can read exactly what it does first: [`get.ps1`](get.ps1).
+It checks your PC can run the app, installs PowerShell 7 if it's missing (with `winget`, or from PowerShell's official download for just your account if `winget` isn't there), downloads the latest release, checks it against the checksum published with it and runs its installer. Nothing else is needed: the app brings its own .NET. You can read exactly what it does first: [`get.ps1`](get.ps1). It's tested on a clean Windows in Windows Sandbox (`scripts/sandbox-install-test.ps1`).
 
 <details>
 <summary>Or install by hand</summary>

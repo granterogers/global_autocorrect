@@ -29,7 +29,8 @@ try {
     Add-Type -Namespace BE -Name Idle -MemberDefinition @'
 [StructLayout(LayoutKind.Sequential)] public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
 [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO i);
-public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)((uint)System.Environment.TickCount - i.dwTime)); return d < 0 ? 0u : (uint)d; }   // D153: signed, never ~49 days
+[DllImport("kernel32.dll")] static extern uint GetTickCount();   // D182: the input clock (counts sleep); Environment.TickCount does not
+public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLastInputInfo(ref i); int d = unchecked((int)(GetTickCount() - i.dwTime)); return d < 0 ? 0u : (uint)d; }   // D153: signed, never ~49 days; D182: same clock as dwTime
 '@
     if (-not $Now) { while ([BE.Idle]::IdleMs() -lt 120000) { Start-Sleep 10 } }
 

@@ -16,8 +16,10 @@ Write-Host "version: $version"
 $stage = Join-Path $Out 'package/GlobalAutocorrect'
 Remove-Item (Join-Path $Out 'package') -Recurse -Force -ErrorAction SilentlyContinue
 
-# Framework-dependent: this is for the user's own PC, which has .NET 10 (3.2).
-dotnet publish $proj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false "-p:Version=$version" -o (Join-Path $stage 'app') --nologo -v q
+# D182: self-contained, the .NET runtime inside the package. Framework-dependent (3.2's "the user's own PC has .NET 10")
+# stopped being true with the one-command install (D178): on a clean Windows the app only showed "You must install .NET
+# Desktop Runtime", found by installing in Windows Sandbox. No admin rights or separate install needed this way.
+dotnet publish $proj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false "-p:Version=$version" -o (Join-Path $stage 'app') --nologo -v q
 if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
 
 New-Item -ItemType Directory -Force (Join-Path $stage 'scripts') | Out-Null

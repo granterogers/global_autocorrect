@@ -203,7 +203,12 @@ public static class UpdateInstaller
 
     private static string? FindPwsh()
     {
-        var candidates = new List<string> { Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell", "7", "pwsh.exe") };
+        var candidates = new List<string>
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell", "7", "pwsh.exe"),
+            // D182: where get.ps1 unpacks PowerShell 7 for this user when winget can't install it.
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GlobalAutocorrect", "pwsh", "pwsh.exe"),
+        };
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
             try { candidates.Add(Path.Combine(dir.Trim('"'), "pwsh.exe")); }

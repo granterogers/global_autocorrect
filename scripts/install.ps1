@@ -5,7 +5,8 @@
   running copy cleanly (as the tray's Exit does), replaces the files and starts the new one.
 .DESCRIPTION
   Run from the unzipped package (dist\GlobalAutocorrect in the repo). Steps:
-    1. Model and llama.cpp: downloaded with checksums only if missing (scripts\setup.ps1, 5.7).
+    1. Model and llama.cpp: downloaded with checksums only if missing (scripts\setup.ps1, 5.7). Microsoft's Visual C++
+       runtime, which llama.cpp needs, installed once if missing (D182; Windows asks to allow it).
     2. Close the running copy cleanly.
     3. Copy the app to %LOCALAPPDATA%\Programs\GlobalAutocorrect.
     4. Start it, not elevated (10.8). The app registers itself to start with Windows (8.1).
@@ -35,6 +36,39 @@ if ($Setup -or -not $haveLlama -or -not (Test-Path $model)) {
     if ($LASTEXITCODE -ne 0) { throw 'setup failed; see the messages above' }
 } else {
     Write-Host '  model and llama.cpp: already in place'
+}
+
+# 1b. D182: llama.cpp (the AI) needs Microsoft's Visual C++ runtime, which a clean Windows doesn't have: without it the AI
+# server only shows "VCRUNTIME140.dll was not found" (found by installing in Windows Sandbox; this PC and GitHub's test
+# machines have it). Installed once, from Microsoft's permanent link, only after checking Microsoft signed the download.
+# It needs admin rights, so Windows asks the user to allow it; an install that already has it never asks.
+function Test-VcRuntime {
+    foreach ($dll in 'vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll') {
+        $p = Join-Path $env:SystemRoot "System32\$dll"
+        if (-not (Test-Path $p)) { return $false }
+        $v = (Get-Item $p).VersionInfo
+        # llama.cpp is built with Visual Studio 2022 (runtime 14.4x); an older runtime can't run it.
+        if ($v.FileMajorPart -lt 14 -or ($v.FileMajorPart -eq 14 -and $v.FileMinorPart -lt 40)) { return $false }
+    }
+    return $true
+}
+if (-not (Test-VcRuntime)) {
+    Write-Host '  installing the Microsoft Visual C++ runtime, which the AI needs (Windows will ask you to allow it)'
+    $vc = Join-Path ([IO.Path]::GetTempPath()) ('vc_redist-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.x64.exe')
+    Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $vc
+    $sig = Get-AuthenticodeSignature $vc
+    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+        Remove-Item $vc -ErrorAction SilentlyContinue
+        throw 'the Visual C++ runtime download is not signed by Microsoft, so it was not run'
+    }
+    try { $p = Start-Process $vc -ArgumentList '/install', '/quiet', '/norestart' -Verb RunAs -Wait -PassThru }
+    catch { $p = $null }   # the user said no
+    Remove-Item $vc -ErrorAction SilentlyContinue
+    # 1638: a newer one is already there; 3010: installed, takes full effect after a restart.
+    if (-not (Test-VcRuntime)) {
+        throw "the Visual C++ runtime did not install$(if ($p) { " (exit $($p.ExitCode))" } else { ' (not allowed)' }); the AI can't run without it. Run the install again and allow it."
+    }
+    Write-Host '  Visual C++ runtime: installed'
 }
 
 # 2. Close the running copy the way the tray's Exit does, so it saves before the files are replaced.
@@ -89,9 +123,17 @@ Write-Host "  Start menu: Global Autocorrect"
 if (-not $NoStart) {
     $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if ($admin) { Start-Process explorer.exe -ArgumentList "`"$exe`"" } else { Start-Process $exe -WorkingDirectory $InstallDir }
+    # D182: a process with the app's name isn't proof it started: Windows' "You must install .NET Desktop Runtime" box is
+    # that same process. Started means .NET is running in it (coreclr.dll loaded) and it's still running seconds later.
+    function Test-Started {
+        $p = Get-Process GlobalAutocorrect -ErrorAction SilentlyContinue | Where-Object Path -eq $exe | Select-Object -First 1
+        if (-not $p) { return $false }
+        try { return [bool]($p.Modules | Where-Object ModuleName -eq 'coreclr.dll') } catch { return $false }
+    }
     $ok = $false
-    for ($i = 0; $i -lt 20 -and -not $ok; $i++) { Start-Sleep -Milliseconds 500; $ok = [bool](Get-Process GlobalAutocorrect -ErrorAction SilentlyContinue | Where-Object Path -eq $exe) }
-    if (-not $ok) { throw 'Global Autocorrect did not start; see %APPDATA%\GlobalAutocorrect\crash.txt' }
+    for ($i = 0; $i -lt 40 -and -not $ok; $i++) { Start-Sleep -Milliseconds 500; $ok = Test-Started }
+    if ($ok) { Start-Sleep -Seconds 3; $ok = Test-Started }
+    if (-not $ok) { throw 'Global Autocorrect did not start; see any message on screen and %APPDATA%\GlobalAutocorrect\crash.txt' }
     Write-Host '  running (look for the blue icon in the tray; Ctrl+Alt+P pauses it)'
 }
 Write-Host "Done: $build"

@@ -31,7 +31,9 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
     private nint _kb, _mouse;
     private long _seq;
     private long _lastKeyAtMs = -100_000;
-    private int _lastCallbackTick = Environment.TickCount;
+    // D182: on Windows' input clock (GetTickCount), as GetLastInputInfo and each key's timestamp are; .NET's skips sleep.
+    private int _lastCallbackTick = InputClock;
+    private static int InputClock => unchecked((int)GetTickCount());
     private volatile bool _swallowTabUp;
 
     public InputArm SuggestionArm { get; } = new();
@@ -79,7 +81,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
         int lastInput = unchecked((int)info.dwTime);
         if (unchecked(lastInput - Volatile.Read(ref _lastCallbackTick)) > 3000)
         {
-            Volatile.Write(ref _lastCallbackTick, Environment.TickCount);
+            Volatile.Write(ref _lastCallbackTick, InputClock);
             PostThreadMessageW(_threadId, WM_APP_REINSTALL, 0, 0);
         }
     }
@@ -102,7 +104,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private nint KeyboardProc(int nCode, nint wParam, nint lParam)
     {
-        Volatile.Write(ref _lastCallbackTick, Environment.TickCount);
+        Volatile.Write(ref _lastCallbackTick, InputClock);
         if (nCode < 0) return CallNextHookEx(_kb, nCode, wParam, lParam);
         KBDLLHOOKSTRUCT k;
         unsafe { k = *(KBDLLHOOKSTRUCT*)lParam; }   // direct read: no marshalling on the hot path
@@ -200,7 +202,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private nint MouseProc(int nCode, nint wParam, nint lParam)
     {
-        Volatile.Write(ref _lastCallbackTick, Environment.TickCount);
+        Volatile.Write(ref _lastCallbackTick, InputClock);
         if (nCode >= 0 && wParam is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_MBUTTONDOWN or WM_XBUTTONDOWN)
         {
             MSLLHOOKSTRUCT m;
@@ -220,7 +222,7 @@ public sealed class KeyboardHook : IKeyMonitor, IDisposable
 
     private void Enqueue(RawKind kind, KBDLLHOOKSTRUCT k, bool down, bool injected, long at)
     {
-        int delay = unchecked(Environment.TickCount - (int)k.time);   // D94
+        int delay = unchecked(InputClock - (int)k.time);   // D94, D182: the same clock as the key's timestamp
         // A swallowed Tab never reaches the app, so they don't advance the sequence the write gate compares.
         long seq = kind == RawKind.Key ? Interlocked.Increment(ref _seq) : Interlocked.Read(ref _seq);
         Interlocked.Exchange(ref _lastKeyAtMs, at);

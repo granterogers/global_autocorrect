@@ -161,6 +161,22 @@ public static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
 
+    /// <summary>
+    /// D182: Windows' millisecond clock that counts time asleep, the one GetLastInputInfo and every key's timestamp use.
+    /// Environment.TickCount doesn't count sleep (on .NET 10 it reads the unbiased interrupt time), so against input
+    /// timestamps it falls behind by every hour the PC has slept, and input reads as "in the future": never idle.
+    /// </summary>
+    [DllImport("kernel32.dll")]
+    public static extern uint GetTickCount();
+
+    /// <summary>D131, D153, D182: how long since the last keyboard or mouse input anywhere on the PC.</summary>
+    public static TimeSpan IdleFor()
+    {
+        var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
+        if (!GetLastInputInfo(ref info)) return TimeSpan.Zero;
+        return GlobalAutocorrect.Core.Health.IdleTime.Since(info.dwTime, GetTickCount());
+    }
+
     public const ushort VK_RETURN = 0x0D;
     public const ushort VK_PAUSE = 0x13;
     public const ushort VK_CAPITAL = 0x14;
