@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "updated": "2026-11-24T22:28:17Z",
+  "updated": "2026-11-25T07:09:11Z",
   "apps": {
     "chatgpt": {
       "writes": 20,
@@ -334,7 +334,11 @@
       }
     ]
   },
-  "words": {},
+  "words": {
+    "Instant.Fixes": {
+      "add": ["oe=or"]
+    }
+  },
   "share": {
     "url": "https://ga-learning.money-mastery-crew-mcp.workers.dev/v1/learning"
   }
