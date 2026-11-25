@@ -50,8 +50,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           RUN: ${{ github.run_id }}
+          E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          jobs=$(gh api "repos/$REPO/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("e2e"))]')
+          # D183: pass or fail is GitHub's own result for the e2e jobs. The jobs API can lag them by seconds: on 25 Nov it
+          # said "4 of 5" with all five green, read 2 s after the last one finished. It only fills in the summary, read
+          # once every job in it has a conclusion (up to 2 minutes).
+          for i in $(seq 1 12); do
+            jobs=$(gh api "repos/$REPO/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("e2e"))]')
+            pending=$(echo "$jobs" | jq '[.[] | select(.status != "completed" or .conclusion == null)] | length')
+            [ "$pending" -eq 0 ] && break
+            sleep 10
+          done
           total=$(echo "$jobs" | jq 'length')
           passed=$(echo "$jobs" | jq '[.[] | select(.conclusion == "success")] | length')
           {
@@ -59,5 +68,5 @@ jobs:
             echo
             echo "$jobs" | jq -r '.[] | "- \(.name): \(.conclusion)"'
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "passed $passed of $total"
-          if [ "$passed" -ne "$total" ]; then exit 1; fi
+          echo "e2e result: $E2E_RESULT (passed $passed of $total)"
+          if [ "$E2E_RESULT" != "success" ]; then exit 1; fi

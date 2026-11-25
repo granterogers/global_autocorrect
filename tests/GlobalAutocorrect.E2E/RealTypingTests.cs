@@ -50,9 +50,13 @@ public sealed class RealTypingTests
 
     /// <summary>
     /// Tuning-set messages with typos and the same number of words before and after (so each word can be checked in place),
-    /// 60–150 characters, and no word that is a typo in one message and correct in another. Seed 0: the first four, every
-    /// run; otherwise 3–6 chosen at random by the seed (D130).
+    /// 60–150 characters, and no word that is a typo in one message and correct in another. D183: and no chain, a typo's
+    /// correction being another message's typo ("aor"→"or" with "or"→"for"): the stand-in fixed "aor" to "or", then the
+    /// next request turned that "or" into "for", which scored as damage in every editor (stress runs 67, 69). Seed 0: the
+    /// first four, every run; otherwise 3–6 chosen at random by the seed (D130).
     /// </summary>
+    internal static IReadOnlyDictionary<string, string> FixesFor(int seed) => Pick(seed).Fixes;
+
     private static Script Pick(int seed)
     {
         var rnd = new Random(seed);
@@ -62,6 +66,7 @@ public sealed class RealTypingTests
         var lines = new List<(string, string)>();
         var fixes = new Dictionary<string, string>(StringComparer.Ordinal);
         var correct = new HashSet<string>(StringComparer.Ordinal);
+        var targets = new HashSet<string>(StringComparer.Ordinal);   // D183: every correction so far
         foreach (var json in source)
         {
             using var doc = JsonDocument.Parse(json);
@@ -78,11 +83,14 @@ public sealed class RealTypingTests
             for (int i = 0; i < n.Length && !clash; i++)
             {
                 if (n[i] == c[i]) clash = fixes.ContainsKey(n[i]) || mine.ContainsKey(n[i]);
-                else clash = correct.Contains(n[i]) || (fixes.TryGetValue(n[i], out var f) && f != c[i]) || (mine.TryGetValue(n[i], out var m) && m != c[i]);
+                else clash = correct.Contains(n[i]) || (fixes.TryGetValue(n[i], out var f) && f != c[i]) || (mine.TryGetValue(n[i], out var m) && m != c[i])
+                    // D183: no chains: this correction isn't a typo elsewhere, and this typo isn't a correction elsewhere.
+                    || fixes.ContainsKey(c[i]) || mine.ContainsKey(c[i]) || targets.Contains(n[i]) || mine.ContainsValue(n[i]);
                 if (!clash && n[i] != c[i]) mine[n[i]] = c[i];
             }
             if (clash || mine.Count < 2) continue;
             foreach (var (k, v) in mine) fixes[k] = v;
+            targets.UnionWith(mine.Values);
             for (int i = 0; i < n.Length; i++) if (n[i] == c[i]) correct.Add(n[i]);
             lines.Add((noisy, clean));
             if (lines.Count == want) break;
