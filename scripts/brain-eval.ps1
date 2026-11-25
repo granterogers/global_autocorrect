@@ -52,9 +52,10 @@ public static uint IdleMs() { var i = new LASTINPUTINFO(); i.cbSize = 8; GetLast
     finally {
         if ($wasRunning -and -not (Get-Process GlobalAutocorrect -ErrorAction SilentlyContinue)) { Start-Process $installed }
     }
-    $o = $scores.old; $n = $scores.new
-    "brain-eval (tuning set): errors fixed {0:P1} -> {1:P1}; false edits {2:P2} -> {3:P2}" -f $o.errorsFixedRate, $n.errorsFixedRate, $o.falseEditRate, $n.falseEditRate
-    if ($n.errorsFixedRate -lt $o.errorsFixedRate - 0.005 -or $n.falseEditRate -gt $o.falseEditRate + 0.002) { "brain-eval: FAIL, the new brain scores worse: don't push it"; exit 1 }
+    # Not $o/$n: PowerShell names ignore case, so $n is the [int]$N parameter and can't hold the scores (D186).
+    $was = $scores.old; $now = $scores.new
+    "brain-eval (tuning set): errors fixed {0:P1} -> {1:P1}; false edits {2:P2} -> {3:P2}" -f $was.errorsFixedRate, $now.errorsFixedRate, $was.falseEditRate, $now.falseEditRate
+    if ($now.errorsFixedRate -lt $was.errorsFixedRate - 0.005 -or $now.falseEditRate -gt $was.falseEditRate + 0.002) { "brain-eval: FAIL, the new brain scores worse: don't push it"; exit 1 }
     "brain-eval: PASS"
 }
 finally { Pop-Location }

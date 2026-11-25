@@ -54,17 +54,21 @@ public sealed class MisbehavingModelTests
         return string.Join(' ', words);
     }
 
+    /// <remarks>D186: 2,112 simulations, each with its own harness and clock, so they run side by side: one after another
+    /// they took 37 of the fast check's 70 seconds (11.1.a: under 30).</remarks>
     [Fact]
     public void R4_5_D148_NoMisbehaviourOfTheModelReachesTheText()
     {
-        var bad = new List<string>();
-        foreach (string target in new[] { "Hello", "Could", "Fancy" })
-        foreach (bool trailSpace in new[] { false, true })
-        for (int kind = 0; kind < 8; kind++)
-        for (int i = 0; i < 22; i++)
-        foreach (int when in new[] { 0, 1 })
+        var cases = (from target in new[] { "Hello", "Could", "Fancy" }
+                     from trailSpace in new[] { false, true }
+                     from kind in Enumerable.Range(0, 8)
+                     from i in Enumerable.Range(0, 22)
+                     from when in new[] { 0, 1 }
+                     select (target, trailSpace, kind, i, when)).ToList();
+        var bad = new System.Collections.Concurrent.ConcurrentBag<string>();
+        Parallel.ForEach(cases, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, c =>
         {
-            int k = kind, ii = i;
+            var (target, trailSpace, k, ii, when) = c;
             int calls = 0;
             var h = new Harness(model: t =>
             {
@@ -83,7 +87,7 @@ public sealed class MisbehavingModelTests
                 if (lines.Length != 3 || lines[l].TrimEnd().StartsWith(' ') || lines[l].TrimEnd().Split(' ').Length != want[l].Split(' ').Length
                     || lines[l].TrimEnd().Split(' ').Zip(lines[l].TrimEnd().Split(' ').Skip(1)).Any(p => string.Equals(p.First, p.Second, StringComparison.OrdinalIgnoreCase)))
                 { bad.Add($"{target} trail={trailSpace} kind={k} i={ii} when={when}: [{h.Text.Replace('\n', '|')}]"); break; }
-        }
-        Assert.True(bad.Count == 0, string.Join("\n", bad));
+        });
+        Assert.True(bad.IsEmpty, string.Join("\n", bad.Order(StringComparer.Ordinal)));
     }
 }

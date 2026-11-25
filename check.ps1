@@ -28,17 +28,35 @@ function Invoke-Fast {
         Invoke-Step 'restore' { dotnet restore GlobalAutocorrect.slnx }
     }
     Invoke-Build
-    Invoke-Step 'test (Core)' {
-        dotnet test --project tests/GlobalAutocorrect.Core.Tests --no-build -- --filter-not-trait "Category=Model" --filter-not-trait "Category=E2E"
+    # D186 (11.1.a, under 30 s): the four test projects at once, each still running its own tests side by side. One after
+    # another they took 70 s. A project that fails shows its whole output; one that passes, a line.
+    $projects = [ordered]@{
+        'test (Core)'    = @('tests/GlobalAutocorrect.Core.Tests', '--filter-not-trait', 'Category=Model', '--filter-not-trait', 'Category=E2E')
+        'test (Llm)'     = @('tests/GlobalAutocorrect.Llm.Tests', '--filter-not-trait', 'Category=Model')
+        'test (Windows)' = @('tests/GlobalAutocorrect.Windows.Tests', '--filter-not-trait', 'Category=E2E')
+        'test (App)'     = @('tests/GlobalAutocorrect.App.Tests')
     }
-    Invoke-Step 'test (Llm)' {
-        dotnet test --project tests/GlobalAutocorrect.Llm.Tests --no-build -- --filter-not-trait "Category=Model"
-    }
-    Invoke-Step 'test (Windows)' {
-        dotnet test --project tests/GlobalAutocorrect.Windows.Tests --no-build -- --filter-not-trait "Category=E2E"
-    }
-    Invoke-Step 'test (App)' {
-        dotnet test --project tests/GlobalAutocorrect.App.Tests --no-build
+    Invoke-Step 'tests (4 projects at once)' {
+        $root = (Get-Location).Path
+        $jobs = foreach ($name in $projects.Keys) {
+            Start-ThreadJob -Name $name -ArgumentList $root, $projects[$name] -ScriptBlock {
+                param($root, [string[]]$a)
+                Set-Location $root
+                $sw = [System.Diagnostics.Stopwatch]::StartNew()
+                $rest = @($a | Select-Object -Skip 1)
+                $out = if ($rest.Count) { dotnet test --project $a[0] --no-build -- @rest 2>&1 | Out-String } else { dotnet test --project $a[0] --no-build 2>&1 | Out-String }
+                [pscustomobject]@{ Code = $LASTEXITCODE; Out = $out; Secs = $sw.Elapsed.TotalSeconds }
+            }
+        }
+        $failed = @()
+        foreach ($j in $jobs) {
+            $r = Receive-Job $j -Wait -AutoRemoveJob
+            $summary = "$($r.Out -split "`n" | Where-Object { $_ -match '^\s*total:\s*\d+' } | Select-Object -Last 1)".Trim()
+            if ($r.Code -ne 0) { $failed += $j.Name; Write-Host $r.Out }
+            Write-Host ("    {0}: {1:N1}s, {2}{3}" -f $j.Name, $r.Secs, $summary, $(if ($r.Code -ne 0) { ' FAILED' } else { '' }))
+        }
+        if ($failed) { $script:CurrentStep = $failed -join ', ' }
+        $global:LASTEXITCODE = [int]($failed.Count -gt 0)
     }
 }
 
