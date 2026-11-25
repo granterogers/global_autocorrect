@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "updated": "2026-11-25T18:28:07Z",
+  "updated": "2026-11-25T19:25:02Z",
   "apps": {
     "chatgpt": {
       "writes": 37.1,
@@ -337,7 +337,8 @@
   "words": {
     "Instant.Fixes": {
       "add": [
-        "oe=or"
+        "oe=or",
+        "apprectea=appreciate"
       ],
       "remove": null
     }
