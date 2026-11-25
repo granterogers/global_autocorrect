@@ -22,6 +22,18 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(["Foo"], s.ExcludedApps!);
     }
 
+    /// <summary>D184: settings.json held "NextWordShare", worked out from another setting and never read back.</summary>
+    [Fact]
+    public void R8_6_D184_OnlySettingsThatLoadBackAreSaved()
+    {
+        var store = new SettingsStore(Path.Combine(_dir, "settings.json"));
+        store.Save(new AppSettings());
+        using var saved = System.Text.Json.JsonDocument.Parse(File.ReadAllText(store.Path));
+        var settable = typeof(AppSettings).GetProperties().Where(p => p.SetMethod is not null).Select(p => p.Name).ToHashSet();
+        var extra = saved.RootElement.EnumerateObject().Select(p => p.Name).Where(n => !settable.Contains(n)).ToList();
+        Assert.Empty(extra);
+    }
+
     [Fact]
     public void R8_6_BrokenSettingsFileFallsBackToDefaults()
     {

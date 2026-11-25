@@ -25,7 +25,8 @@ public sealed record AppSettings
     /// likeliest (60%); the user wants to keep pressing Tab through an obvious sentence.</summary>
     public bool AlwaysSuggestNextWord { get; init; } = true;
 
-    /// <summary>D80: the next-word threshold for <see cref="AlwaysSuggestNextWord"/>.</summary>
+    /// <summary>D80: the next-word threshold for <see cref="AlwaysSuggestNextWord"/>. Worked out, so never saved (D184).</summary>
+    [JsonIgnore]
     public double NextWordShare => AlwaysSuggestNextWord ? 0.1 : 0.6;
     public string PauseShortcut { get; init; } = "Ctrl+Alt+P";     // 8.2
     public string UndoShortcut { get; init; } = "Ctrl+Alt+Z";      // 4.8.b
