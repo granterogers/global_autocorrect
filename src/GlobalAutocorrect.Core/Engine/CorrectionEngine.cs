@@ -72,16 +72,59 @@ public sealed class CorrectionEngine
     /// </summary>
     private void NoticeTypedBack(FinishedWord fw)
     {
+        int end = fw.Start + fw.Word.Length;
+        string typed = Session.Typed;
+        TextWindow? field = null;   // D185: read at most once, and only for a word that is a recent fix's original
         foreach (var rec in _undo.Recent.ToArray())
         {
-            if (rec.Generation != Session.Generation || rec.WordsStart != fw.Start) continue;
-            if (!string.Equals(fw.Word, rec.WordsBefore, StringComparison.OrdinalIgnoreCase) || string.Equals(fw.Word, rec.WordsAfter, StringComparison.Ordinal)) continue;
+            // The word just finished ends the words as they were before the fix, and isn't what the fix made.
+            if (!rec.WordsBefore.EndsWith(fw.Word, StringComparison.OrdinalIgnoreCase) || string.Equals(fw.Word, rec.WordsAfter, StringComparison.Ordinal)) continue;
+            bool samePlace = rec.Generation == Session.Generation && rec.WordsStart == fw.Start
+                             && string.Equals(fw.Word, rec.WordsBefore, StringComparison.OrdinalIgnoreCase);
+            if (!samePlace && !TypedBackInItsPlace(rec, typed, end, ref field)) continue;
             _undo.Recent.Remove(rec);
             Mistakes?.Remember(rec.WordsBefore, rec.WordsAfter);
             foreach (var w in UndoManager.WordsToLearn(rec)) _d.AddPersonalWord(w);   // as an undo does (4.8.c)
             _d.Counters.Undo();
             Health?.Undone(Target?.AppName ?? "");
             LearntFromMistake?.Invoke("typed-back");
+        }
+    }
+
+    /// <summary>
+    /// D185, user: "if I remove your correction and type the same thing again, that's my way of saying I don't want that
+    /// word corrected". Deleting a fix with Ctrl+Backspace, a selection or a click restarts the typing session, so the
+    /// fix's position and session (D84's match) no longer line up with the word typed back. It is in the fix's place when
+    /// the words as they were before the fix were typed again, recently, right after the same text that was before them:
+    /// the same typo typed again somewhere else follows other text, and must not teach the app the typo. The typed record
+    /// is checked first; if it restarted too recently to show enough of that text, the field is read once.
+    /// </summary>
+    private bool TypedBackInItsPlace(CorrectionRecord rec, string typed, int end, ref TextWindow? field)
+    {
+        if (_d.Clock.NowMs - rec.AtMs > (long)(Learning.Tunables.TypedBackWithinSeconds.Value * 1000)) return false;
+        string ctx = TextNorm.Normalise(rec.WordsContext);
+        int need = Math.Min(ctx.Length, Learning.Tunables.TypedBackContextChars.Int);
+        int start = end - rec.WordsBefore.Length;
+        if (start >= 0 && end <= typed.Length && string.Equals(typed[start..end], rec.WordsBefore, StringComparison.OrdinalIgnoreCase)
+            && Before(TextNorm.Normalise(typed[..start]), whole: false) is { } fromRecord)
+            return fromRecord;
+
+        // The typed record restarted after the fix was deleted: what the field shows before the caret decides.
+        field ??= Target?.ReadWindow();
+        if (field is not { CaretKnown: true } w || w.TargetId != rec.TargetId) return false;
+        string f = TextNorm.Normalise(w.Before);
+        int at = f.LastIndexOf(rec.WordsBefore, StringComparison.OrdinalIgnoreCase);
+        // The words end at the caret, give or take the space or punctuation that finished them (a field may lag a key).
+        if (at < 0 || f[(at + rec.WordsBefore.Length)..].Any(char.IsLetterOrDigit) || f.Length - (at + rec.WordsBefore.Length) > 3) return false;
+        return Before(f[..at], whole: true) ?? false;
+
+        // True or false when the text before the words shows enough to say; null when it is too short to tell. The typed
+        // record may have restarted anywhere, so only the field (whole) can show the words begin a line.
+        bool? Before(string pre, bool whole)
+        {
+            if (need == 0) return pre.Length > 0 && pre[^1] == '\n' ? true : whole ? pre.Length == 0 : null;   // the fix began its line
+            if (pre.Length < need) return whole ? false : null;
+            return string.Equals(pre[^need..], ctx[^need..], StringComparison.Ordinal);
         }
     }
 
@@ -114,7 +157,7 @@ public sealed class CorrectionEngine
         if (_ai is not null) _ai.Mismatch += d => Mismatch?.Invoke(d);   // D76
         _gate.Written += (notice, w, typedAfter) =>
         {
-            if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation);
+            if (w.Layer != Layer.Undo) _undo.Record(notice, w, typedAfter, Session.Generation, _d.Clock.NowMs);
             _ai?.NoteOwnEdit(w.Start, w.End, w.Replacement.Length);   // D45
             _pendingLearn.RemoveAll(p => w.Words.Contains(p.Word, StringComparer.OrdinalIgnoreCase));   // it was a typo
             Corrected?.Invoke(notice);

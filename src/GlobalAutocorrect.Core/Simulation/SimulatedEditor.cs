@@ -61,6 +61,28 @@ public sealed class SimulatedEditor(IClock clock, string id = "sim-1") : ITextTa
         return Key(KeyKind.Backspace, '\0');
     }
 
+    /// <summary>D185: Ctrl+Backspace: deletes back over spaces and then a word, as Windows editors do. The hook reports a
+    /// shortcut (Ctrl held), which restarts the typing session.</summary>
+    public KeyInput DeleteWordBack()
+    {
+        int i = Caret;
+        while (i > 0 && Text[i - 1] == ' ') i--;
+        while (i > 0 && Text[i - 1] != ' ' && Text[i - 1] != '\n') i--;
+        Text = Text.Remove(i, Caret - i);
+        Caret = i;
+        return Key(KeyKind.Shortcut, '\0');
+    }
+
+    /// <summary>D185: Shift+Left <paramref name="n"/> times, then Backspace: the selection deleted. The hook reports the
+    /// arrows as navigation (a session restart) and then a Backspace.</summary>
+    public (KeyInput Select, KeyInput Delete) SelectBackAndDelete(int n)
+    {
+        n = Math.Min(n, Caret);
+        Text = Text.Remove(Caret - n, n);
+        Caret -= n;
+        return (Key(KeyKind.Navigation, '\0'), Key(KeyKind.Backspace, '\0'));
+    }
+
     public KeyInput MoveCaret(int delta)
     {
         Caret = Math.Clamp(Caret + delta, 0, Text.Length);

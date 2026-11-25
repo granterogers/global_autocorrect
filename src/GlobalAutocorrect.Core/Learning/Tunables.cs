@@ -81,6 +81,8 @@ public static class Tunables
     public static readonly Tunable AiMaxRevisits = Define("Ai.MaxRevisitsPerSession", 20, 0, 200, "D49: looks back at earlier text per session");
     public static readonly Tunable SessionUnshownAfterMs = Define("Session.UnshownAfterMs", 1200, 300, 5000, "D124: keys the field never showed are dropped from the record after this long");
     public static readonly Tunable LearnAfterMs = Define("Learn.AfterMs", 5000, 1000, 60_000, "8.5: a word is learnt once it has stood this long");
+    public static readonly Tunable TypedBackWithinSeconds = Define("Learn.TypedBackWithinSeconds", 300, 10, 3600, "D185: a fix deleted and its word typed back in its place within this long is a fix the user didn't want");
+    public static readonly Tunable TypedBackContextChars = Define("Learn.TypedBackContextChars", 8, 3, 24, "D185: how much of the text before a fix must be the same for a retyped word to be at its place (not the same typo elsewhere)");
 
     // ---- Suggestions and phrases (D59, D94, D97, D142) ----
     public static readonly Tunable PredictReadRetries = Define("Predict.ReadRetries", 6, 0, 30, "D59/D150: re-reads while the field catches up");

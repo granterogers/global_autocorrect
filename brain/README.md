@@ -57,6 +57,8 @@ Switches are 1 (on) or 0 (off).
 | `Ai.MaxRevisitsPerSession` | 20 | 0–200 | D49: looks back at earlier text per session |
 | `Session.UnshownAfterMs` | 1200 | 300–5000 | D124: keys the field never showed are dropped from the record after this long |
 | `Learn.AfterMs` | 5000 | 1000–60,000 | 8.5: a word is learnt once it has stood this long |
+| `Learn.TypedBackWithinSeconds` | 300 | 10–3600 | D185: a fix deleted and its word typed back in its place within this long is a fix the user didn't want |
+| `Learn.TypedBackContextChars` | 8 | 3–24 | D185: how much of the text before a fix must be the same for a retyped word to be at its place (not the same typo elsewhere) |
 
 ## Suggestions and phrases (D59, D94, D97, D142)
 

@@ -11,6 +11,11 @@ public sealed record CorrectionRecord(string TargetId, long Generation, int Star
     public string WordsBefore { get; init; } = Original;
     public string WordsAfter { get; init; } = Replacement;
     public int WordsStart { get; init; } = Start;
+
+    /// <summary>D185: the text just before those words (up to 24 characters) and when the fix was made, to know the
+    /// words typed back in its place after the session restarted (Ctrl+Backspace, a selection, a click).</summary>
+    public string WordsContext { get; init; } = "";
+    public long AtMs { get; init; }
 }
 
 public enum UndoResult { Reverted, NothingToUndo, OtherField, TextChanged, Failed }
@@ -21,7 +26,7 @@ public sealed class UndoManager
 
     public CorrectionRecord? Last { get; private set; }
 
-    public void Record(CorrectionNotice notice, PendingWrite w, string typedAfter, long generation)
+    public void Record(CorrectionNotice notice, PendingWrite w, string typedAfter, long generation, long atMs = 0)
     {
         string ctx = typedAfter[Math.Max(0, w.Start - ContextChars)..w.Start];
         // D84: the whole words around the fix, as the write guard and the mistake memory see them.
@@ -34,6 +39,8 @@ public sealed class UndoManager
             WordsAfter = typedAfter[s..e],
             WordsBefore = typedAfter[s..w.Start] + w.Original + typedAfter[end..e],
             WordsStart = s,
+            WordsContext = typedAfter[Math.Max(0, s - ContextChars)..s],
+            AtMs = atMs,
         };
         Recent.Add(Last);
         if (Recent.Count > 8) Recent.RemoveAt(0);

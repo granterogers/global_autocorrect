@@ -37,6 +37,61 @@ public sealed class MistakeMemoryTests
         Assert.Equal("I saw teh and teh ", h.Text);
     }
 
+    // D185, user: "if I remove your correction and type the same thing again, that's my way of saying I don't want that
+    // word corrected". Deleting the fix the usual ways restarts the typing session, which D84's match didn't survive.
+
+    [Fact]
+    public void R4_8_D185_AFixDeletedWithCtrlBackspaceAndTypedBackIsLearnt()
+    {
+        var h = WithMemory(out var memory, out var learnt);
+        h.Type("Please send teh ");
+        Assert.Equal("Please send the ", h.Text);
+        h.Engine.OnInput(h.Ed.DeleteWordBack());
+        Assert.Equal("Please send ", h.Text);
+        h.Type("teh ");
+        Assert.Equal("Please send teh ", h.Text);       // left as typed
+        Assert.Contains("typed-back", learnt);
+        Assert.True(memory.IsKnown("teh", "the"));
+        Assert.Contains("teh", h.Personal);
+    }
+
+    [Fact]
+    public void R4_8_D185_AFixSelectedAndDeletedThenTypedBackIsLearnt()
+    {
+        var h = WithMemory(out var memory, out var learnt);
+        h.Type("Please send teh ");
+        var (select, delete) = h.Ed.SelectBackAndDelete(4);
+        h.Engine.OnInput(select);
+        h.Engine.OnInput(delete);
+        h.Type("teh ");
+        Assert.Equal("Please send teh ", h.Text);
+        Assert.Contains("typed-back", learnt);
+        Assert.True(memory.IsKnown("teh", "the"));
+    }
+
+    [Fact]
+    public void R4_8_D185_TheSameTypoTypedAgainElsewhereIsFixedAndNotLearnt()
+    {
+        var h = WithMemory(out var memory, out var learnt);
+        h.Type("Please send teh report and teh invoice ");
+        Assert.Equal("Please send the report and the invoice ", h.Text);   // the second is a typo too, not a "no"
+        Assert.DoesNotContain("typed-back", learnt);
+        Assert.False(memory.IsKnown("teh", "the"));
+        Assert.DoesNotContain("teh", h.Personal);
+    }
+
+    [Fact]
+    public void R4_8_D185_TypedBackLongAfterTheFixIsFixedAgain()
+    {
+        var h = WithMemory(out _, out var learnt);
+        h.Type("Please send teh ");
+        h.Engine.OnInput(h.Ed.DeleteWordBack());
+        h.Clock.Advance(301_000);                       // past Learn.TypedBackWithinSeconds (300)
+        h.Type("teh ");
+        Assert.Equal("Please send the ", h.Text);
+        Assert.DoesNotContain("typed-back", learnt);
+    }
+
     [Fact]
     public void R4_8_D84_AnUndoneFixIsRemembered()
     {
